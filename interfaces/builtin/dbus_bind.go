@@ -92,7 +92,6 @@ dbus (receive, send)
     peer=(label=###PLUG_SECURITY_TAGS###),
 `)
 
-
 var dbusBindConnectedPlugAppArmor = []byte(`
 # Description: Allow connecting to DBus service on well-known name
 # Usage: common
@@ -113,7 +112,6 @@ recvmsg
 sendmsg
 sendto
 `)
-
 
 type DbusBindInterface struct{}
 
@@ -240,21 +238,27 @@ func (iface *DbusBindInterface) SanitizeSlot(slot *interfaces.Slot) error {
 	if iface.Name() != slot.Interface {
 		panic(fmt.Sprintf("slot is not of interface %q", iface))
 	}
-
-	fmt.Printf("%#+v\n", slot.Attrs)
-	for bus := range slot.Attrs {
-		fmt.Printf("%#+v\n", slot.Attrs[bus])
-		// broken
-		for i, name := range slot.Attrs[bus] {
-			fmt.Printf("%#+v %s\n", i, name)
-		}
-		/* doesn't work */
-		//for i, name := range bus {
-		//	fmt.Printf("%#+v %s %s\n", i, name, bus[i])
-		//}
-	}
-
 	return nil
+}
+
+func (iface *DbusBindInterface) sessionBusNames(slot *interfaces.Slot) []string {
+	sessionAttr, ok := slot.Attrs["session"]
+	if !ok {
+		return nil
+	}
+	sessionList, ok := sessionAttr.([]interface{})
+	if !ok {
+		panic("the session attribute is not a list")
+	}
+	var busNames []string
+	for _, item := range sessionList {
+		busName, ok := item.(string)
+		if !ok {
+			panic("session element is not a string")
+		}
+		busNames = append(busNames, busName)
+	}
+	return busNames
 }
 
 func (iface *DbusBindInterface) AutoConnect() bool {

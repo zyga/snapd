@@ -87,6 +87,11 @@ func (s *DbusBindInterfaceSuite) TestName(c *C) {
 	c.Assert(s.iface.Name(), Equals, "dbus-bind")
 }
 
+func (s *DbusBindInterfaceSuite) TestSessionBusNames(c *C) {
+	iface := s.iface.(*builtin.DbusBindInterface)
+	c.Assert(iface.SessionBusNames(s.slot), DeepEquals, []string{"org.test-slot"})
+}
+
 /*
 func (s *DbusBindInterfaceSuite) TestUnusedSecuritySystems(c *C) {
 	systems := [...]interfaces.SecuritySystem{interfaces.SecurityDBus,
