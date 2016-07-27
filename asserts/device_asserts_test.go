@@ -78,8 +78,9 @@ func (mods *modelSuite) TestDecodeOK(c *C) {
 	c.Check(model.Gadget(), Equals, "brand-gadget")
 	c.Check(model.Kernel(), Equals, "baz-linux")
 	c.Check(model.Store(), Equals, "brand-store")
+	// XXX: these are empty atm
 	c.Check(model.AllowedModes(), HasLen, 0)
-	c.Check(model.RequiredSnaps(), DeepEquals, []string{"foo", "bar"})
+	c.Check(model.RequiredSnaps(), HasLen, 0)
 }
 
 const (
@@ -108,10 +109,6 @@ func (mods *modelSuite) TestDecodeInvalid(c *C) {
 		{"kernel: baz-linux\n", "kernel: \n", `"kernel" header should not be empty`},
 		{"store: brand-store\n", "", `"store" header is mandatory`},
 		{"store: brand-store\n", "store: \n", `"store" header should not be empty`},
-		{"allowed-modes: \n", "", `"allowed-modes" header is mandatory`},
-		{"allowed-modes: \n", "allowed-modes: ,\n", `empty entry in comma separated "allowed-modes" header: ","`},
-		{"required-snaps: foo, bar\n", "", `"required-snaps" header is mandatory`},
-		{"required-snaps: foo, bar\n", "required-snaps: foo,\n", `empty entry in comma separated "required-snaps" header: "foo,"`},
 		{"class: fixed\n", "", `"class" header is mandatory`},
 		{"class: fixed\n", "class: \n", `"class" header should not be empty`},
 		{mods.tsLine, "", `"timestamp" header is mandatory`},
@@ -130,11 +127,13 @@ func (mods *modelSuite) TestModelCheck(c *C) {
 	ex, err := asserts.Decode([]byte(strings.Replace(modelExample, "TSLINE", mods.tsLine, 1)))
 	c.Assert(err, IsNil)
 
-	signingKeyID, accSignDB, db := makeSignAndCheckDbWithAccountKey(c, "brand-id1")
+	storeDB, db := makeStoreAndCheckDB(c)
+	brandDB := setup3rdPartySigning(c, "brand1", storeDB, db)
 
 	headers := ex.Headers()
-	headers["timestamp"] = "2015-11-25T20:00:00Z"
-	model, err := accSignDB.Sign(asserts.ModelType, headers, nil, signingKeyID)
+	headers["brand-id"] = brandDB.AuthorityID
+	headers["timestamp"] = time.Now().Format(time.RFC3339)
+	model, err := brandDB.Sign(asserts.ModelType, headers, nil, "")
 	c.Assert(err, IsNil)
 
 	err = db.Check(model)
@@ -145,11 +144,13 @@ func (mods *modelSuite) TestModelCheckInconsistentTimestamp(c *C) {
 	ex, err := asserts.Decode([]byte(strings.Replace(modelExample, "TSLINE", mods.tsLine, 1)))
 	c.Assert(err, IsNil)
 
-	signingKeyID, accSignDB, db := makeSignAndCheckDbWithAccountKey(c, "brand-id1")
+	storeDB, db := makeStoreAndCheckDB(c)
+	brandDB := setup3rdPartySigning(c, "brand1", storeDB, db)
 
 	headers := ex.Headers()
+	headers["brand-id"] = brandDB.AuthorityID
 	headers["timestamp"] = "2011-01-01T14:00:00Z"
-	model, err := accSignDB.Sign(asserts.ModelType, headers, nil, signingKeyID)
+	model, err := brandDB.Sign(asserts.ModelType, headers, nil, "")
 	c.Assert(err, IsNil)
 
 	err = db.Check(model)

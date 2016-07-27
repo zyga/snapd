@@ -76,7 +76,7 @@ func NewStore(blobDir, addr string) *Store {
 
 	mux.HandleFunc("/", rootEndpoint)
 	mux.HandleFunc("/search", store.searchEndpoint)
-	mux.HandleFunc("/package/", store.detailsEndpoint)
+	mux.HandleFunc("/snaps/details/", store.detailsEndpoint)
 	mux.HandleFunc("/snaps/metadata", store.bulkEndpoint)
 	mux.Handle("/download/", http.StripPrefix("/download/", http.FileServer(http.Dir(blobDir))))
 
@@ -153,30 +153,18 @@ type detailsReplyJSON struct {
 	Revision        int    `json:"revision"`
 }
 
-func (s *Store) detailsEndpoint(w http.ResponseWriter, req *http.Request) {
+func (s *Store) searchEndpoint(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(501)
-	fmt.Fprintf(w, "details not implemented anymore")
-	return
+	fmt.Fprintf(w, "search not implemented")
 }
 
-func (s *Store) searchEndpoint(w http.ResponseWriter, req *http.Request) {
-	query := req.URL.Query()
-	q := query.Get("q")
-	if !strings.HasPrefix(q, "package_name:\"") {
-		w.WriteHeader(501)
-		fmt.Fprintf(w, "full search not implemented")
-		return
-
-	}
-	if !strings.HasSuffix(q, "\"") {
-		w.WriteHeader(400)
-		fmt.Fprintf(w, "missing final \"")
-		return
+func (s *Store) detailsEndpoint(w http.ResponseWriter, req *http.Request) {
+	pkg := strings.TrimPrefix(req.URL.Path, "/snaps/details/")
+	if pkg == req.URL.Path {
+		panic("how?")
 	}
 
 	s.refreshSnaps()
-
-	pkg := q[len("package_name:\"") : len(q)-1]
 
 	fn, ok := s.snaps[pkg]
 	if !ok {
@@ -206,17 +194,11 @@ func (s *Store) searchEndpoint(w http.ResponseWriter, req *http.Request) {
 		Revision:        makeRevision(info),
 	}
 
-	replyData := searchReplyJSON{
-		Payload: searchPayloadJSON{
-			Packages: []detailsReplyJSON{details},
-		},
-	}
-
 	// use indent because this is a development tool, output
 	// should look nice
-	out, err := json.MarshalIndent(replyData, "", "    ")
+	out, err := json.MarshalIndent(details, "", "    ")
 	if err != nil {
-		http.Error(w, fmt.Sprintf("can marshal: %v: %v", replyData, err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("can't marshal: %v: %v", details, err), http.StatusBadRequest)
 		return
 	}
 	w.Write(out)
@@ -270,6 +252,7 @@ var snapIDtoName = map[string]string{
 	"b8X2psL1ryVrPt5WEmpYiqfr5emixTd7": "ubuntu-core",
 	"bul8uZn9U3Ll4ke6BMqvNVEZjuJCSQvO": "canonical-pc",
 	"SkKeDk2PRgBrX89DdgULk3pyY5DJo6Jk": "canonical-pc-linux",
+	"eFe8BTR5L5V9F7yHeMAPxkEr2NdUXMtw": "test-snapd-tools",
 }
 
 func (s *Store) bulkEndpoint(w http.ResponseWriter, req *http.Request) {

@@ -20,15 +20,17 @@
 package asserts
 
 import (
+	"fmt"
 	"time"
 )
+
+// TODO: adjust to new designs!
 
 // SnapDeclaration holds a snap-declaration assertion, declaring a
 // snap binding its identifying snap-id to a name, asserting its
 // publisher and its other properties.
 type SnapDeclaration struct {
 	assertionBase
-	gates     []string
 	timestamp time.Time
 }
 
@@ -52,17 +54,30 @@ func (snapdcl *SnapDeclaration) PublisherID() string {
 	return snapdcl.Header("publisher-id")
 }
 
-// Gates returns the list of snap-ids gated by this snap.
-func (snapdcl *SnapDeclaration) Gates() []string {
-	return snapdcl.gates
-}
-
 // Timestamp returns the time when the snap-declaration was issued.
 func (snapdcl *SnapDeclaration) Timestamp() time.Time {
 	return snapdcl.timestamp
 }
 
-// XXX: consistency check is signed by canonical
+// Implement further consistency checks.
+func (snapdcl *SnapDeclaration) checkConsistency(db RODatabase, acck *AccountKey) error {
+	if !db.IsTrustedAccount(snapdcl.AuthorityID()) {
+		return fmt.Errorf("snap-declaration assertion for %q (id %q) is not signed by a directly trusted authority: %s", snapdcl.SnapName(), snapdcl.SnapID(), snapdcl.AuthorityID())
+	}
+	_, err := db.Find(AccountType, map[string]string{
+		"account-id": snapdcl.PublisherID(),
+	})
+	if err == ErrNotFound {
+		return fmt.Errorf("snap-declaration assertion for %q (id %q) does not have a matching account assertion for the publisher %q", snapdcl.SnapName(), snapdcl.SnapID(), snapdcl.PublisherID())
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// sanity
+var _ consistencyChecker = (*SnapDeclaration)(nil)
 
 func assembleSnapDeclaration(assert assertionBase) (Assertion, error) {
 	_, err := checkExists(assert.headers, "snap-name")
@@ -75,11 +90,6 @@ func assembleSnapDeclaration(assert assertionBase) (Assertion, error) {
 		return nil, err
 	}
 
-	gates, err := checkCommaSepList(assert.headers, "gates")
-	if err != nil {
-		return nil, err
-	}
-
 	timestamp, err := checkRFC3339Date(assert.headers, "timestamp")
 	if err != nil {
 		return nil, err
@@ -87,7 +97,6 @@ func assembleSnapDeclaration(assert assertionBase) (Assertion, error) {
 
 	return &SnapDeclaration{
 		assertionBase: assert,
-		gates:         gates,
 		timestamp:     timestamp,
 	}, nil
 }
@@ -206,6 +215,29 @@ func (snaprev *SnapRevision) Timestamp() time.Time {
 
 // Implement further consistency checks.
 func (snaprev *SnapRevision) checkConsistency(db RODatabase, acck *AccountKey) error {
+	// TODO: expand this to consider other stores signing on their own
+	if !db.IsTrustedAccount(snaprev.AuthorityID()) {
+		return fmt.Errorf("snap-revision assertion for snap id %q is not signed by a store: %s", snaprev.SnapID(), snaprev.AuthorityID())
+	}
+	_, err := db.Find(AccountType, map[string]string{
+		"account-id": snaprev.DeveloperID(),
+	})
+	if err == ErrNotFound {
+		return fmt.Errorf("snap-revision assertion for snap id %q does not have a matching account assertion for the developer %q", snaprev.SnapID(), snaprev.DeveloperID())
+	}
+	if err != nil {
+		return err
+	}
+	_, err = db.Find(SnapDeclarationType, map[string]string{
+		"series":  snaprev.Series(),
+		"snap-id": snaprev.SnapID(),
+	})
+	if err == ErrNotFound {
+		return fmt.Errorf("snap-revision assertion for snap id %q does not have a matching snap-declaration assertion", snaprev.SnapID())
+	}
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
