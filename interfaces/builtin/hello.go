@@ -130,3 +130,7 @@ func (iface *HelloInterface) PermanentPlugSnippet(plug *interfaces.Plug, securit
 func (iface *HelloInterface) AutoConnect() bool {
 	return false
 }
+
+func init() {
+	allInterfaces = append(allInterfaces, &HelloInterface{})
+}
