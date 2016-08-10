@@ -91,7 +91,7 @@ func (iface *RebootInterface) PermanentSlotSnippet(slot *interfaces.Slot, securi
 func (iface *RebootInterface) ConnectedPlugSnippet(plug *interfaces.Plug, slot *interfaces.Slot, securitySystem interfaces.SecuritySystem) ([]byte, error) {
 	switch securitySystem {
 	case interfaces.SecurityAppArmor:
-		return nil, nil
+		return []byte(`capability sys_boot,`), nil
 	case interfaces.SecuritySecComp:
 		return []byte(`reboot`), nil
 	case interfaces.SecurityDBus:
