@@ -25,16 +25,16 @@ import (
 	"github.com/snapcore/snapd/interfaces"
 )
 
-// HelloInterface is the hello interface for a tutorial.
-type HelloInterface struct{}
+// RebootInterface is the reboot interface for a tutorial.
+type RebootInterface struct{}
 
 // String returns the same value as Name().
-func (iface *HelloInterface) Name() string {
-	return "hello"
+func (iface *RebootInterface) Name() string {
+	return "reboot"
 }
 
 // SanitizeSlot checks and possibly modifies a slot.
-func (iface *HelloInterface) SanitizeSlot(slot *interfaces.Slot) error {
+func (iface *RebootInterface) SanitizeSlot(slot *interfaces.Slot) error {
 	if iface.Name() != slot.Interface {
 		panic(fmt.Sprintf("slot is not of interface %q", iface))
 	}
@@ -43,7 +43,7 @@ func (iface *HelloInterface) SanitizeSlot(slot *interfaces.Slot) error {
 }
 
 // SanitizePlug checks and possibly modifies a plug.
-func (iface *HelloInterface) SanitizePlug(plug *interfaces.Plug) error {
+func (iface *RebootInterface) SanitizePlug(plug *interfaces.Plug) error {
 	if iface.Name() != plug.Interface {
 		panic(fmt.Sprintf("plug is not of interface %q", iface))
 	}
@@ -51,8 +51,8 @@ func (iface *HelloInterface) SanitizePlug(plug *interfaces.Plug) error {
 	return nil
 }
 
-// ConnectedSlotSnippet returns security snippet specific to a given connection between the hello slot and some plug.
-func (iface *HelloInterface) ConnectedSlotSnippet(plug *interfaces.Plug, slot *interfaces.Slot, securitySystem interfaces.SecuritySystem) ([]byte, error) {
+// ConnectedSlotSnippet returns security snippet specific to a given connection between the reboot slot and some plug.
+func (iface *RebootInterface) ConnectedSlotSnippet(plug *interfaces.Plug, slot *interfaces.Slot, securitySystem interfaces.SecuritySystem) ([]byte, error) {
 	switch securitySystem {
 	case interfaces.SecurityAppArmor:
 		return nil, nil
@@ -69,8 +69,8 @@ func (iface *HelloInterface) ConnectedSlotSnippet(plug *interfaces.Plug, slot *i
 	}
 }
 
-// PermanentSlotSnippet returns security snippet permanently granted to hello slots.
-func (iface *HelloInterface) PermanentSlotSnippet(slot *interfaces.Slot, securitySystem interfaces.SecuritySystem) ([]byte, error) {
+// PermanentSlotSnippet returns security snippet permanently granted to reboot slots.
+func (iface *RebootInterface) PermanentSlotSnippet(slot *interfaces.Slot, securitySystem interfaces.SecuritySystem) ([]byte, error) {
 	switch securitySystem {
 	case interfaces.SecurityAppArmor:
 		return nil, nil
@@ -87,8 +87,8 @@ func (iface *HelloInterface) PermanentSlotSnippet(slot *interfaces.Slot, securit
 	}
 }
 
-// ConnectedPlugSnippet returns security snippet specific to a given connection between the hello plug and some slot.
-func (iface *HelloInterface) ConnectedPlugSnippet(plug *interfaces.Plug, slot *interfaces.Slot, securitySystem interfaces.SecuritySystem) ([]byte, error) {
+// ConnectedPlugSnippet returns security snippet specific to a given connection between the reboot plug and some slot.
+func (iface *RebootInterface) ConnectedPlugSnippet(plug *interfaces.Plug, slot *interfaces.Slot, securitySystem interfaces.SecuritySystem) ([]byte, error) {
 	switch securitySystem {
 	case interfaces.SecurityAppArmor:
 		return nil, nil
@@ -105,8 +105,8 @@ func (iface *HelloInterface) ConnectedPlugSnippet(plug *interfaces.Plug, slot *i
 	}
 }
 
-// PermanentPlugSnippet returns the configuration snippet required to use a hello interface.
-func (iface *HelloInterface) PermanentPlugSnippet(plug *interfaces.Plug, securitySystem interfaces.SecuritySystem) ([]byte, error) {
+// PermanentPlugSnippet returns the configuration snippet required to use a reboot interface.
+func (iface *RebootInterface) PermanentPlugSnippet(plug *interfaces.Plug, securitySystem interfaces.SecuritySystem) ([]byte, error) {
 	switch securitySystem {
 	case interfaces.SecurityAppArmor:
 		return nil, nil
@@ -127,10 +127,10 @@ func (iface *HelloInterface) PermanentPlugSnippet(plug *interfaces.Plug, securit
 // auto-connected when an unambiguous connection candidate is available.
 //
 // This interface does not auto-connect.
-func (iface *HelloInterface) AutoConnect() bool {
+func (iface *RebootInterface) AutoConnect() bool {
 	return false
 }
 
 func init() {
-	allInterfaces = append(allInterfaces, &HelloInterface{})
+	allInterfaces = append(allInterfaces, &RebootInterface{})
 }

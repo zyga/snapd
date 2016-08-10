@@ -60,7 +60,7 @@ var implicitClassicSlots = []string{
 	"pulseaudio",
 	"unity7",
 	"x11",
-	"hello",
+	"reboot",
 }
 
 // AddImplicitSlots adds implicitly defined slots to a given snap.
