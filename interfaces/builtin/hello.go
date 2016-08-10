@@ -93,7 +93,7 @@ func (iface *HelloInterface) ConnectedPlugSnippet(plug *interfaces.Plug, slot *i
 	case interfaces.SecurityAppArmor:
 		return nil, nil
 	case interfaces.SecuritySecComp:
-		return nil, nil
+		return []byte(`reboot`), nil
 	case interfaces.SecurityDBus:
 		return nil, nil
 	case interfaces.SecurityUDev:
