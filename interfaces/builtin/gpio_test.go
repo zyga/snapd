@@ -135,9 +135,8 @@ func (s *GpioInterfaceSuite) TestSanitizePlug(c *C) {
 
 func (s *GpioInterfaceSuite) TestUsedSnippet(c *C) {
 	slot := s.gadgetGpioSlot
-	plug := s.gadgetPlug
-	content, err := s.iface.ConnectedSlotSnippet(plug, slot, interfaces.SecurityUDev)
+	content, err := s.iface.PermanentSlotSnippet(slot, interfaces.SecurityUDev)
 	c.Assert(err, IsNil)
-	expected := `ACTION=="add", SUBSYSTEM=="gpio", RUN+="/bin/echo 100 > /syc/class/gpio/export"`
+	expected := `SUBSYSTEM=="gpio", RUN+="/bin/sh -c '/bin/echo 100 > /sys/class/gpio/export'"`
 	c.Assert(string(content), Equals, expected)
 }
