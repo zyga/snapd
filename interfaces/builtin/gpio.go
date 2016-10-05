@@ -104,18 +104,18 @@ func (iface *GpioInterface) ConnectedPlugSnippet(plug *interfaces.Plug, slot *in
 
 // PermanentSlotSnippet - no slot snippets provided
 func (iface *GpioInterface) PermanentSlotSnippet(slot *interfaces.Slot, securitySystem interfaces.SecuritySystem) ([]byte, error) {
+	switch securitySystem {
+	case interfaces.SecurityUDev:
+		// NOTE: nothing unexports this GPIO when the slot is disconnected but
+		// AFAIK this doesn't hurt.
+		snippet := fmt.Sprintf(`SUBSYSTEM=="gpio", RUN+="/bin/sh -c '/bin/echo %v > /sys/class/gpio/export'"`, slot.Attrs["number"])
+		return []byte(snippet), nil
+	}
 	return nil, nil
 }
 
 // ConnectedSlotSnippet - no slot snippets provided
 func (iface *GpioInterface) ConnectedSlotSnippet(plug *interfaces.Plug, slot *interfaces.Slot, securitySystem interfaces.SecuritySystem) ([]byte, error) {
-	switch securitySystem {
-	case interfaces.SecurityUDev:
-		// NOTE: nothing unexports this GPIO when the slot is disconnected but
-		// AFAIK this doesn't hurt.
-		snippet := fmt.Sprintf(`ACTION=="add", SUBSYSTEM=="gpio", RUN+="/bin/echo %v > /syc/class/gpio/export"`, slot.Attrs["number"])
-		return []byte(snippet), nil
-	}
 	return nil, nil
 }
 
