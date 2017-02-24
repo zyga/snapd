@@ -20,6 +20,8 @@
 
 #include <stdbool.h>
 
+#include "../libsnap-confine-private/error.h"
+
 #include "apparmor-support.h"
 
 /**
@@ -150,5 +152,91 @@ void sc_preserve_populated_ns_group(struct sc_ns_group *group);
  * namespace.
  **/
 void sc_discard_preserved_ns_group(struct sc_ns_group *group);
+
+// -- namespace manager API
+
+/**
+ * Data required by the namespace manager.
+ **/
+struct sc_ns_manager;
+
+/**
+ * Allocate and initialize a namespace manager.
+ *
+ * Internally this will create (if required) and open /run/snapd/ns and
+ * /run/snapd/ns/.lock.
+ *
+ * The error protocol is observed so if the caller doesn't provide an outgoing
+ * error pointer the function will die on any error.
+ *
+ * In the case of an error there is no cleanup that needs to happen and the
+ * function always returns NULL.
+ *
+ * When successful the caller should destroy the object when no longer
+ * required. As a general rule, none of the resources allocated by this
+ * function leak to children processes.
+ **/
+struct sc_ns_manager *sc_ns_manager_new(struct sc_error **errorp);
+
+/**
+ * De-initialize and deallocate a namespace manager.
+ *
+ * It is always safe to call with a NULL pointer.
+ **/
+void sc_ns_manager_destroy(struct sc_ns_manager *mgr);
+
+/**
+ * Lock the master lock of namespace control directory.
+ *
+ * This lock is taken by all the tools that access the data in the control
+ * directory. The lock is automatically released if the process dies.
+ *
+ * The error protocol is observed so if the caller doesn't provide an outgoing
+ * error pointer the function will die on any error.
+ *
+ * This is a blocking operation but all the programs in snapd take special care
+ * to hold it only very briefly. As a sanity check this function waits for at
+ * most a few seconds (implementation defined) for the lock to become
+ * available.
+ *
+ * Programs using this function must make sure not to keep the lock held for
+ * unbound amount of time.
+ **/
+void sc_ns_manager_lock_all(struct sc_ns_manager *mgr,
+			    struct sc_error **errorp);
+
+/**
+ * Unlock the master lock of namespace control directory.
+ *
+ * The error protocol is observed so if the caller doesn't provide an outgoing
+ * error pointer the function will die on any error.
+ **/
+void sc_ns_manager_unlock_all(struct sc_ns_manager *mgr,
+			      struct sc_error **errorp);
+
+/**
+ * Enumerate all the namespaces in the control directory.
+ *
+ * The return value is a newly allocated array of strings terminated with a
+ * NULL pointer. The caller is responsible for releasing each element as well
+ * as the whole array. Unless an error is occurred the result is never NULL.
+ * 
+ * Each element of the array is simply a snap name as namespaces are named
+ * after the snap they belong to.
+ **/
+char **sc_ns_manager_enumerate_ns_names(struct sc_ns_manager *mgr,
+					struct sc_error **errorp);
+
+/**
+ * Discard a preserved namespace.
+ *
+ * The given namespace is discarded. Note that it is OK to call this on a namespace
+ * that does not exist or was already unmounted (it is not an error).
+ *
+ * The error protocol is observed so if the caller doesn't provide an outgoing
+ * error pointer the function will die on any error.
+ **/
+void sc_ns_manager_discard_ns(struct sc_ns_manager *mgr, const char *ns_name,
+			      struct sc_error **errorp);
 
 #endif

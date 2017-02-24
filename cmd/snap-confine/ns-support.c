@@ -21,8 +21,10 @@
 #include "config.h"
 #endif
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 #include <linux/magic.h>
 #include <sched.h>
 #include <signal.h>
@@ -554,4 +556,246 @@ void sc_discard_preserved_ns_group(struct sc_ns_group *group)
 	if (fchdir(old_dir_fd) < 0) {
 		die("cannot move back to original directory");
 	}
+}
+
+struct sc_ns_manager {
+	// Descriptor to /run/snapd/ns (O_DIRECTORY | O_PATH | ...) or -1
+	int dir_fd;
+	// Descriptor to /run/snapd/ns/.lock (O_RDWR | ...) or -1
+	int lock_fd;
+};
+
+struct sc_ns_manager *sc_ns_manager_new(struct sc_error **errorp)
+{
+	struct sc_error *err = NULL;
+	struct sc_ns_manager *mgr = NULL;
+
+	// Allocate memory for the namespace manager
+	mgr = calloc(1, sizeof *mgr);
+	if (mgr == NULL) {
+		err =
+		    sc_error_init_from_errno(errno,
+					     "cannot allocate namespace manager");
+		goto out;
+	}
+	mgr->dir_fd = -1;
+	mgr->lock_fd = -1;
+
+	// Create the namespace group directory (this doesn't fail if the directory already exists).
+	debug("creating namespace group directory %s", sc_ns_dir);
+	if (sc_nonfatal_mkpath(sc_ns_dir, 0755) < 0) {
+		err =
+		    sc_error_init_from_errno(errno,
+					     "cannot create namespace control directory");
+		goto out;
+	}
+	// Open the namespace group directory.
+	debug("opening namespace group directory %s", sc_ns_dir);
+	mgr->dir_fd =
+	    open(sc_ns_dir, O_DIRECTORY | O_PATH | O_CLOEXEC | O_NOFOLLOW);
+	if (mgr->dir_fd < 0) {
+		err =
+		    sc_error_init_from_errno(errno,
+					     "cannot open namespace control directory");
+		goto out;
+	}
+	// Open the lock file too, creating it if necessary.
+	debug("opening lock file for group directory");
+	mgr->lock_fd = openat(mgr->dir_fd,
+			      SC_NS_LOCK_FILE,
+			      O_CREAT | O_RDWR | O_CLOEXEC | O_NOFOLLOW, 0600);
+	if (mgr->lock_fd < 0) {
+		err =
+		    sc_error_init_from_errno(errno,
+					     "cannot open lock file for namespace control directory");
+		goto out;
+	}
+
+ out:
+	if (err != NULL) {
+		sc_ns_manager_destroy(mgr);
+		mgr = NULL;
+	}
+	sc_error_forward(errorp, err);
+	return mgr;
+}
+
+void sc_ns_manager_destroy(struct sc_ns_manager *mgr)
+{
+	if (mgr != NULL) {
+		sc_cleanup_close(&mgr->dir_fd);
+		sc_cleanup_close(&mgr->lock_fd);
+		free(mgr);
+	}
+}
+
+void sc_ns_manager_lock_all(struct sc_ns_manager *mgr, struct sc_error **errorp)
+{
+	struct sc_error *err = NULL;
+
+	debug("locking the namespace control directory");
+	sc_enable_sanity_timeout();
+	if (flock(mgr->lock_fd, LOCK_EX) < 0) {
+		err =
+		    sc_error_init_from_errno(errno,
+					     "cannot acquire exclusive lock for namespace control directory");
+	}
+	sc_disable_sanity_timeout();
+
+	sc_error_forward(errorp, err);
+}
+
+void sc_ns_manager_unlock_all(struct sc_ns_manager *mgr,
+			      struct sc_error **errorp)
+{
+	struct sc_error *err = NULL;
+
+	debug("unlocking the namespace control directory");
+	if (flock(mgr->lock_fd, LOCK_UN) < 0) {
+		err =
+		    sc_error_init_from_errno(errno,
+					     "cannot release lock for namespace control directory");
+	}
+
+	sc_error_forward(errorp, err);
+}
+
+static int filter_just_mnt(const struct dirent *entry)
+{
+	return fnmatch("*" SC_NS_MNT_FILE, entry->d_name, 0) == 0;
+}
+
+char **sc_ns_manager_enumerate_ns_names(struct sc_ns_manager *mgr,
+					struct sc_error **errorp)
+{
+	struct sc_error *err = NULL;
+	int num_dirents;
+	struct dirent **dirents = NULL;
+	char **ns_names = NULL;
+
+	// Look for all the *.mnt files in the control directory.
+	debug("enumerating the namespace control directory");
+	num_dirents =
+	    scandirat(mgr->dir_fd, ".", &dirents, filter_just_mnt, alphasort);
+	if (num_dirents < 0) {
+		err =
+		    sc_error_init_from_errno(errno,
+					     "cannot enumerate namespace control directory");
+		goto out;
+	}
+	// Look through the matches and chop the trailing ".mnt" string. The array
+	// is one element longer so that we can just return a NULL terminated array
+	// pointer for simplicity.
+	ns_names = calloc(num_dirents + 1, sizeof(void *));
+	if (ns_names == NULL) {
+		err =
+		    sc_error_init_from_errno(errno,
+					     "cannot allocate memory for list of namespace names");
+		goto out;
+	}
+	for (int i = 0; i < num_dirents; ++i) {
+		debug("processing dirent %d (%s)", i, dirents[i]->d_name);
+		size_t len = strlen(dirents[i]->d_name);
+		char *name =
+		    strndup(dirents[i]->d_name, len - strlen(SC_NS_MNT_FILE));
+		if (name == NULL) {
+			err =
+			    sc_error_init_from_errno(errno,
+						     "cannot duplicate namespace name");
+			goto out;
+		}
+		debug("length: %zd, name: %s", len, name);
+		ns_names[i] = name;
+		debug("enumerated possible namespace: %s (based on %s)", name,
+		      dirents[i]->d_name);
+	}
+
+ out:
+	if (err != NULL) {
+		// Free memory allocated for list of names
+		if (ns_names != NULL) {
+			for (int i = 0; i < num_dirents; ++i) {
+				free(ns_names[i]);
+			}
+			free(ns_names);
+			ns_names = NULL;
+		}
+	}
+	// Free memory allocated by scandirat
+	for (int i = 0; i < num_dirents; ++i) {
+		free(dirents[i]);
+	}
+	free(dirents);
+
+	sc_error_forward(errorp, err);
+	return ns_names;
+}
+
+void sc_ns_manager_discard_ns(struct sc_ns_manager *mgr, const char *ns_name,
+			      struct sc_error **errorp)
+{
+	struct sc_error *err = NULL;
+
+	// Remember the current working directory and move to the namespace control
+	// directory (if only kernel had an umountat system call).
+	int old_dir_fd __attribute__ ((cleanup(sc_cleanup_close))) = -1;
+	old_dir_fd = open(".", O_PATH | O_DIRECTORY | O_CLOEXEC);
+	if (old_dir_fd < 0) {
+		err =
+		    sc_error_init_from_errno(errno,
+					     "cannot open current directory");
+		goto out;
+	}
+	if (fchdir(mgr->dir_fd) < 0) {
+		err =
+		    sc_error_init_from_errno(errno,
+					     "cannot move to namespace control directory");
+		goto out;
+	}
+	// Unmount ${group_name}.mnt which holds the preserved namespace
+	char mnt_fname[PATH_MAX];
+	sc_must_snprintf(mnt_fname, sizeof mnt_fname, "%s%s", ns_name,
+			 SC_NS_MNT_FILE);
+	debug("unmounting preserved mount namespace file %s", mnt_fname);
+	if (umount2(mnt_fname, UMOUNT_NOFOLLOW) < 0) {
+		switch (errno) {
+		case EINVAL:
+			// EINVAL is returned when there's nothing to unmount (no bind-mount).
+			// Instead of checking for this explicitly (which is always racy) we
+			// just unmount and check the return code.
+			break;
+		case ENOENT:
+			// We may be asked to discard a namespace that doesn't yet
+			// exist (even the mount point may be absent). We just
+			// ignore that error and return gracefully.
+			break;
+		default:
+			err =
+			    sc_error_init_from_errno(errno,
+						     "cannot unmount preserved mount namespace file %s",
+						     mnt_fname);
+			goto out;
+		}
+	}
+
+ out:
+	// Get back to the original directory
+	if (fchdir(old_dir_fd) < 0) {
+		if (err != NULL) {
+			// Preserve first error but store information about the second one.
+			struct sc_error *new_err =
+			    sc_error_init(sc_error_domain(err),
+					  sc_error_code(err),
+					  "%s; also cannot move back to original directory",
+					  sc_error_msg(err));
+			sc_error_free(err);
+			err = new_err;
+		} else {
+			err =
+			    sc_error_init_from_errno(errno,
+						     "cannot move back to original director");
+		}
+	}
+
+	sc_error_forward(errorp, err);
 }
