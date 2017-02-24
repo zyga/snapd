@@ -41,6 +41,7 @@
 
 #include "../libsnap-confine-private/cleanup-funcs.h"
 #include "../libsnap-confine-private/mountinfo.h"
+#include "../libsnap-confine-private/snap.h"
 #include "../libsnap-confine-private/string-utils.h"
 #include "../libsnap-confine-private/utils.h"
 #include "user-support.h"
@@ -736,9 +737,15 @@ void sc_ns_manager_discard_ns(struct sc_ns_manager *mgr, const char *ns_name,
 {
 	struct sc_error *err = NULL;
 
+	int old_dir_fd __attribute__ ((cleanup(sc_cleanup_close))) = -1;
+
+	// Validate the name of the namespace we're being asked to discard.
+	sc_snap_name_validate(ns_name, &err);
+	if (err != NULL) {
+		goto out;
+	}
 	// Remember the current working directory and move to the namespace control
 	// directory (if only kernel had an umountat system call).
-	int old_dir_fd __attribute__ ((cleanup(sc_cleanup_close))) = -1;
 	old_dir_fd = open(".", O_PATH | O_DIRECTORY | O_CLOEXEC);
 	if (old_dir_fd < 0) {
 		err =
@@ -780,7 +787,7 @@ void sc_ns_manager_discard_ns(struct sc_ns_manager *mgr, const char *ns_name,
 
  out:
 	// Get back to the original directory
-	if (fchdir(old_dir_fd) < 0) {
+	if (old_dir_fd != -1 && fchdir(old_dir_fd) < 0) {
 		if (err != NULL) {
 			// Preserve first error but store information about the second one.
 			struct sc_error *new_err =
