@@ -15,13 +15,14 @@
  *
  */
 
+#include "../libsnap-confine-private/string-utils.h"
 #include "../libsnap-confine-private/utils.h"
 #include "../snap-confine/ns-support.h"
 
 int main(int argc, char **argv)
 {
 	if (argc != 2) {
-		die("Usage: %s snap-name", argv[0]);
+		die("Usage: %s [--all | snap-name]", argv[0]);
 	}
 	// Create a new namespace manager so that it can handle locking and
 	// enumeration for us. We want to die on any error so we're not providing
@@ -40,12 +41,19 @@ int main(int argc, char **argv)
 	// required.
 	sc_ns_manager_lock_all(mgr, NULL);
 
-	// With the lock held discard the namespace we got on command line.
-	//
-	// If there's no such file or if it's not a bind mount then nothing
-	// happens, it is not an error, this corresponds to errno codes ENOENT and
-	// EINVAL value respetively.
-	sc_ns_manager_discard_ns(mgr, argv[1], NULL);
+	// With the lock held look at the command line argument. If it is "--all" then
+	// enumrerate all the namespaces and discard them one by one. If anything but
+	// that just assume it is a namespace name and discard it.
+	if (sc_streq(argv[1], "--all")) {
+		char **ns_names = sc_ns_manager_enumerate_ns_names(mgr, NULL);
+		for (char **ns_name = ns_names; *ns_name != NULL; ns_name++) {
+			sc_ns_manager_discard_ns(mgr, *ns_name, NULL);
+			free(*ns_name);
+		}
+		free(ns_names);
+	} else {
+		sc_ns_manager_discard_ns(mgr, argv[1], NULL);
+	}
 
 	// Unlock and destroy the manager when done. Technically we don't need to
 	// unlock but this just feels cleaner.
