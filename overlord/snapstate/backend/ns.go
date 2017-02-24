@@ -46,6 +46,15 @@ func (b Backend) runNamespaceTool(toolName, snapName string) ([]byte, error) {
 	return nil, nil
 }
 
+// Discard the mount namespace of all snaps.
+func (b Backend) DiscardAllSnapNamespaces() error {
+	output, err := b.runNamespaceTool("snap-discard-ns", "--all")
+	if err != nil {
+		return fmt.Errorf("cannot discard preserved namespaces of all snaps: %s", osutil.OutputErr(output, err))
+	}
+	return nil
+}
+
 // Discard the mount namespace of a given snap.
 func (b Backend) DiscardSnapNamespace(snapName string) error {
 	output, err := b.runNamespaceTool("snap-discard-ns", snapName)
