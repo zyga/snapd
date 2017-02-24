@@ -20,16 +20,36 @@
 
 int main(int argc, char **argv)
 {
-	if (argc != 2)
+	if (argc != 2) {
 		die("Usage: %s snap-name", argv[0]);
-	const char *snap_name = argv[1];
-	struct sc_ns_group *group =
-	    sc_open_ns_group(snap_name, SC_NS_FAIL_GRACEFULLY);
-	if (group != NULL) {
-		sc_lock_ns_mutex(group);
-		sc_discard_preserved_ns_group(group);
-		sc_unlock_ns_mutex(group);
-		sc_close_ns_group(group);
 	}
+	// Create a new namespace manager so that it can handle locking and
+	// enumeration for us. We want to die on any error so we're not providing
+	// an outgoing error pointer.
+	struct sc_ns_manager *mgr = sc_ns_manager_new(NULL);
+
+	// Lock the entire namespace control directory.
+	//
+	// When snap confine runs it always takes this lock to check if it needs to
+	// set up special sharing permissions and so we can lock out all instances
+	// of snap-confine or snap-discard-ns that concurrently try to access or
+	// modify the any namespace.
+	//
+	// NOTE: we could capture the error here and match against the errno domain
+	// and EINTR and provide a dedicated error message but so far this is not
+	// required.
+	sc_ns_manager_lock_all(mgr, NULL);
+
+	// With the lock held discard the namespace we got on command line.
+	//
+	// If there's no such file or if it's not a bind mount then nothing
+	// happens, it is not an error, this corresponds to errno codes ENOENT and
+	// EINVAL value respetively.
+	sc_ns_manager_discard_ns(mgr, argv[1], NULL);
+
+	// Unlock and destroy the manager when done. Technically we don't need to
+	// unlock but this just feels cleaner.
+	sc_ns_manager_unlock_all(mgr, NULL);
+	sc_ns_manager_destroy(mgr);
 	return 0;
 }
