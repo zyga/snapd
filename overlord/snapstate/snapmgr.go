@@ -1157,9 +1157,13 @@ func (m *SnapManager) doLinkSnap(t *state.Task, _ *tomb.Tomb) error {
 	// Make sure if state commits and snapst is mutated we won't be rerun
 	t.SetStatus(state.DoneStatus)
 
-	// if we just installed a core snap, request a restart
-	// so that we switch executing its snapd
+	// If we just installed a core snap, request a restart so that we switch
+	// executing its snapd. In addition discard the namespace of all the snaps
+	// so that they can start to use the new core.
 	if release.OnClassic && newInfo.Type == snap.TypeOS {
+		if err = m.backend.DiscardAllSnapNamespaces(); err != nil {
+			t.Errorf("cannot discard namespaces of all the snaps: %s", err)
+		}
 		t.Logf("Requested daemon restart.")
 		st.Unlock()
 		st.RequestRestart(state.RestartDaemon)
