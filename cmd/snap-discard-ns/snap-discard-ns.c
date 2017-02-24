@@ -15,6 +15,9 @@
  *
  */
 
+#include <stdio.h>
+
+#include "../libsnap-confine-private/snap.h"
 #include "../libsnap-confine-private/string-utils.h"
 #include "../libsnap-confine-private/utils.h"
 #include "../snap-confine/ns-support.h"
@@ -47,7 +50,18 @@ int main(int argc, char **argv)
 	if (sc_streq(argv[1], "--all")) {
 		char **ns_names = sc_ns_manager_enumerate_ns_names(mgr, NULL);
 		for (char **ns_name = ns_names; *ns_name != NULL; ns_name++) {
-			sc_ns_manager_discard_ns(mgr, *ns_name, NULL);
+			struct sc_error *err = NULL;
+			sc_ns_manager_discard_ns(mgr, *ns_name, &err);
+			// If we cannot discard the namespace because the name is funky
+			// let's log the problem but continue. We will discard as many
+			// namespaces as we can.
+			if (sc_error_match
+			    (err, SC_SNAP_DOMAIN, SC_SNAP_INVALID_NAME)) {
+				fprintf(stderr, "(ignored) %s\n",
+					sc_error_msg(err));
+				sc_error_free(err);
+				err = NULL;
+			}
 			free(*ns_name);
 		}
 		free(ns_names);
