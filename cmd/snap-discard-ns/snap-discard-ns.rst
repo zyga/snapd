@@ -7,22 +7,22 @@ internal tool for discarding preserved namespaces of snappy applications
 ------------------------------------------------------------------------
 
 :Author: zygmunt.krynicki@canonical.com
-:Date:   2016-10-05
+:Date:   2017-02-23
 :Copyright: Canonical Ltd.
-:Version: 1.0.43
+:Version: 2.23
 :Manual section: 5
 :Manual group: snappy
 
 SYNOPSIS
 ========
 
-	snap-discard-ns SNAP_NAME
+	snap-discard-ns [ --all | snap-name ]
 
 DESCRIPTION
 ===========
 
 The `snap-discard-ns` is a program used internally by `snapd` to discard a preserved
-mount namespace of a particular snap.
+mount namespace of a particular snap, or all the snaps at once.
 
 OPTIONS
 =======
