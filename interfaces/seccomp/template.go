@@ -19,9 +19,14 @@
 
 package seccomp
 
+import (
+	"fmt"
+	"sort"
+)
+
 // defaultTemplate contains default seccomp template.
 // It can be overridden for testing using MockTemplate().
-var defaultTemplate = []byte(`
+const defaultTemplate = `
 # Description: Allows access to app-specific directories and basic runtime
 #
 # The default seccomp policy is default deny with a whitelist of allowed
@@ -548,4 +553,24 @@ pwritev
 # This is an older interface and single entry point that can be used instead
 # of socket(), bind(), connect(), etc individually.
 socketcall
-`)
+`
+
+// defaultRules are implicitly added to all application profiles.
+var defaultRules []Rule
+
+func init() {
+	if err := setTemplate(defaultTemplate); err != nil {
+		panic(err)
+	}
+}
+
+// setTemplate parses the given seccomp snippet and sets the defaultRules.
+func setTemplate(snippet string) error {
+	rules, err := ParseSnippet(snippet)
+	if err != nil {
+		return fmt.Errorf("cannot parse seccomp template: %s", err)
+	}
+	sort.Sort(bySysCall(rules))
+	defaultRules = rules
+	return nil
+}

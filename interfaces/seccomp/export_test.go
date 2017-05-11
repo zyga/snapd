@@ -23,8 +23,9 @@ package seccomp
 //
 // NOTE: The real seccomp template is long. For testing it is convenient for
 // replace it with a shorter snippet.
-func MockTemplate(fakeTemplate []byte) (restore func()) {
-	orig := defaultTemplate
-	defaultTemplate = fakeTemplate
-	return func() { defaultTemplate = orig }
+func MockTemplate(fakeTemplate string) (restore func()) {
+	if err := setTemplate(fakeTemplate); err != nil {
+		panic(err)
+	}
+	return func() { setTemplate(defaultTemplate) }
 }

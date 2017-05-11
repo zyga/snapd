@@ -101,20 +101,20 @@ func (b *Backend) deriveContent(spec *Specification, opts interfaces.Confinement
 			content = make(map[string]*osutil.FileState)
 		}
 		securityTag := hookInfo.SecurityTag()
-		addContent(securityTag, opts, spec.SnippetForTag(securityTag), content)
+		addContent(securityTag, opts, spec.RulesForTag(securityTag), content)
 	}
 	for _, appInfo := range snapInfo.Apps {
 		if content == nil {
 			content = make(map[string]*osutil.FileState)
 		}
 		securityTag := appInfo.SecurityTag()
-		addContent(securityTag, opts, spec.SnippetForTag(securityTag), content)
+		addContent(securityTag, opts, spec.RulesForTag(securityTag), content)
 	}
 
 	return content, nil
 }
 
-func addContent(securityTag string, opts interfaces.ConfinementOptions, snippetForTag string, content map[string]*osutil.FileState) {
+func addContent(securityTag string, opts interfaces.ConfinementOptions, rulesForTag []Rule, content map[string]*osutil.FileState) {
 	var buffer bytes.Buffer
 	if opts.Classic && !opts.JailMode {
 		// NOTE: This is understood by snap-confine
@@ -124,10 +124,12 @@ func addContent(securityTag string, opts interfaces.ConfinementOptions, snippetF
 		// NOTE: This is understood by snap-confine
 		buffer.WriteString("@complain\n")
 	}
-
-	buffer.Write(defaultTemplate)
-	buffer.WriteString(snippetForTag)
-
+	for _, rule := range defaultRules {
+		buffer.WriteString(rule.String())
+	}
+	for _, rule := range rulesForTag {
+		buffer.WriteString(rule.String())
+	}
 	content[securityTag] = &osutil.FileState{
 		Content: buffer.Bytes(),
 		Mode:    0644,

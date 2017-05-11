@@ -125,7 +125,6 @@ func (s *IioPortsControlInterfaceSuite) TestConnectedPlugPolicySecComp(c *C) {
 # probably crash the system, and is not recommended.
 ioperm
 iopl
-
 `
 	seccompSpec := &seccomp.Specification{}
 	err := seccompSpec.AddConnectedPlug(s.iface, s.plug, nil, s.slot, nil)

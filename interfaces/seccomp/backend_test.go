@@ -208,7 +208,7 @@ var combineSnippetsScenarios = []combineSnippetsScenario{{
 
 func (s *backendSuite) TestCombineSnippets(c *C) {
 	// NOTE: replace the real template with a shorter variant
-	restore := seccomp.MockTemplate([]byte("default\n"))
+	restore := seccomp.MockTemplate("default\n")
 	defer restore()
 	for _, scenario := range combineSnippetsScenarios {
 		s.Iface.SecCompPermanentSlotCallback = func(spec *seccomp.Specification, slot *interfaces.Slot) error {
@@ -242,7 +242,7 @@ apps:
 // Ensure that combined snippets are sorted
 func (s *backendSuite) TestCombineSnippetsOrdering(c *C) {
 	// NOTE: replace the real template with a shorter variant
-	restore := seccomp.MockTemplate([]byte("default\n"))
+	restore := seccomp.MockTemplate("default\n")
 	defer restore()
 
 	iface2 := &ifacetest.TestInterface{InterfaceName: "iface2"}

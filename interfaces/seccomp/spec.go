@@ -22,39 +22,46 @@ package seccomp
 import (
 	"bytes"
 	"sort"
+	"strings"
 
 	"github.com/snapcore/snapd/interfaces"
 )
 
 // Specification keeps all the seccomp snippets.
 type Specification struct {
-	// Snippets are indexed by security tag.
-	snippets     map[string][]string
+	// Rules are indexed by security tag.
+	rules        map[string][]Rule
 	securityTags []string
 }
 
 // AddSnippet adds a new seccomp snippet.
 func (spec *Specification) AddSnippet(snippet string) {
-	if len(spec.securityTags) == 0 {
+	rules, err := ParseSnippet(snippet)
+	if err != nil {
+		panic(err)
+	}
+	if len(spec.securityTags) == 0 || len(rules) == 0 {
 		return
 	}
-	if spec.snippets == nil {
-		spec.snippets = make(map[string][]string)
+	if spec.rules == nil {
+		spec.rules = make(map[string][]Rule)
 	}
 	for _, tag := range spec.securityTags {
-		spec.snippets[tag] = append(spec.snippets[tag], snippet)
+		spec.rules[tag] = append(spec.rules[tag], rules...)
 	}
 }
 
-// Snippets returns a deep copy of all the added snippets.
+// Snippets returns a synthesized version of added snippets.
 func (spec *Specification) Snippets() map[string][]string {
-	result := make(map[string][]string, len(spec.snippets))
-	for k, v := range spec.snippets {
-		vCopy := make([]string, 0, len(v))
-		for _, vElem := range v {
-			vCopy = append(vCopy, vElem)
+	result := make(map[string][]string, len(spec.rules))
+	for tag, rules := range spec.rules {
+		if result[tag] == nil {
+			result[tag] = make([]string, 0, len(rules))
 		}
-		result[k] = vCopy
+		sort.Sort(bySysCall(rules))
+		for _, rule := range rules {
+			result[tag] = append(result[tag], strings.TrimSpace(rule.String()))
+		}
 	}
 	return result
 }
@@ -63,18 +70,26 @@ func (spec *Specification) Snippets() map[string][]string {
 // joined with newline character. Empty string is returned for non-existing security tag.
 func (spec *Specification) SnippetForTag(tag string) string {
 	var buffer bytes.Buffer
-	sort.Strings(spec.snippets[tag])
-	for _, snippet := range spec.snippets[tag] {
-		buffer.WriteString(snippet)
-		buffer.WriteRune('\n')
+	rules := spec.rules[tag]
+	sort.Sort(bySysCall(rules))
+	for _, rule := range rules {
+		// rules automatically contain the trailing newline.
+		buffer.WriteString(rule.String())
 	}
 	return buffer.String()
 }
 
+// RulesForTag returns a list of seccomp rules for the given security tag.
+func (spec *Specification) RulesForTag(tag string) []Rule {
+	rules := spec.rules[tag]
+	sort.Sort(bySysCall(rules))
+	return rules
+}
+
 // SecurityTags returns a list of security tags which have a snippet.
 func (spec *Specification) SecurityTags() []string {
-	var tags []string
-	for t := range spec.snippets {
+	tags := make([]string, 0, len(spec.rules))
+	for t := range spec.rules {
 		tags = append(tags, t)
 	}
 	sort.Strings(tags)
