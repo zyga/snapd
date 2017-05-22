@@ -116,11 +116,17 @@ func (iface *contentInterface) path(slot *interfaces.Slot, name string) []string
 	return out
 }
 
+type resolveFlags int
+
+const (
+	resolveLegacy = 1 << iota
+)
+
 // resolveSpecialVariable resolves one of the three $SNAP* variables at the
 // beginning of a given path.  The variables are $SNAP, $SNAP_DATA and
 // $SNAP_COMMON. If there are no variables then $SNAP is implicitly assumed
 // (this is the behavior that was used before the variables were supporter).
-func resolveSpecialVariable(path string, snapInfo *snap.Info) string {
+func resolveSpecialVariable(path string, snapInfo *snap.Info, flags resolveFlags) string {
 	if strings.HasPrefix(path, "$SNAP/") || path == "$SNAP" {
 		return strings.Replace(path, "$SNAP", snapInfo.MountDir(), 1)
 	}
@@ -130,8 +136,11 @@ func resolveSpecialVariable(path string, snapInfo *snap.Info) string {
 	if strings.HasPrefix(path, "$SNAP_COMMON/") || path == "$SNAP_COMMON" {
 		return strings.Replace(path, "$SNAP_COMMON", snapInfo.CommonDataDir(), 1)
 	}
-	// NOTE: assume $SNAP by default if nothing else is provided, for compatibility
-	return filepath.Join(snapInfo.MountDir(), path)
+	if flags&resolveLegacy == resolveLegacy {
+		// NOTE: assume $SNAP by default if nothing else is provided, for compatibility
+		return filepath.Join(snapInfo.MountDir(), path)
+	}
+	return path
 }
 
 func mountEntry(plug *interfaces.Plug, slot *interfaces.Slot, relSrc string, extraOptions ...string) mount.Entry {
@@ -139,8 +148,8 @@ func mountEntry(plug *interfaces.Plug, slot *interfaces.Slot, relSrc string, ext
 	options = append(options, "bind")
 	options = append(options, extraOptions...)
 	return mount.Entry{
-		Name:    resolveSpecialVariable(relSrc, slot.Snap),
-		Dir:     resolveSpecialVariable(plug.Attrs["target"].(string), plug.Snap),
+		Name:    resolveSpecialVariable(relSrc, slot.Snap, resolveLegacy),
+		Dir:     resolveSpecialVariable(plug.Attrs["target"].(string), plug.Snap, resolveLegacy),
 		Options: options,
 	}
 }
@@ -158,7 +167,7 @@ func (iface *contentInterface) AppArmorConnectedPlug(spec *apparmor.Specificatio
 `)
 		for _, w := range writePaths {
 			fmt.Fprintf(contentSnippet, "%s/** mrwklix,\n",
-				resolveSpecialVariable(w, slot.Snap))
+				resolveSpecialVariable(w, slot.Snap, resolveLegacy))
 		}
 	}
 
@@ -171,7 +180,7 @@ func (iface *contentInterface) AppArmorConnectedPlug(spec *apparmor.Specificatio
 `)
 		for _, r := range readPaths {
 			fmt.Fprintf(contentSnippet, "%s/** mrkix,\n",
-				resolveSpecialVariable(r, slot.Snap))
+				resolveSpecialVariable(r, slot.Snap, resolveLegacy))
 		}
 	}
 
