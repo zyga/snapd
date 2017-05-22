@@ -61,6 +61,7 @@ func (c *Change) Perform() error {
 		if err != nil {
 			return err
 		}
+		// TODO: add the equivalent of prepare_bind_mount from snap-confine here.
 		return syscall.Mount(c.Entry.Name, c.Entry.Dir, c.Entry.Type, uintptr(flags), "")
 	case Unmount:
 		const UMOUNT_NOFOLLOW = 8
