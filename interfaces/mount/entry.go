@@ -147,6 +147,8 @@ func OptsToFlags(opts []string) (flags int, err error) {
 		switch opt {
 		case "ro":
 			flags |= syscall.MS_RDONLY
+		case "rw":
+			flags &= ^syscall.MS_RDONLY
 		case "nosuid":
 			flags |= syscall.MS_NOSUID
 		case "nodev":
