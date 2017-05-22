@@ -141,15 +141,16 @@ func (m *InterfaceManager) regenerateAllSecurityProfiles() error {
 			// The issue this is attempting to fix is only
 			// affecting seccomp/apparmor so limit the work just to
 			// this backend.
-			shouldRefresh := (backend.Name() == interfaces.SecuritySecComp || backend.Name() == interfaces.SecurityAppArmor)
-			if !shouldRefresh {
-				continue
-			}
-			// Refresh security of this snap and backend
-			if err := backend.Setup(snapInfo, opts, m.repo); err != nil {
-				// Let's log this but carry on
-				logger.Noticef("cannot regenerate %s profile for snap %q: %s",
-					backend.Name(), snapName, err)
+			switch backend.Name() {
+			case interfaces.SecuritySecComp,
+				interfaces.SecurityAppArmor,
+				interfaces.SecurityMount:
+				// Refresh security of this snap and backend
+				if err := backend.Setup(snapInfo, opts, m.repo); err != nil {
+					// Let's log this but carry on
+					logger.Noticef("cannot regenerate %s profile for snap %q: %s",
+						backend.Name(), snapName, err)
+				}
 			}
 		}
 	}
