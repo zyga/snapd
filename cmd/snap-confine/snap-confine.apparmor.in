@@ -285,6 +285,10 @@
     /run/snapd/lock/ rw,
     /run/snapd/lock/*.lock rwk,
 
+    # support for prepare_bind_mount()
+    /** rw,
+    mount options=(bind) /** -> /**,
+
     # support for the mount namespace sharing
     capability sys_ptrace,
     # allow snap-confine to read /proc/1/ns/mnt

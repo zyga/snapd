@@ -161,6 +161,8 @@ static void setup_private_pts()
 	sc_do_mount("/dev/pts/ptmx", "/dev/ptmx", "none", MS_BIND, 0);
 }
 
+static void prepare_bind_mount(const struct mntent *m);
+
 /*
  * Setup mount profiles as described by snapd.
  *
@@ -220,16 +222,80 @@ static void sc_setup_mount_profiles(const char *snap_name)
 		if (strcmp(m->mnt_type, "none") != 0) {
 			die("cannot honor mount profile, only 'none' filesystem type is supported");
 		}
-		if (hasmntopt(m, "bind") == NULL) {
-			die("cannot honor mount profile, the bind mount flag is mandatory");
-		}
 		if (hasmntopt(m, "rw") != NULL) {
 			flags &= ~MS_RDONLY;
+		}
+		if (hasmntopt(m, "bind") == NULL) {
+			die("cannot honor mount profile, the bind mount flag is mandatory");
+		} else {
+			prepare_bind_mount(m);
 		}
 		sc_do_mount(m->mnt_fsname, m->mnt_dir, NULL, flags, NULL);
 		if (addmntent(current, m) != 0) {	// NOTE: returns 1 on error.
 			die("cannot append entry to the current mount profile");
 		}
+	}
+}
+
+static void prepare_bind_mount(const struct mntent *m)
+{
+	// This code is immune from attackers as it runs in a fresh mount
+	// namespace.  Similar code in snap-update-ns can be attacked by a
+	// racing process. Because mount has no way to pass O_NOFOLLOW and
+	// the openfs system call does not exist yet we ought to use the
+	// freezer cgroup to ensure that we can reliably lstat and then
+	// mount.
+	//
+	// openfs: https://lwn.net/Articles/718638/
+	// mount(2): http://man7.org/linux/man-pages/man2/mount.2.html
+	struct stat stat_buf;
+
+ check_source_again:
+	// Look at the source of the bind mount.
+	if (lstat(m->mnt_fsname, &stat_buf) < 0) {
+		switch (errno) {
+		case ENOENT:
+			// If the target doesn't exist let snap-confine create
+			// it automatically. This is useful for populating
+			// empty tmpfs'es or creating directories in $SNAP_DATA
+			// and similar places.
+			debug("creating bind mount source directory %s",
+			      m->mnt_fsname);
+			if (sc_nonfatal_mkpath(m->mnt_fsname, 0644) < 0) {
+				die("cannot create bind mount source directory: %s", m->mnt_fsname);
+			}
+			goto check_source_again;
+		default:
+			die("cannot stat bind mount source: %s", m->mnt_fsname);
+		}
+	}
+	// Reject bind mount from anything but files and directories.
+	if (!S_ISDIR(stat_buf.st_mode) && !S_ISREG(stat_buf.st_mode)) {
+		die("cannot bind mount from anything but regular files or directories: %s", m->mnt_fsname);
+	}
+
+ check_target_again:
+	// Look at the target of the bind mount.
+	if (lstat(m->mnt_dir, &stat_buf) < 0) {
+		switch (errno) {
+		case ENOENT:
+			// If the target doesn't exist let snap-confine create
+			// it automatically. This is useful for populating
+			// empty tmpfs'es or creating directories in $SNAP_DATA
+			// and similar places.
+			debug("creating bind mount target directory %s",
+			      m->mnt_dir);
+			if (sc_nonfatal_mkpath(m->mnt_dir, 0644) < 0) {
+				die("cannot create bind mount target directory: %s", m->mnt_dir);
+			}
+			goto check_target_again;
+		default:
+			die("cannot stat bind mount target: %s", m->mnt_dir);
+		}
+	}
+	// Reject bind mounts over anything but files and directories.
+	if (!S_ISDIR(stat_buf.st_mode) && !S_ISREG(stat_buf.st_mode)) {
+		die("cannot bind mount over anything but regular files or directories: %s", m->mnt_dir);
 	}
 }
 
