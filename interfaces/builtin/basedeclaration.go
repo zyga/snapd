@@ -509,6 +509,10 @@ slots:
     allow-installation:
       slot-snap-type:
         - core
+  overmount:
+    allow-installation:
+      slot-snap-type:
+        - core
   physical-memory-control:
     allow-installation:
       slot-snap-type:

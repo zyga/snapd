@@ -147,6 +147,7 @@ func (s *baseDeclSuite) TestAutoConnection(c *C) {
 		"online-accounts-service": true,
 		"opengl":                  true,
 		"optical-drive":           true,
+		"overmount":               true,
 		"pulseaudio":              true,
 		"screen-inhibit-control":  true,
 		"ubuntu-download-manager": true,
