@@ -55,6 +55,8 @@ hack: snap-confine/snap-confine snap-confine/snap-confine.apparmor
 noinst_LIBRARIES += libsnap-confine-private.a
 
 libsnap_confine_private_a_SOURCES = \
+	libsnap-confine-private/cgroup-freezer-support.c \
+	libsnap-confine-private/cgroup-freezer-support.h \
 	libsnap-confine-private/classic.c \
 	libsnap-confine-private/classic.h \
 	libsnap-confine-private/cleanup-funcs.c \

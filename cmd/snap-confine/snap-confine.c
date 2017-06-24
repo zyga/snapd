@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "../libsnap-confine-private/cgroup-freezer-support.h"
 #include "../libsnap-confine-private/classic.h"
 #include "../libsnap-confine-private/cleanup-funcs.h"
 #include "../libsnap-confine-private/locking.h"
@@ -179,7 +180,8 @@ int main(int argc, char **argv)
 			debug("initializing mount namespace: %s", snap_name);
 			struct sc_ns_group *group = NULL;
 			group = sc_open_ns_group(snap_name, 0);
-			sc_create_or_join_ns_group(group, &apparmor);
+			sc_create_or_join_ns_group(group, &apparmor, snap_name,
+						   base_snap_name);
 			if (sc_should_populate_ns_group(group)) {
 				sc_populate_mount_ns(base_snap_name, snap_name);
 				sc_preserve_populated_ns_group(group);
@@ -190,6 +192,7 @@ int main(int argc, char **argv)
 			// for systems that had their NS created with an
 			// old version
 			sc_maybe_fixup_permissions();
+			sc_cgroup_freezer_join(snap_name, getpid());
 			sc_unlock(snap_name, snap_lock_fd);
 
 			// Reset path as we cannot rely on the path from the host OS to

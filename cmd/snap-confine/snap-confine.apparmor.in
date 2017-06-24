@@ -32,12 +32,19 @@
     /dev/pts/[0-9]* rw,
     /dev/tty rw,
 
-    # cgroups
+    # cgroup: devices
     capability sys_admin,
     capability dac_override,
     /sys/fs/cgroup/devices/snap{,py}.*/ w,
     /sys/fs/cgroup/devices/snap{,py}.*/tasks w,
     /sys/fs/cgroup/devices/snap{,py}.*/devices.{allow,deny} w,
+
+    # cgroup: freezer
+    /sys/fs/cgroup/freezer/ r,
+    /sys/fs/cgroup/freezer/snap.*/ w,
+    /sys/fs/cgroup/freezer/snap.*/tasks w,
+    /sys/fs/cgroup/freezer/snap.*/freezer.state rw,
+    /sys/fs/cgroup/freezer/snap.*/cgroup.procs r,
 
     # querying udev
     /etc/udev/udev.conf r,
@@ -305,6 +312,8 @@
     /run/snapd/ns/*.lock rwk,
     /run/snapd/ns/*.mnt rw,
     /run/snapd/ns/*.fstab rw,
+
+    umount /run/snapd/ns/*.mnt,
     ptrace (read, readby, tracedby) peer=@LIBEXECDIR@/snap-confine//mount-namespace-capture-helper,
     @{PROC}/*/mountinfo r,
     capability sys_chroot,

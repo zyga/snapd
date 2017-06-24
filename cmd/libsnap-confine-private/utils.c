@@ -47,6 +47,7 @@ bool error(const char *msg, ...)
 	va_list va;
 	va_start(va, msg);
 	vfprintf(stderr, msg, va);
+	fprintf(stderr, "\n");
 	va_end(va);
 
 	return false;
