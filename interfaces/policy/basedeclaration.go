@@ -156,7 +156,8 @@ func trimTrailingNewline(s string) string {
 	return strings.TrimRight(s, "\n")
 }
 
-func composeBaseDeclaration(ifaces []interfaces.Interface) ([]byte, error) {
+// ComposeBaseDeclaration returns the base declaration containing snippets from the given interfaces.
+func ComposeBaseDeclaration(ifaces []interfaces.Interface) ([]byte, error) {
 	var buf bytes.Buffer
 	// Trim newlines at the end of the string. All the elements may have
 	// spurious trailing newlines. All elements start with a leading newline.
@@ -189,7 +190,7 @@ func composeBaseDeclaration(ifaces []interfaces.Interface) ([]byte, error) {
 }
 
 func init() {
-	decl, err := composeBaseDeclaration(builtin.Interfaces())
+	decl, err := ComposeBaseDeclaration(builtin.Interfaces())
 	if err != nil {
 		panic(fmt.Sprintf("cannot compose base-declaration: %v", err))
 	}
