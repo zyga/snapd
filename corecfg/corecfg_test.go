@@ -47,11 +47,15 @@ func (s *coreCfgSuite) TestConfigureErrorOnMissingCoreSupport(c *C) {
 	restore := release.MockOnClassic(false)
 	defer restore()
 
-	mockSystemctl := testutil.MockCommand(c, "systemctl", `
+	cmds := testutil.MockCommand(c, "systemctl", `
 echo "simulate missing core-support"
 exit 1
 `)
-	defer mockSystemctl.Restore()
+	cmds.Also("snapctl", `
+echo "should never call snapctl"
+exit 1
+`)
+	defer cmds.Restore()
 
 	err := corecfg.Run()
 	c.Check(err, ErrorMatches, `(?m)cannot run systemctl - core-support interface seems disconnected: \[--version\] failed with exit status 1: simulate missing core-support`)
