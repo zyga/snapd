@@ -40,8 +40,10 @@ var (
 	FreezeSnapProcesses = freezeSnapProcesses
 	ThawSnapProcesses   = thawSnapProcesses
 	// utils
-	SecureMkdirAll   = secureMkdirAll
-	EnsureMountPoint = ensureMountPoint
+	SecureMkdirAll                    = secureMkdirAll
+	MountOverlayAt                    = mountOverlayAt
+	EnsureMountPoint                  = ensureMountPoint
+	EnsureMountPointMaybeUsingOverlay = ensureMountPointMaybeUsingOverlay
 )
 
 // fakeFileInfo implements os.FileInfo for one of the tests.

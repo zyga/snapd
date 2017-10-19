@@ -501,7 +501,8 @@
         mount options=(rw bind) /var/snap/*/** -> /var/snap/*/**,
         mount options=(ro bind) /var/snap/*/** -> /var/snap/*/**,
 
-        # Allow creating missing mount directories under $SNAP_DATA.
+        # Allow creating missing mount directories under $SNAP_DATA,
+        # $SNAP_COMMON and $SNAP.
         #
         # The "tree" of permissions is needed for SecureMkdirAll that uses
         # open(..., O_NOFOLLOW) and mkdirat() using the resulting file
@@ -510,6 +511,19 @@
         /var/ r,
         /var/snap/{,*/} r,
         /var/snap/*/**/ rw,
+        /snap/ r,
+        /snap/*/ r, # $SNAP_NAME
+        /snap/*/*/ r,  # $SNAP_REVISION
+        /snap/*/*/** rw,
+
+        # Allow constructing writable helper directories for overlayfs
+        /tmp/ r,
+        /tmp/.snap.{overlays,workdirs}/ rw,
+        /tmp/.snap.{overlays,workdirs}/** rw,
+        # Allow mounting overlayfs anywhere.
+        # TODO: constrain lowerdir,upperdir,workdir if we can
+        # TODO: deny overlayfs mounts in bidirectionally shared /media mount
+        mount fstype=overlay,
 
         # Allow the content interface to bind fonts from the host filesystem
         mount options=(ro bind) /var/lib/snapd/hostfs/usr/share/fonts/ -> /snap/*/*/**,

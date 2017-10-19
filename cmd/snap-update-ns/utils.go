@@ -25,6 +25,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/snapcore/snapd/interfaces/mount"
 )
 
 // not available through syscall
@@ -45,7 +47,16 @@ var (
 	sysFchown  = syscall.Fchown
 )
 
-// secureMkdirAll is the secure variant of os.MkdirAll.
+// ReadOnlyFsError is an error encapsulating encountered EROFS.
+type ReadOnlyFsError struct {
+	Path string
+}
+
+func (e *ReadOnlyFsError) Error() string {
+	return fmt.Sprintf("cannot operate on read-only filesystem at %s", e.Path)
+}
+
+// SecureMkdirAll is the secure variant of os.MkdirAll.
 //
 // Unlike the regular version this implementation does not follow any symbolic
 // links. At all times the new directory segment is created using mkdirat(2)
@@ -82,19 +93,26 @@ func secureMkdirAll(name string, perm os.FileMode, uid, gid int) error {
 	// segment using the O_NOFOLLOW and O_DIRECTORY flag so that symlink
 	// attacks are impossible to carry out.
 	segments := strings.FieldsFunc(filepath.Clean(name), func(c rune) bool { return c == '/' })
-	for _, segment := range segments {
+	for i, segment := range segments {
 		made := true
 		if err = sysMkdirat(fd, segment, uint32(perm)); err != nil {
 			switch err {
 			case syscall.EEXIST:
 				made = false
+			case syscall.EROFS:
+				// Treat EROFS specially: this is a hint that we have to poke a
+				// hole using overlayfs. The path below is the location where
+				// we need to poke the hole.
+				p := "/" + strings.Join(segments[:i], "/")
+				return &ReadOnlyFsError{Path: p}
 			default:
 				return fmt.Errorf("cannot mkdir path segment %q: %v", segment, err)
 			}
 		}
 		fd, err = sysOpenat(fd, segment, openFlags, 0)
 		if err != nil {
-			return fmt.Errorf("cannot open path segment %q: %v", segment, err)
+			return fmt.Errorf("cannot open path segment %q (got up to %q): %v", segment,
+				"/"+strings.Join(segments[:i], "/"), err)
 		}
 		defer sysClose(fd)
 		if made {
@@ -106,6 +124,57 @@ func secureMkdirAll(name string, perm os.FileMode, uid, gid int) error {
 
 	}
 	return nil
+}
+
+func mountOverlayAt(dir string) (*Change, error) {
+	// Overlay uses three directories: lower, upper and work.
+	// Lower is our read-only substrate Upper is an ephemeral
+	// sub-directory of /tmp (see below). Work is an empty
+	// sibling of upper, needed by overlayfs to function.
+	//
+	// The lower directory cannot be in /tmp as we use (private) /tmp for the
+	// overlay machinery itself.
+	//
+	// The upper directory is already on top of an existing host-based /tmp
+	// directory, thanks to how snap-confine is arranigng the per-snap, private
+	// /tmp directory.
+	lowerDir := dir
+	upperDir := filepath.Join("/tmp/.snap.overlays", dir)
+	workDir := filepath.Join("/tmp/.snap.workdirs", dir)
+
+	for _, blacklistDir := range []string{"/tmp"} {
+		if strings.HasPrefix(lowerDir, blacklistDir+"/") || lowerDir == blacklistDir {
+			return nil, fmt.Errorf("refusing to create overlay at %q", lowerDir)
+		}
+	}
+
+	// Create upper and work directories.
+	if err := secureMkdirAll(upperDir, 0755, 0, 0); err != nil {
+		return nil, err
+	}
+	if err := secureMkdirAll(workDir, 0755, 0, 0); err != nil {
+		return nil, err
+	}
+
+	// Create and perform and return a change describing the overlay mount.
+	change := &Change{
+		Action: Mount,
+		Entry: mount.Entry{
+			Name: "none",
+			Dir:  dir,
+			Type: "overlay",
+			Options: []string{
+				// Format the options, note the mount escape logic for paths.
+				fmt.Sprintf("lowerdir=%s", mount.Escape(lowerDir)),
+				fmt.Sprintf("upperdir=%s", mount.Escape(upperDir)),
+				fmt.Sprintf("workdir=%s", mount.Escape(workDir)),
+			},
+		},
+	}
+	if err := change.lowLevelPerform(); err != nil {
+		return nil, fmt.Errorf("cannot mount overlay at %q: %v", dir, err)
+	}
+	return change, nil
 }
 
 func ensureMountPoint(path string, mode os.FileMode, uid int, gid int) error {
@@ -130,4 +199,18 @@ func ensureMountPoint(path string, mode os.FileMode, uid int, gid int) error {
 		}
 	}
 	return nil
+}
+
+func ensureMountPointMaybeUsingOverlay(dir string, mode os.FileMode, uid int, gid int) (*Change, error) {
+	var extraChange *Change
+	err := ensureMountPoint(dir, mode, uid, gid)
+	if err != nil {
+		if err2, ok := err.(*ReadOnlyFsError); ok {
+			extraChange, err = mountOverlayAt(err2.Path)
+		}
+		if err == nil {
+			err = ensureMountPoint(dir, mode, uid, gid)
+		}
+	}
+	return extraChange, err
 }

@@ -171,6 +171,69 @@ func (s *changeSuite) TestNeededChangesSameParentChangedChild(c *C) {
 	})
 }
 
+func (s *changeSuite) TestNeededChangesOverlayStillUsed(c *C) {
+	current := &mount.Profile{Entries: []mount.Entry{
+		{Dir: "/snap/name/42/subdir", Type: "overlay"},
+		{Dir: "/snap/name/42/subdir/stuff", Name: "/something", Options: []string{"bind"}},
+	}}
+	desired := &mount.Profile{Entries: []mount.Entry{
+		{Dir: "/snap/name/42/subdir/stuff", Name: "/something", Options: []string{"bind"}},
+	}}
+	changes := update.NeededChanges(current, desired)
+	c.Assert(changes, DeepEquals, []update.Change{
+		{Entry: mount.Entry{Dir: "/snap/name/42/subdir/stuff", Name: "/something", Options: []string{"bind"}}, Action: update.Keep},
+		{Entry: mount.Entry{Dir: "/snap/name/42/subdir", Type: "overlay"}, Action: update.Keep},
+	})
+}
+
+func (s *changeSuite) TestNeededChangesOverlayStillUsedTricky1(c *C) {
+	current := &mount.Profile{Entries: []mount.Entry{
+		{Dir: "/snap/name/42/subdir", Type: "overlay"},
+		{Dir: "/snap/name/42/subdir/stuff1", Name: "/something1", Options: []string{"bind"}},
+		{Dir: "/snap/name/42/subdir/stuff2", Name: "/something2", Options: []string{"bind"}},
+	}}
+	desired := &mount.Profile{Entries: []mount.Entry{
+		{Dir: "/snap/name/42/subdir/stuff1", Name: "/something1", Options: []string{"bind"}},
+	}}
+	changes := update.NeededChanges(current, desired)
+	c.Assert(changes, DeepEquals, []update.Change{
+		{Entry: mount.Entry{Dir: "/snap/name/42/subdir/stuff2", Name: "/something2", Options: []string{"bind"}}, Action: update.Unmount},
+		{Entry: mount.Entry{Dir: "/snap/name/42/subdir/stuff1", Name: "/something1", Options: []string{"bind"}}, Action: update.Keep},
+		{Entry: mount.Entry{Dir: "/snap/name/42/subdir", Type: "overlay"}, Action: update.Keep},
+	})
+}
+
+func (s *changeSuite) TestNeededChangesOverlayStillUsedTricky2(c *C) {
+	current := &mount.Profile{Entries: []mount.Entry{
+		{Dir: "/snap/name/42/subdir", Type: "overlay"},
+		{Dir: "/snap/name/42/subdir/stuff1", Name: "/something1", Options: []string{"bind"}},
+		{Dir: "/snap/name/42/subdir/stuff2", Name: "/something2", Options: []string{"bind"}},
+	}}
+	desired := &mount.Profile{Entries: []mount.Entry{
+		// This is same as Tricky1 above but the other one is preserved.
+		{Dir: "/snap/name/42/subdir/stuff2", Name: "/something2", Options: []string{"bind"}},
+	}}
+	changes := update.NeededChanges(current, desired)
+	c.Assert(changes, DeepEquals, []update.Change{
+		{Entry: mount.Entry{Dir: "/snap/name/42/subdir/stuff2", Name: "/something2", Options: []string{"bind"}}, Action: update.Keep},
+		{Entry: mount.Entry{Dir: "/snap/name/42/subdir/stuff1", Name: "/something1", Options: []string{"bind"}}, Action: update.Unmount},
+		{Entry: mount.Entry{Dir: "/snap/name/42/subdir", Type: "overlay"}, Action: update.Keep},
+	})
+}
+
+func (s *changeSuite) TestNeededChangesOverlayNoLongerNeeded(c *C) {
+	current := &mount.Profile{Entries: []mount.Entry{
+		{Dir: "/snap/name/42/subdir", Type: "overlay"}, // NOTE: overlay options not relevant
+		{Dir: "/snap/name/42/subdir/stuff", Name: "/something", Options: []string{"bind"}},
+	}}
+	desired := &mount.Profile{}
+	changes := update.NeededChanges(current, desired)
+	c.Assert(changes, DeepEquals, []update.Change{
+		{Entry: mount.Entry{Dir: "/snap/name/42/subdir/stuff", Name: "/something", Options: []string{"bind"}}, Action: update.Unmount},
+		{Entry: mount.Entry{Dir: "/snap/name/42/subdir", Type: "overlay"}, Action: update.Unmount},
+	})
+}
+
 // cur = ['/a/b', '/a/b-1', '/a/b-1/3', '/a/b/c']
 // des = ['/a/b', '/a/b-1', '/a/b/c'
 //

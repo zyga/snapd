@@ -132,12 +132,12 @@ func run() error {
 	var changesMade []*Change
 	for _, change := range changesNeeded {
 		synthesised, err := change.Perform()
-		// NOTE: we may have done something even if Perform and need to collect
-		// them for proper undo / awareness on next call.
-		// XXX: how will next call cope with mounted tmpfs?
+		// NOTE: we may have done something even if Perform failes and we need
+		// to collect such changes for proper undo / awareness on next
+		// invocation of snap-update-ns.
 		changesMade = append(changesMade, synthesised...)
 		if err != nil {
-			logger.Noticef("cannot change mount namespace of snap %q according to change %s: %s", snapName, change, err)
+			logger.Noticef("\tcannot apply mount change %s: %s", change, err)
 			continue
 		}
 		changesMade = append(changesMade, &change)
