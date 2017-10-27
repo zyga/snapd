@@ -61,6 +61,8 @@ func parseArgs(args []string) error {
 // the setuid snap-confine.
 
 func run() error {
+	logger.SimpleSetup()
+
 	// There is some C code that runs before main() is started.
 	// That code always runs and sets an error condition if it fails.
 	// Here we just check for the error.
@@ -119,23 +121,35 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("cannot load desired mount profile of snap %q: %s", snapName, err)
 	}
+	debugShowProfile(desired, "desired mount profile")
 
 	currentProfilePath := fmt.Sprintf("%s/snap.%s.fstab", dirs.SnapRunNsDir, snapName)
 	currentBefore, err := mount.LoadProfile(currentProfilePath)
 	if err != nil {
 		return fmt.Errorf("cannot load current mount profile of snap %q: %s", snapName, err)
 	}
+	debugShowProfile(currentBefore, "current mount profile (before applying changes)")
 
 	// Compute the needed changes and perform each change if needed, collecting
 	// those that we managed to perform or that were performed already.
 	changesNeeded := NeededChanges(currentBefore, desired)
+	debugShowChanges(changesNeeded, "mount changes needed")
+
+	logger.Debugf("\nperforming mount changes:")
 	var changesMade []*Change
 	for _, change := range changesNeeded {
+		logger.Debugf("\t * %s", change)
 		synthesised, err := change.Perform()
 		// NOTE: we may have done something even if Perform failes and we need
 		// to collect such changes for proper undo / awareness on next
 		// invocation of snap-update-ns.
 		changesMade = append(changesMade, synthesised...)
+		if len(synthesised) > 0 {
+			logger.Debugf("\tsynthesised additional mount changes:")
+			for _, synth := range synthesised {
+				logger.Debugf(" * \t\t%s", synth)
+			}
+		}
 		if err != nil {
 			logger.Noticef("\tcannot apply mount change %s: %s", change, err)
 			continue
@@ -151,8 +165,32 @@ func run() error {
 			currentAfter.Entries = append(currentAfter.Entries, change.Entry)
 		}
 	}
+	debugShowProfile(&currentAfter, "current mount profile (after applying changes)")
+
 	if err := currentAfter.Save(currentProfilePath); err != nil {
 		return fmt.Errorf("cannot save current mount profile of snap %q: %s", snapName, err)
 	}
 	return nil
+}
+
+func debugShowProfile(profile *mount.Profile, header string) {
+	if len(profile.Entries) > 0 {
+		logger.Debugf("%s:", header)
+		for _, entry := range profile.Entries {
+			logger.Debugf("\t%s", entry)
+		}
+	} else {
+		logger.Debugf("%s: (none)", header)
+	}
+}
+
+func debugShowChanges(changes []Change, header string) {
+	if len(changes) > 0 {
+		logger.Debugf("\n%s:", header)
+		for _, change := range changes {
+			logger.Debugf("\t%s", change)
+		}
+	} else {
+		logger.Debugf("%s: (none)", header)
+	}
 }
