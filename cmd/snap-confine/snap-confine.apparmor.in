@@ -432,7 +432,10 @@
     # "natural" /snap mount entry but we have no control over that.  This is
     # reported as (LP: #1716339). The variants here represent different
     # locations of snap mount directory across distributions.
-    /var/lib/snapd/hostfs/{,var/lib/snapd/}snap/core/*/usr/lib/snapd/snap-update-ns Cxr -> snap_update_ns,
+    # /var/lib/snapd/hostfs/{,var/lib/snapd/}snap/core/*/usr/lib/snapd/snap-update-ns Cxr -> snap_update_ns,
+
+    # XXX: no apparmor love for overlayfs :-(
+    /var/lib/snapd/hostfs/{,var/lib/snapd/}snap/core/*/usr/lib/snapd/snap-update-ns Uxr,
 
     profile snap_update_ns (attach_disconnected) {
         # The next four rules mirror those above. We want to be able to read
