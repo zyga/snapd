@@ -20,10 +20,11 @@
 package ifacestate
 
 import (
-	"github.com/snapcore/snapd/overlord/ifacestate/repo"
+	"github.com/snapcore/snapd/interfaces/ifstate"
 	"github.com/snapcore/snapd/snap"
 )
 
 func addImplicitSlots(snapInfo *snap.Info) {
-	repo.AddImplicitSlots(snapInfo)
+	// TODO: move this to interfaces/utils.go
+	ifstate.AddImplicitSlots(snapInfo)
 }

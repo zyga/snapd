@@ -22,8 +22,8 @@ package ifacestate
 import (
 	"github.com/snapcore/snapd/interfaces"
 	"github.com/snapcore/snapd/interfaces/backends"
+	"github.com/snapcore/snapd/interfaces/ifstate"
 	"github.com/snapcore/snapd/overlord/hookstate"
-	"github.com/snapcore/snapd/overlord/ifacestate/repo"
 	"github.com/snapcore/snapd/overlord/snapstate"
 	"github.com/snapcore/snapd/overlord/state"
 )
@@ -54,7 +54,7 @@ func Manager(s *state.State, hookManager *hookstate.HookManager, extraInterfaces
 		return nil, err
 	}
 	s.Lock()
-	repo, err := repo.New(s, snaps, extraInterfaces, extraBackends)
+	repo, err := ifstate.Restore(s, snaps, extraInterfaces, extraBackends)
 	s.Unlock()
 	if err != nil {
 		return nil, err

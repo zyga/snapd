@@ -25,10 +25,10 @@ import (
 
 	"github.com/snapcore/snapd/asserts"
 	"github.com/snapcore/snapd/interfaces"
+	"github.com/snapcore/snapd/interfaces/ifstate"
 	"github.com/snapcore/snapd/interfaces/policy"
 	"github.com/snapcore/snapd/logger"
 	"github.com/snapcore/snapd/overlord/assertstate"
-	"github.com/snapcore/snapd/overlord/ifacestate/repo"
 	"github.com/snapcore/snapd/overlord/snapstate"
 	"github.com/snapcore/snapd/overlord/state"
 	"github.com/snapcore/snapd/snap"
@@ -99,7 +99,7 @@ func (m *InterfaceManager) regenerateAllSecurityProfiles() error {
 // Using non-empty snapName the operation can be scoped to connections
 // affecting a given snap.
 func (m *InterfaceManager) reloadConnections(snapName string) error {
-	return repo.ReloadConnections(m.state, m.repo, snapName)
+	return ifstate.ReloadConnections(m.state, m.repo, snapName)
 }
 
 func (m *InterfaceManager) setupSnapSecurity(task *state.Task, snapInfo *snap.Info, opts interfaces.ConfinementOptions) error {
@@ -200,14 +200,14 @@ func (c *autoConnectChecker) check(plug *interfaces.Plug, slot *interfaces.Slot)
 // of connected snap names.  The blacklist can prevent auto-connection to
 // specific interfaces (blacklist entries are plug or slot names).
 func (m *InterfaceManager) autoConnect(task *state.Task, snapName string, blacklist map[string]bool) ([]string, error) {
-	var conns map[string]repo.ConnState
+	var conns map[string]ifstate.ConnState
 	var affectedSnapNames []string
 	err := task.State().Get("conns", &conns)
 	if err != nil && err != state.ErrNoState {
 		return nil, err
 	}
 	if conns == nil {
-		conns = make(map[string]repo.ConnState)
+		conns = make(map[string]ifstate.ConnState)
 	}
 
 	autochecker, err := newAutoConnectChecker(task.State())
@@ -258,7 +258,7 @@ func (m *InterfaceManager) autoConnect(task *state.Task, snapName string, blackl
 		}
 		affectedSnapNames = append(affectedSnapNames, connRef.PlugRef.Snap)
 		affectedSnapNames = append(affectedSnapNames, connRef.SlotRef.Snap)
-		conns[key] = repo.ConnState{Interface: plug.Interface, Auto: true}
+		conns[key] = ifstate.ConnState{Interface: plug.Interface, Auto: true}
 	}
 	// Auto-connect all the slots
 	for _, slot := range m.repo.Slots(snapName) {
@@ -298,7 +298,7 @@ func (m *InterfaceManager) autoConnect(task *state.Task, snapName string, blackl
 			}
 			affectedSnapNames = append(affectedSnapNames, connRef.PlugRef.Snap)
 			affectedSnapNames = append(affectedSnapNames, connRef.SlotRef.Snap)
-			conns[key] = repo.ConnState{Interface: plug.Interface, Auto: true}
+			conns[key] = ifstate.ConnState{Interface: plug.Interface, Auto: true}
 		}
 	}
 
@@ -318,10 +318,10 @@ func getPlugAndSlotRefs(task *state.Task) (interfaces.PlugRef, interfaces.SlotRe
 	return plugRef, slotRef, nil
 }
 
-func getConns(st *state.State) (map[string]repo.ConnState, error) {
-	return repo.GetConns(st)
+func getConns(st *state.State) (map[string]ifstate.ConnState, error) {
+	return ifstate.GetConns(st)
 }
 
-func setConns(st *state.State, conns map[string]repo.ConnState) {
-	repo.SetConns(st, conns)
+func setConns(st *state.State, conns map[string]ifstate.ConnState) {
+	ifstate.SetConns(st, conns)
 }

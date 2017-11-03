@@ -17,7 +17,7 @@
  *
  */
 
-package repo
+package ifstate
 
 import (
 	"fmt"
@@ -31,7 +31,7 @@ import (
 	"github.com/snapcore/snapd/snap"
 )
 
-func New(st *state.State, activeSnaps []*snap.Info, extraInterfaces []interfaces.Interface, extraBackends []interfaces.SecurityBackend) (*interfaces.Repository, error) {
+func Restore(st *state.State, activeSnaps []*snap.Info, extraInterfaces []interfaces.Interface, extraBackends []interfaces.SecurityBackend) (*interfaces.Repository, error) {
 	repo := interfaces.NewRepository()
 	if err := addInterfaces(repo, extraInterfaces); err != nil {
 		return nil, err
