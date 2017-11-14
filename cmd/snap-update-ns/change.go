@@ -62,24 +62,30 @@ func (c Change) String() string {
 // Perform may synthesize *additional* changes that were necessary to perform
 // this change (such as mounted tmpfs or overlayfs).
 func (c *Change) Perform() ([]*Change, error) {
+	var synth []*Change
+	var err error
+
 	if c.Action == Mount {
 		mode := os.FileMode(0755)
 		uid := 0
 		gid := 0
 		// Create target mount directory if needed.
-		if err := ensureMountPoint(c.Entry.Dir, mode, uid, gid); err != nil {
-			return nil, err
+		synth, err = ensureMountPointUsingWritableMimic(c.Entry.Dir, mode, uid, gid)
+		if err != nil {
+			return synth, err
 		}
+
 		// If this is a bind mount then create the source directory as well.
 		// This allows snaps to share a subset of their data easily.
 		flags, _ := mount.OptsToCommonFlags(c.Entry.Options)
 		if flags&syscall.MS_BIND != 0 {
 			if err := ensureMountPoint(c.Entry.Name, mode, uid, gid); err != nil {
-				return nil, err
+				return synth, err
 			}
 		}
 	}
-	return nil, c.lowLevelPerform()
+
+	return synth, c.lowLevelPerform()
 }
 
 // lowLevelPerform is simple bridge from Change to mount / unmount syscall.
@@ -133,25 +139,47 @@ func NeededChanges(currentProfile, desiredProfile *mount.Profile) []*Change {
 		desiredMap[desired[i].Dir] = &desired[i]
 	}
 
+	// Indexed by mount point path.
+	var reuse map[string]bool = make(map[string]bool)
+	// Indexed by entry ID
+	var desiredIDs map[string]bool = make(map[string]bool)
+	var skipDir string
+
+	// Collect the IDs of desired changes.
+	// We need that below to keep implicit changes from the current profile.
+	for i := range desired {
+		desiredIDs[XSnapdEntryID(&desired[i])] = true
+	}
+
 	// Compute reusable entries: those which are equal in current and desired and which
 	// are not prefixed by another entry that changed.
-	var reuse map[string]bool
-	var skipDir string
 	for i := range current {
 		dir := current[i].Dir
 		if skipDir != "" && strings.HasPrefix(dir, skipDir) {
+			logger.Debugf("skipping entry %q", current[i])
 			continue
 		}
 		skipDir = "" // reset skip prefix as it no longer applies
-		if entry, ok := desiredMap[dir]; ok && current[i].Equal(entry) {
-			if reuse == nil {
-				reuse = make(map[string]bool)
-			}
+
+		// Reuse synthetic entries if their parent is desired.
+		if XSnapdSynthetic(&current[i]) && desiredIDs[XSnapdParentID(&current[i])] {
+			logger.Debugf("reusing synthetic entry %q", current[i])
 			reuse[dir] = true
 			continue
 		}
+
+		// Reuse entries that are desired and identical in the current profile.
+		if entry, ok := desiredMap[dir]; ok && current[i].Equal(entry) {
+			logger.Debugf("reusing unchanged entry %q", current[i])
+			reuse[dir] = true
+			continue
+		}
+
 		skipDir = strings.TrimSuffix(dir, "/") + "/"
 	}
+
+	logger.Debugf("desiredIDs: %v", desiredIDs)
+	logger.Debugf("reuse: %v", reuse)
 
 	// We are now ready to compute the necessary mount changes.
 	var changes []*Change

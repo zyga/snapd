@@ -124,10 +124,6 @@ func run() error {
 	return computeAndSaveChanges(snapName)
 }
 
-var changePerform = func(chg *Change) ([]*Change, error) {
-	return chg.Perform()
-}
-
 func computeAndSaveChanges(snapName string) error {
 	// Read the desired and current mount profiles. Note that missing files
 	// count as empty profiles so that we can gracefully handle a mount
@@ -166,7 +162,7 @@ func computeAndSaveChanges(snapName string) error {
 			}
 		}
 		if err != nil {
-			logger.Noticef("cannot change mount namespace of snap %q according to change %s: %s", snapName, change, err)
+			logger.Noticef("\tcannot apply mount change %s: %s", change, err)
 			continue
 		}
 		changesMade = append(changesMade, change)

@@ -27,6 +27,8 @@ import (
 	"time"
 
 	. "gopkg.in/check.v1"
+
+	"github.com/snapcore/snapd/logger"
 )
 
 var (
@@ -40,8 +42,12 @@ var (
 	FreezeSnapProcesses = freezeSnapProcesses
 	ThawSnapProcesses   = thawSnapProcesses
 	// utils
-	SecureMkdirAll   = secureMkdirAll
-	EnsureMountPoint = ensureMountPoint
+	CreateWritableMimic                = createWritableMimic
+	PlanWritableMimic                  = planWritableMimic
+	EnsureMountPoint                   = ensureMountPoint
+	EnsureMountPointUsingWritableMimic = ensureMountPointUsingWritableMimic
+	SecureMkdirAll                     = secureMkdirAll
+	SecureMkfileAll                    = secureMkfileAll
 
 	// main
 	ComputeAndSaveChanges = computeAndSaveChanges
@@ -50,10 +56,11 @@ var (
 // fakeFileInfo implements os.FileInfo for one of the tests.
 // Most of the functions panic as we don't expect them to be called.
 type fakeFileInfo struct {
+	name string
 	mode os.FileMode
 }
 
-func (*fakeFileInfo) Name() string         { panic("unexpected call") }
+func (fi *fakeFileInfo) Name() string      { return fi.name }
 func (*fakeFileInfo) Size() int64          { panic("unexpected call") }
 func (fi *fakeFileInfo) Mode() os.FileMode { return fi.mode }
 func (*fakeFileInfo) ModTime() time.Time   { panic("unexpected call") }
@@ -66,6 +73,10 @@ var (
 	FileInfoDir     = &fakeFileInfo{mode: os.ModeDir}
 	FileInfoSymlink = &fakeFileInfo{mode: os.ModeSymlink}
 )
+
+func FakeFileInfo(name string, mode os.FileMode) os.FileInfo {
+	return &fakeFileInfo{name: name, mode: mode}
+}
 
 // Formatter for flags passed to open syscall.
 func formatOpenFlags(flags int) string {
@@ -81,6 +92,18 @@ func formatOpenFlags(flags int) string {
 	if flags&syscall.O_DIRECTORY != 0 {
 		flags ^= syscall.O_DIRECTORY
 		fl = append(fl, "O_DIRECTORY")
+	}
+	if flags&syscall.O_RDWR != 0 {
+		flags ^= syscall.O_RDWR
+		fl = append(fl, "O_RDWR")
+	}
+	if flags&syscall.O_CREAT != 0 {
+		flags ^= syscall.O_CREAT
+		fl = append(fl, "O_CREAT")
+	}
+	if flags&syscall.O_EXCL != 0 {
+		flags ^= syscall.O_EXCL
+		fl = append(fl, "O_EXCL")
 	}
 	if flags != 0 {
 		panic(fmt.Errorf("unrecognized open flags %d", flags))
@@ -159,10 +182,11 @@ func (sys *SyscallRecorder) Calls() []string {
 // call remembers that a given call has occurred and returns a pre-arranged error, if any
 func (sys *SyscallRecorder) call(call string) error {
 	sys.calls = append(sys.calls, call)
+	var err error
 	if fn := sys.errors[call]; fn != nil {
-		return fn()
+		err = fn()
 	}
-	return nil
+	return err
 }
 
 // allocFd assigns a file descriptor to a given operation.
@@ -184,6 +208,7 @@ func (sys *SyscallRecorder) allocFd(name string) int {
 // freeFd closes an open file descriptor.
 func (sys *SyscallRecorder) freeFd(fd int) error {
 	if _, ok := sys.fds[fd]; !ok {
+		logger.Noticef("attempting to close closed file descriptor %d", fd)
 		return fmt.Errorf("attempting to close closed file descriptor %d", fd)
 	}
 	delete(sys.fds, fd)
@@ -197,10 +222,13 @@ func (sys *SyscallRecorder) CheckForStrayDescriptors(c *C) {
 }
 
 func (sys *SyscallRecorder) Close(fd int) error {
-	if err := sys.call(fmt.Sprintf("close %d", fd)); err != nil {
-		return err
+	call := fmt.Sprintf("close %d", fd)
+	err := sys.call(call)
+	if err == nil {
+		err = sys.freeFd(fd)
 	}
-	return sys.freeFd(fd)
+	logger.Debugf("%s -> %v", call, err)
+	return err
 }
 
 func (sys *SyscallRecorder) Fchown(fd int, uid int, gid int) error {
@@ -208,23 +236,32 @@ func (sys *SyscallRecorder) Fchown(fd int, uid int, gid int) error {
 }
 
 func (sys *SyscallRecorder) Mkdirat(dirfd int, path string, mode uint32) error {
-	return sys.call(fmt.Sprintf("mkdirat %d %q %#o", dirfd, path, mode))
+	call := fmt.Sprintf("mkdirat %d %q %#o", dirfd, path, mode)
+	err := sys.call(call)
+	logger.Debugf("%s -> %v", call, err)
+	return err
 }
 
 func (sys *SyscallRecorder) Open(path string, flags int, mode uint32) (int, error) {
 	call := fmt.Sprintf("open %q %s %#o", path, formatOpenFlags(flags), mode)
-	if err := sys.call(call); err != nil {
-		return -1, err
+	err := sys.call(call)
+	fd := -1
+	if err == nil {
+		fd = sys.allocFd(call)
 	}
-	return sys.allocFd(call), nil
+	logger.Debugf("%s -> %d, %v", call, fd, err)
+	return fd, err
 }
 
 func (sys *SyscallRecorder) Openat(dirfd int, path string, flags int, mode uint32) (int, error) {
 	call := fmt.Sprintf("openat %d %q %s %#o", dirfd, path, formatOpenFlags(flags), mode)
-	if err := sys.call(call); err != nil {
-		return -1, err
+	err := sys.call(call)
+	fd := -1
+	if err == nil {
+		fd = sys.allocFd(call)
 	}
-	return sys.allocFd(call), nil
+	logger.Debugf("%s -> %d, %v", call, fd, err)
+	return fd, err
 }
 
 func (sys *SyscallRecorder) Mount(source string, target string, fstype string, flags uintptr, data string) (err error) {
@@ -304,5 +341,21 @@ func MockChangePerform(f func(chg *Change) ([]*Change, error)) func() {
 	changePerform = f
 	return func() {
 		changePerform = origChangePerform
+	}
+}
+
+func MockReadDir(fn func(string) ([]os.FileInfo, error)) (restore func()) {
+	old := ioutilReadDir
+	ioutilReadDir = fn
+	return func() {
+		ioutilReadDir = old
+	}
+}
+
+func MockReadlink(fn func(string) (string, error)) (restore func()) {
+	old := osReadlink
+	osReadlink = fn
+	return func() {
+		osReadlink = old
 	}
 }

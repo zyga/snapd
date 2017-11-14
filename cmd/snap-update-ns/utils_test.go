@@ -28,6 +28,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	update "github.com/snapcore/snapd/cmd/snap-update-ns"
+	"github.com/snapcore/snapd/interfaces/mount"
 	"github.com/snapcore/snapd/logger"
 	"github.com/snapcore/snapd/testutil"
 )
@@ -39,6 +40,10 @@ type utilsSuite struct {
 }
 
 var _ = Suite(&utilsSuite{})
+
+func (s *utilsSuite) SetUpSuite(c *C) {
+	logger.SimpleSetup()
+}
 
 func (s *utilsSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
@@ -247,4 +252,118 @@ func (s *realSystemSuite) TestSecureMkdirAllForReal(c *C) {
 	c.Assert(err, IsNil)
 	c.Check(fi.IsDir(), Equals, true)
 	c.Check(fi.Mode().Perm(), Equals, os.FileMode(0750))
+}
+
+// secure-mkfile-all
+
+// Ensure that we refuse to create a directory with an relative path.
+func (s *utilsSuite) TestSecureMkfileAllRelative(c *C) {
+	err := update.SecureMkfileAll("rel/path", 0755, 123, 456)
+	c.Assert(err, ErrorMatches, `cannot create file with relative path: "rel/path"`)
+	c.Assert(s.sys.Calls(), HasLen, 0)
+}
+
+// Ensure that we can create a directory with an absolute path.
+func (s *utilsSuite) TestSecureMkfileAllAbsolute(c *C) {
+	c.Assert(update.SecureMkfileAll("/abs/path", 0755, 123, 456), IsNil)
+	c.Assert(s.sys.Calls(), DeepEquals, []string{
+		`open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`,
+		`mkdirat 3 "abs" 0755`,
+		`openat 3 "abs" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`,
+		`fchown 4 123 456`,
+		`close 3`,
+		`openat 4 "path" O_NOFOLLOW|O_CLOEXEC|O_RDWR|O_CREAT|O_EXCL 0644`,
+		`fchown 3 123 456`,
+		`close 3`,
+		`close 4`,
+	})
+}
+
+// Ensure that we can detect read only filesystems.
+func (s *utilsSuite) TestSecureMkfileAllROFS(c *C) {
+	s.sys.InsertFault(`openat 4 "path" O_NOFOLLOW|O_CLOEXEC|O_RDWR|O_CREAT|O_EXCL 0644`, syscall.EROFS)
+	err := update.SecureMkfileAll("/rofs/path", 0755, 123, 456)
+	c.Check(err, ErrorMatches, `cannot operate on read-only filesystem at /rofs`)
+	c.Check(err.(*update.ReadOnlyFsError).Path, Equals, "/rofs")
+	c.Assert(s.sys.Calls(), DeepEquals, []string{
+		`open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`,
+		`mkdirat 3 "rofs" 0755`,
+		`openat 3 "rofs" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`,
+		`fchown 4 123 456`,
+		`close 3`,
+		`openat 4 "path" O_NOFOLLOW|O_CLOEXEC|O_RDWR|O_CREAT|O_EXCL 0644`,
+		`close 4`,
+	})
+}
+
+// Ensure that we don't chown existing files or directories.
+func (s *utilsSuite) TestSecureMkfileAllExistingDirsDontChown(c *C) {
+	s.sys.InsertFault(`mkdirat 3 "abs" 0755`, syscall.EEXIST)
+	s.sys.InsertFault(`openat 4 "path" O_NOFOLLOW|O_CLOEXEC|O_RDWR|O_CREAT|O_EXCL 0644`, syscall.EEXIST)
+	err := update.SecureMkfileAll("/abs/path", 0755, 123, 456)
+	c.Check(err, IsNil)
+	c.Assert(s.sys.Calls(), DeepEquals, []string{
+		`open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`,
+		`mkdirat 3 "abs" 0755`,
+		`openat 3 "abs" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`,
+		`close 3`,
+		`openat 4 "path" O_NOFOLLOW|O_CLOEXEC|O_RDWR|O_CREAT|O_EXCL 0644`,
+		`openat 4 "path" O_NOFOLLOW|O_CLOEXEC|O_RDWR 0`,
+		`close 3`,
+		`close 4`,
+	})
+}
+
+// Ensure that we we close everything when mkdir fails.
+func (s *utilsSuite) TestSecureMkfileAllCloseOnError(c *C) {
+	s.sys.InsertFault(`openat 3 "abs" O_NOFOLLOW|O_CLOEXEC|O_RDWR|O_CREAT|O_EXCL 0644`, errTesting)
+	err := update.SecureMkfileAll("/abs", 0755, 123, 456)
+	c.Check(err, ErrorMatches, `cannot open file "abs": testing`)
+	c.Assert(s.sys.Calls(), DeepEquals, []string{
+		`open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`,
+		`openat 3 "abs" O_NOFOLLOW|O_CLOEXEC|O_RDWR|O_CREAT|O_EXCL 0644`,
+		`close 3`,
+	})
+}
+
+func (s *utilsSuite) TestPlanWritableMimic(c *C) {
+	restore := update.MockReadDir(func(dir string) ([]os.FileInfo, error) {
+		c.Assert(dir, Equals, "/foo")
+		return []os.FileInfo{
+			update.FakeFileInfo("file", 0),
+			update.FakeFileInfo("dir", os.ModeDir),
+			// TODO: support symlinks
+			update.FakeFileInfo("symlink", os.ModeSymlink),
+			// NOTE: None of the filesystem entries below are supported because
+			// they cannot be placed inside snaps or can only be created at
+			// runtime in areas that are already writable and this would never
+			// have to be handled in a writable mimic.
+			update.FakeFileInfo("block-dev", os.ModeDevice),
+			update.FakeFileInfo("char-dev", os.ModeDevice|os.ModeCharDevice),
+			update.FakeFileInfo("socket", os.ModeSocket),
+			update.FakeFileInfo("pipe", os.ModeNamedPipe),
+		}, nil
+	})
+	defer restore()
+	restore = update.MockReadlink(func(name string) (string, error) {
+		c.Assert(name, Equals, "/foo/symlink")
+		return "target", nil
+	})
+	defer restore()
+
+	changes, err := update.PlanWritableMimic("/foo")
+	c.Assert(err, IsNil)
+	c.Assert(changes, DeepEquals, []*update.Change{
+		// Store /foo in /tmp.snap/foo while we set things up
+		{Entry: mount.Entry{Name: "/foo", Dir: "/tmp/.snap/foo", Options: []string{"bind"}}, Action: update.Mount},
+		// Put a tmpfs over /foo
+		{Entry: mount.Entry{Name: "none", Dir: "/foo", Type: "tmpfs"}, Action: update.Mount},
+		// Bind mount files and directories over. Note that files are identified by x-snapd.kind=file option.
+		{Entry: mount.Entry{Name: "/tmp/.snap/foo/file", Dir: "/foo/file", Options: []string{"bind", "ro", "x-snapd.kind=file"}}, Action: update.Mount},
+		{Entry: mount.Entry{Name: "/tmp/.snap/foo/dir", Dir: "/foo/dir", Options: []string{"bind", "ro"}}, Action: update.Mount},
+		// Create symlinks
+		{Entry: mount.Entry{Name: "/tmp/.snap/foo/symlink", Dir: "/foo/symlink", Options: []string{"bind", "ro", "x-snapd.kind=symlink", "x-snapd.symlink=target"}}, Action: update.Mount},
+		// Unmount the safe-keeping directory
+		{Entry: mount.Entry{Name: "none", Dir: "/tmp/.snap/foo"}, Action: update.Unmount},
+	})
 }

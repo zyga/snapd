@@ -17,12 +17,16 @@ environment:
     VAR/data: SNAP_DATA
     VAR/common: SNAP_COMMON
     VAR/snap: SNAP
+    SNAPD_DEBUG: 1
 prepare: |
     # Install a pair of snaps that both have two content interfaces as
     # sub-directories of $SNAP_DATA and $SNAP_COMMON.
     . $TESTSLIB/snaps.sh
     install_local test-snapd-content-advanced-plug
     install_local test-snapd-content-advanced-slot
+    sysctl -w kernel.printk_ratelimit=0
+restore: |
+    sysctl -w kernel.printk_ratelimit=5
 execute: |
     # Put our internal tools on PATH so that we can call snap-discard-ns easily.
     . $TESTSLIB/dirs.sh
