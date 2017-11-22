@@ -75,6 +75,22 @@ restore_project() {
     fi
 }
 
+prepare_suite() {
+    true
+}
+
+prepare_suite_each() {
+    true
+}
+
+restore_suite_each() {
+    true
+}
+
+restore_suite() {
+    true
+}
+
 case "$1" in
     --prepare-project)
         prepare_project
@@ -88,9 +104,21 @@ case "$1" in
     --restore-project)
         restore_project
         ;;
+    --prepare-suite)
+        prepare_suite
+        ;;
+    --prepare-suite-each)
+        prepare_suite_each
+        ;;
+    --restore-suite-each)
+        restore_suite_each
+        ;;
+    --restore-suite)
+        restore_suite
+        ;;
     *)
         echo "unsupported argument: $1"
-        echo "try one of --{prepare,restore}-project{,-each}"
+        echo "try one of --{prepare,restore}-{project,suite}{,-each}"
         exit 1
         ;;
 esac
