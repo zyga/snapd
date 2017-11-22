@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# shellcheck source=tests/lib/utils.sh
+. "$TESTSLIB/utils.sh"
+
 prepare_project() {
     # Check if running inside a container.
     # The testsuite will not work in such an environment
