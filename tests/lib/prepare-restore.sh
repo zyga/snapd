@@ -79,11 +79,22 @@ restore_project() {
 }
 
 prepare_suite() {
-    true
+    # shellcheck source=tests/lib/prepare.sh
+    . "$TESTSLIB/prepare.sh"
+    if [[ "$SPREAD_SYSTEM" == ubuntu-core-16-* ]]; then
+        prepare_all_snap
+    else
+        prepare_classic
+    fi
 }
 
 prepare_suite_each() {
-    true
+    "$TESTSLIB/reset.sh" --reuse-core
+    # shellcheck source=tests/lib/prepare.sh
+    . "$TESTSLIB/prepare.sh"
+    if [[ "$SPREAD_SYSTEM" != ubuntu-core-16-* ]]; then
+        prepare_each_classic
+    fi
 }
 
 restore_suite_each() {
@@ -91,7 +102,16 @@ restore_suite_each() {
 }
 
 restore_suite() {
-    true
+    "$TESTSLIB/reset.sh" --store
+    if [[ "$SPREAD_SYSTEM" != ubuntu-core-16-* ]]; then
+        # shellcheck source=tests/lib/pkgdb.sh
+        . "$TESTSLIB"/pkgdb.sh
+        distro_purge_package snapd
+        if [[ "$SPREAD_SYSTEM" != opensuse-* ]]; then
+            # A snap-confine package never existed on openSUSE
+            distro_purge_package snap-confine
+        fi
+    fi
 }
 
 case "$1" in
