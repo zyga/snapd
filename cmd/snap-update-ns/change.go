@@ -124,7 +124,7 @@ func changePerformImpl(c *Change) ([]*Change, error) {
 			}
 			// Check if we eventually succeeded.
 			if err != nil {
-				return changes, err
+				return changes, fmt.Errorf("cannot create file/directory %q: %s", path, err)
 			}
 		} else if err != nil {
 			// If we cannot inspect the element let's just bail out.
@@ -136,11 +136,11 @@ func changePerformImpl(c *Change) ([]*Change, error) {
 			switch kind {
 			case "":
 				if !fi.Mode().IsDir() {
-					return nil, fmt.Errorf("cannot use %q for mounting, not a directory", path)
+					return nil, fmt.Errorf("cannot use %q as mount point, not a directory", path)
 				}
 			case "file":
 				if !fi.Mode().IsRegular() {
-					return nil, fmt.Errorf("cannot use %q for mounting, not a regular file", path)
+					return nil, fmt.Errorf("cannot use %q as mount point, not a regular file", path)
 				}
 			case "symlink":
 				// When we want to create a symlink we just need the empty
@@ -177,11 +177,11 @@ func changePerformImpl(c *Change) ([]*Change, error) {
 				switch kind {
 				case "":
 					if !fi.Mode().IsDir() {
-						return nil, fmt.Errorf("cannot use %q for mounting, not a directory", path)
+						return nil, fmt.Errorf("cannot use %q as bind-mount source, not a directory", path)
 					}
 				case "file":
 					if !fi.Mode().IsRegular() {
-						return nil, fmt.Errorf("cannot use %q for mounting, not a regular file", path)
+						return nil, fmt.Errorf("cannot use %q as bind-mount source, not a regular file", path)
 					}
 				}
 			}
