@@ -557,21 +557,22 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   /{etc/,usr/lib/}os-release r,
 
   # Allow creating/grabbing various snapd lock files.
-  /run/snapd/lock/*.lock rwk,
+  /run/snapd/lock/###SNAP_NAME###.lock rwk,
+  /run/snapd/lock/.lock rwk,
 
   # Allow reading stored mount namespaces,
   /run/snapd/ns/ r,
-  /run/snapd/ns/*.mnt r,
+  /run/snapd/ns/###SNAP_NAME###.mnt r,
 
   # Allow reading per-snap desired mount profiles. Those are written by
   # snapd and represent the desired layout and content connections.
-  /var/lib/snapd/mount/snap.*.fstab r,
+  /var/lib/snapd/mount/snap.###SNAP_NAME###.fstab r,
 
   # Allow reading and writing actual per-snap mount profiles. Note that
   # the second rule is generic to allow our tmpfile-rename approach to
   # writing them. Those are written by snap-update-ns and represent the
   # actual layout at a given moment.
-  /run/snapd/ns/*.fstab rw,
+  /run/snapd/ns/snap.###SNAP_NAME###.fstab rw,
   /run/snapd/ns/*.fstab.* rw,
 
   # NOTE: at this stage the /snap directory is stable as we have called
@@ -583,7 +584,7 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   capability chown,
 
   # Allow freezing and thawing the per-snap cgroup freezers
-  /sys/fs/cgroup/freezer/snap.*/freezer.state rw,
+  /sys/fs/cgroup/freezer/snap.###SNAP_NAME###/freezer.state rw,
 
   # Support mount profiles via the content interface. This should correspond
   # to permutations of $SNAP -> $SNAP for reading and $SNAP_{DATA,COMMON} ->
@@ -597,6 +598,9 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   #   /var/snap/*/**
   # is meant to mean:
   #   /var/snap/$SNAP_NAME/$SNAP_REVISION/
+  # NOTE: the wildcards below are there because content interface can do content
+  # sharing from one snap to another and we just don't know yet. Those should go
+  # away when the content interface starts using AddUpdateNS() snippets.
   mount options=(ro bind) /snap/*/** -> /snap/*/*/**,
   mount options=(ro bind) /snap/*/** -> /var/snap/*/**,
   mount options=(rw bind) /var/snap/*/** -> /var/snap/*/**,
@@ -609,8 +613,9 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   # descriptor.
   / r,
   /var/ r,
-  /var/snap/{,*/} r,
-  /var/snap/*/**/ rw,
+  /var/snap/ r,
+  /var/snap/###SNAP_NAME###/ r,
+  /var/snap/###SNAP_NAME###/** rw,
 
   # Allow creating placeholder directory in /tmp/.snap/ as support for
   # the writable mimic code that can poke holes in arbitrary read-only
@@ -649,14 +654,14 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   # Allow layouts to bind mount *from* $SNAP, $SNAP_DATA and $SNAP_COMMON
   # *to* anywhere under the root directory. This is safe because the
   # mounts happen inside an isolated mount namespace (but see below).
-  mount options=(bind) /snap/*/** -> /*/**,
-  mount options=(bind) /var/snap/*/** -> /*/**,
+  mount options=(bind) /snap/###SNAP_NAME###/** -> /*/**,
+  mount options=(bind) /var/snap/###SNAP_NAME###/** -> /*/**,
   # As an exception, don't allow bind mounts to /media which has special
   # sharing and propagates mount events outside of the snap namespace.
   audit deny mount -> /media,
 
   # Allow the content interface to bind fonts from the host filesystem
-  mount options=(ro bind) /var/lib/snapd/hostfs/usr/share/fonts/ -> /snap/*/*/**,
+  mount options=(ro bind) /var/lib/snapd/hostfs/usr/share/fonts/ -> /snap/###SNAP_NAME###/*/**,
   # Allow the desktop interface to bind fonts from the host filesystem
   mount options=(ro bind) /var/lib/snapd/hostfs/usr/share/fonts/ -> /usr/share/fonts/,
   mount options=(ro bind) /var/lib/snapd/hostfs/usr/local/share/fonts/ -> /usr/local/share/fonts/,
@@ -670,7 +675,7 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   audit deny mount /** -> /snap/bin/**,
 
   # Allow the content interface to bind fonts from the host filesystem
-  mount options=(ro bind) /var/lib/snapd/hostfs/usr/share/fonts/ -> /snap/*/*/**,
+  mount options=(ro bind) /var/lib/snapd/hostfs/usr/share/fonts/ -> /snap/###SNAP_NAME###/*/**,
 
 ###SNIPPETS###
 }
