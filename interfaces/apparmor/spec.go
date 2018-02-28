@@ -113,6 +113,9 @@ func (spec *Specification) AddSnapLayout(si *snap.Info) {
 		}
 		sort.Strings(spec.snippets[tag])
 	}
+	for _, path := range paths {
+		spec.AddUpdateNS(fmt.Sprintf("# layout at path %s\n", path))
+	}
 }
 
 // Snippets returns a deep copy of all the added application snippets.

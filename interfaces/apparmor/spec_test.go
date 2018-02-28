@@ -166,4 +166,8 @@ func (s *specSuite) TestApparmorSnippetsFromLayout(c *C) {
 			"# Layout path: /usr\n/usr{,/**} mrwklix,",
 		},
 	})
+	c.Assert(s.spec.UpdateNS(), DeepEquals, map[string][]string{
+		"vanguard": {},
+	})
+
 }
