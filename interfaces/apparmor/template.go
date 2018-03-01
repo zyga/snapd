@@ -573,6 +573,7 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   # writing them. Those are written by snap-update-ns and represent the
   # actual layout at a given moment.
   /run/snapd/ns/snap.###SNAP_NAME###.fstab rw,
+  # TODO: see if this can be hardened further.
   /run/snapd/ns/*.fstab.* rw,
 
   # NOTE: at this stage the /snap directory is stable as we have called
@@ -617,65 +618,25 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   /var/snap/###SNAP_NAME###/ r,
   /var/snap/###SNAP_NAME###/** rw,
 
-  # Allow creating placeholder directory in /tmp/.snap/ as support for
-  # the writable mimic code that can poke holes in arbitrary read-only
-  # places using tmpfs and bind mounts.
-  /tmp/ r,
-  /tmp/.snap/{,**} rw,
-  # Allow mounting/unmounting any part of $SNAP over to a temporary place
-  # in /tmp/.snap/ during the preparation of a writable mimic.
-  # FIXME: update this with per-snap snap-update-ns profiles
-  mount options=(bind, rw) /** -> /tmp/.snap/**,
-  mount options=(rbind, rw) /** -> /tmp/.snap/**,
-  # Allow mounting tmpfs over the original read-only directory.
-  # FIXME: update this with per-snap snap-update-ns profiles
-  mount fstype=tmpfs options=(rw) tmpfs -> /**,
-  # Allow bind mounting anything from the temporary place in /tmp/.snap/
-  # back to $SNAP/** (to re-construct the data that was there before).
-  # FIXME: update this with per-snap snap-update-ns profiles
-  mount options=(bind, rw) /tmp/.snap/** -> /**,
-  mount options=(rbind, rw) /tmp/.snap/** -> /**,
-  # Allow unmounting the temporary directory in /tmp once it is no longer
-  # necessary.
-  umount /tmp/.snap/**,
-  # Allow unmounting any of the above in case something fails and
-  # we start recovery.
-  umount /**,
-
-  # Allow creating missing directories anywhere under the root directory
-  # (but not in the root directory itself) where they need to be created
-  # as a mount point for layouts or for content sharing. This is a
-  # superset of other cases so they are removed
-  # FIXME: update this with per-snap snap-update-ns profiles
-  / r,
-  /** r,
-  /*/** w,
-
-  # Allow layouts to bind mount *from* $SNAP, $SNAP_DATA and $SNAP_COMMON
-  # *to* anywhere under the root directory. This is safe because the
-  # mounts happen inside an isolated mount namespace (but see below).
-  mount options=(bind) /snap/###SNAP_NAME###/** -> /*/**,
-  mount options=(bind) /var/snap/###SNAP_NAME###/** -> /*/**,
-  # As an exception, don't allow bind mounts to /media which has special
-  # sharing and propagates mount events outside of the snap namespace.
-  audit deny mount -> /media,
-
   # Allow the content interface to bind fonts from the host filesystem
   mount options=(ro bind) /var/lib/snapd/hostfs/usr/share/fonts/ -> /snap/###SNAP_NAME###/*/**,
+  umount /snap/###SNAP_NAME###/**,
+
   # Allow the desktop interface to bind fonts from the host filesystem
   mount options=(ro bind) /var/lib/snapd/hostfs/usr/share/fonts/ -> /usr/share/fonts/,
+  umount /usr/share/fonts/,
   mount options=(ro bind) /var/lib/snapd/hostfs/usr/local/share/fonts/ -> /usr/local/share/fonts/,
+  umount /usr/local/share/fonts/,
   mount options=(ro bind) /var/lib/snapd/hostfs/var/cache/fontconfig/ -> /var/cache/fontconfig/,
+  umount /var/cache/fontconfig/,
 
-  # Allow unmounts matching possible mounts listed above.
-  umount /*/**,
-
-  # But we don't want anyone to touch /snap/bin
+  # Don't allow anyone to touch /snap/bin
   audit deny mount /snap/bin/** -> /**,
   audit deny mount /** -> /snap/bin/**,
 
-  # Allow the content interface to bind fonts from the host filesystem
-  mount options=(ro bind) /var/lib/snapd/hostfs/usr/share/fonts/ -> /snap/###SNAP_NAME###/*/**,
+  # Don't allow bind mounts to /media which has special
+  # sharing and propagates mount events outside of the snap namespace.
+  audit deny mount -> /media,
 
 ###SNIPPETS###
 }
