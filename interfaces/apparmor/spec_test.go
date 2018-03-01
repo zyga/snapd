@@ -157,6 +157,9 @@ layout:
 
 func (s *specSuite) TestApparmorSnippetsFromLayout(c *C) {
 	snapInfo := snaptest.MockInfo(c, snapWithLayout, &snap.SideInfo{Revision: snap.R(42)})
+	restore := apparmor.SetSpecScope(s.spec, []string{"snap.vanguard.vanguard"}, "vanguard")
+	defer restore()
+
 	s.spec.AddSnapLayout(snapInfo)
 	c.Assert(s.spec.Snippets(), DeepEquals, map[string][]string{
 		"snap.vanguard.vanguard": {
@@ -167,7 +170,20 @@ func (s *specSuite) TestApparmorSnippetsFromLayout(c *C) {
 		},
 	})
 	c.Assert(s.spec.UpdateNS(), DeepEquals, map[string][]string{
-		"vanguard": {},
+		"vanguard": {
+			"  # Layout /etc/foo.conf: bind-file $SNAP/foo.conf\n",
+			"  # Layout /mylink: symlink $SNAP/link/target\n",
+			"  # Layout /mytmp: type tmpfs, mode: 01777\n",
+			"" +
+				"  # Layout /usr: bind $SNAP/usr\n" +
+				"  mount options=(rbind, rw) /usr -> /tmp/.snap/usr,\n" +
+				"  mount fstype=tmpfs options=(rw) tmpfs -> /usr,\n" +
+				"  mount options=(rbind, rw) /tmp/.snap/usr/** -> /usr/**,\n" +
+				"  mount options=(bind, rw) /tmp/.snap/usr/* -> /usr/*,\n" +
+				"  mount options=(rbind, rw) /snap/vanguard/42/usr -> /usr,\n" +
+				"  umount /tmp/.snap/usr,\n" +
+				"  umount /usr/**,\n",
+		},
 	})
 
 }

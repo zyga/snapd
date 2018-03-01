@@ -20,6 +20,7 @@
 package apparmor
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"strings"
@@ -114,7 +115,28 @@ func (spec *Specification) AddSnapLayout(si *snap.Info) {
 		sort.Strings(spec.snippets[tag])
 	}
 	for _, path := range paths {
-		spec.AddUpdateNS(fmt.Sprintf("# layout at path %s\n", path))
+		var buf bytes.Buffer
+		l := si.Layout[path]
+		fmt.Fprintf(&buf, "  # Layout %s\n", l)
+		if l.Bind != "" {
+			bind := si.ExpandSnapVariables(l.Bind)
+			path := si.ExpandSnapVariables(l.Path)
+			// Allow setting the original directory aside via a bind mount.
+			fmt.Fprintf(&buf, "  mount options=(rbind, rw) %s -> /tmp/.snap%s,\n", path, path)
+			// Allow mounting tmpfs over the original read-only directory.
+			fmt.Fprintf(&buf, "  mount fstype=tmpfs options=(rw) tmpfs -> %s,\n", path)
+			// Allow bind mounting things to reconstruct the now-writable location.
+			fmt.Fprintf(&buf, "  mount options=(rbind, rw) /tmp/.snap%s/** -> %s/**,\n", path, path)
+			fmt.Fprintf(&buf, "  mount options=(bind, rw) /tmp/.snap%s/* -> %s/*,\n", path, path)
+			// Allow bind mounting the layout element.
+			fmt.Fprintf(&buf, "  mount options=(rbind, rw) %s -> %s,\n", bind, path)
+			// Allow unmounting the temporary directory.
+			fmt.Fprintf(&buf, "  umount /tmp/.snap%s,\n", path)
+			// Allow unmounting the destination directory as well as anything inside.
+			// This lets us perform the undo plan in case the writable mimic fails.
+			fmt.Fprintf(&buf, "  umount %s/**,\n", path)
+		}
+		spec.AddUpdateNS(buf.String())
 	}
 }
 
