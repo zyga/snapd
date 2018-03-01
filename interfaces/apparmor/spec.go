@@ -22,6 +22,7 @@ package apparmor
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -118,26 +119,68 @@ func (spec *Specification) AddSnapLayout(si *snap.Info) {
 		var buf bytes.Buffer
 		l := si.Layout[path]
 		fmt.Fprintf(&buf, "  # Layout %s\n", l)
-		if l.Bind != "" {
+		path := si.ExpandSnapVariables(l.Path)
+		switch {
+		case l.Bind != "":
 			bind := si.ExpandSnapVariables(l.Bind)
-			path := si.ExpandSnapVariables(l.Path)
-			// Allow setting the original directory aside via a bind mount.
-			fmt.Fprintf(&buf, "  mount options=(rbind, rw) %s -> /tmp/.snap%s,\n", path, path)
-			// Allow mounting tmpfs over the original read-only directory.
-			fmt.Fprintf(&buf, "  mount fstype=tmpfs options=(rw) tmpfs -> %s,\n", path)
-			// Allow bind mounting things to reconstruct the now-writable location.
-			fmt.Fprintf(&buf, "  mount options=(rbind, rw) /tmp/.snap%s/** -> %s/**,\n", path, path)
-			fmt.Fprintf(&buf, "  mount options=(bind, rw) /tmp/.snap%s/* -> %s/*,\n", path, path)
 			// Allow bind mounting the layout element.
-			fmt.Fprintf(&buf, "  mount options=(rbind, rw) %s -> %s,\n", bind, path)
-			// Allow unmounting the temporary directory.
-			fmt.Fprintf(&buf, "  umount /tmp/.snap%s,\n", path)
-			// Allow unmounting the destination directory as well as anything inside.
-			// This lets us perform the undo plan in case the writable mimic fails.
-			fmt.Fprintf(&buf, "  umount %s/**,\n", path)
+			fmt.Fprintf(&buf, "  mount options=(rbind, rw) %s/ -> %s/,\n", bind, path)
+			fmt.Fprintf(&buf, "  umount %s/,\n", path)
+			// Allow constructing writable mimic in both bind-mount source and mount point.
+			writableMimicProfile(&buf, parent(path))
+			writableMimicProfile(&buf, parent(bind))
+		case l.BindFile != "":
+			bindFile := si.ExpandSnapVariables(l.BindFile)
+			// Allow bind mounting the layout element.
+			fmt.Fprintf(&buf, "  mount options=(bind, rw) %s -> %s,\n", bindFile, path)
+			fmt.Fprintf(&buf, "  umount %s,\n", path)
+			// Allow constructing writable mimic in both bind-mount source and mount point.
+			writableMimicProfile(&buf, parent(path))
+			writableMimicProfile(&buf, parent(bindFile))
+		case l.Type == "tmpfs":
+			fmt.Fprintf(&buf, "  mount fstype=tmpfs tmpfs -> %s/,\n", path)
+			fmt.Fprintf(&buf, "  umount %s/,\n", path)
+			// Allow constructing writable mimic to mount point.
+			writableMimicProfile(&buf, parent(path))
+		case l.Symlink != "":
+			// Allow constructing writable mimic to symlink parent directory.
+			writableMimicProfile(&buf, parent(path))
 		}
+		// fmt.Printf("\n%s\n", buf.String())
 		spec.AddUpdateNS(buf.String())
 	}
+}
+
+func writableMimicProfile(buf *bytes.Buffer, path string) {
+	if path == "/" {
+		return
+	}
+	fmt.Fprintf(buf, "  # Writable mimic %s\n", path)
+	// Allow setting the read-only directory aside via a bind mount.
+	fmt.Fprintf(buf, "  mount options=(rbind, rw) %s/ -> /tmp/.snap%s/,\n", path, path)
+	// Allow mounting tmpfs over the read-only directory.
+	fmt.Fprintf(buf, "  mount fstype=tmpfs options=(rw) tmpfs -> %s/,\n", path)
+	// Allow bind mounting things to reconstruct the now-writable parent directory.
+	fmt.Fprintf(buf, "  mount options=(rbind, rw) /tmp/.snap%s/** -> %s/**,\n", path, path)
+	fmt.Fprintf(buf, "  mount options=(bind, rw) /tmp/.snap%s/* -> %s/*,\n", path, path)
+	// Allow unmounting the temporary directory.
+	fmt.Fprintf(buf, "  umount /tmp/.snap%s/,\n", path)
+	// Allow unmounting the destination directory as well as anything inside.
+	// This lets us perform the undo plan in case the writable mimic fails.
+	fmt.Fprintf(buf, "  umount %s/**,\n", path)
+	// Allow creating directories on demand.
+	for p := path; p != "/"; p = parent(p) {
+		fmt.Fprintf(buf, "  %s/ w,\n", p)
+	}
+	for p := filepath.Join("/tmp/.snap/", path); p != "/"; p = parent(p) {
+		fmt.Fprintf(buf, "  %s/ w,\n", p)
+	}
+}
+
+func parent(path string) string {
+	result, _ := filepath.Split(path)
+	result = filepath.Clean(result)
+	return result
 }
 
 // Snippets returns a deep copy of all the added application snippets.
