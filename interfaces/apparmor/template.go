@@ -573,8 +573,7 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   # writing them. Those are written by snap-update-ns and represent the
   # actual layout at a given moment.
   /run/snapd/ns/snap.###SNAP_NAME###.fstab rw,
-  # TODO: see if this can be hardened further.
-  /run/snapd/ns/*.fstab.* rw,
+  /run/snapd/ns/###SNAP_NAME###.fstab.* rw,
 
   # NOTE: at this stage the /snap directory is stable as we have called
   # pivot_root already.
@@ -587,40 +586,9 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   # Allow freezing and thawing the per-snap cgroup freezers
   /sys/fs/cgroup/freezer/snap.###SNAP_NAME###/freezer.state rw,
 
-  # Support mount profiles via the content interface. This should correspond
-  # to permutations of $SNAP -> $SNAP for reading and $SNAP_{DATA,COMMON} ->
-  # $SNAP_{DATA,COMMON} for both reading and writing.
-  #
-  # Note that:
-  #   /snap/*/*/**
-  # is meant to mean:
-  #   /snap/$SNAP_NAME/$SNAP_REVISION/and-any-subdirectory
-  # but:
-  #   /var/snap/*/**
-  # is meant to mean:
-  #   /var/snap/$SNAP_NAME/$SNAP_REVISION/
-  # NOTE: the wildcards below are there because content interface can do content
-  # sharing from one snap to another and we just don't know yet. Those should go
-  # away when the content interface starts using AddUpdateNS() snippets.
-  mount options=(ro bind) /snap/*/** -> /snap/*/*/**,
-  mount options=(ro bind) /snap/*/** -> /var/snap/*/**,
-  mount options=(rw bind) /var/snap/*/** -> /var/snap/*/**,
-  mount options=(ro bind) /var/snap/*/** -> /var/snap/*/**,
-
-  # Allow creating missing mount directories under $SNAP_DATA.
-  #
-  # The "tree" of permissions is needed for SecureMkdirAll that uses
-  # open(..., O_NOFOLLOW) and mkdirat() using the resulting file
-  # descriptor.
-  / r,
-  /var/ r,
-  /var/snap/ r,
-  /var/snap/###SNAP_NAME###/ r,
-  /var/snap/###SNAP_NAME###/** rw,
-
   # Allow the content interface to bind fonts from the host filesystem
   mount options=(ro bind) /var/lib/snapd/hostfs/usr/share/fonts/ -> /snap/###SNAP_NAME###/*/**,
-  umount /snap/###SNAP_NAME###/**,
+  umount /snap/###SNAP_NAME###/*/**,
 
   # Allow the desktop interface to bind fonts from the host filesystem
   mount options=(ro bind) /var/lib/snapd/hostfs/usr/share/fonts/ -> /usr/share/fonts/,
