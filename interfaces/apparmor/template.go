@@ -556,7 +556,7 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   # Allow reading the os-release file (possibly a symlink to /usr/lib).
   /{etc/,usr/lib/}os-release r,
 
-  # Allow creating/grabbing various snapd lock files.
+  # Allow creating/grabbing global and per-snap lock files.
   /run/snapd/lock/###SNAP_NAME###.lock rwk,
   /run/snapd/lock/.lock rwk,
 
