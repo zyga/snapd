@@ -573,7 +573,7 @@ profile snap-update-ns.###SNAP_NAME### (attach_disconnected) {
   # writing them. Those are written by snap-update-ns and represent the
   # actual layout at a given moment.
   /run/snapd/ns/snap.###SNAP_NAME###.fstab rw,
-  /run/snapd/ns/###SNAP_NAME###.fstab.* rw,
+  /run/snapd/ns/snap.###SNAP_NAME###.fstab.* rw,
 
   # NOTE: at this stage the /snap directory is stable as we have called
   # pivot_root already.
