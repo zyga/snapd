@@ -377,7 +377,7 @@ func (b *Backend) deriveContent(spec *Specification, snapInfo *snap.Info, opts i
 
 // addUpdateNSProfile adds an apparmor profile for snap-update-ns, tailored to a specific snap.
 //
-// This profile exists so that snap-update-ns doens't need to carry very wide, open permissions
+// This profile exists so that snap-update-ns doesn't need to carry very wide, open permissions
 // that are suitable for poking holes (and writing) in nearly arbitrary places. Instead the profile
 // contains just the permissions needed to poke a hole and write to the layout-specific paths.
 func addUpdateNSProfile(snapInfo *snap.Info, opts interfaces.ConfinementOptions, snippets string, content map[string]*osutil.FileState) {
