@@ -135,6 +135,7 @@ type ReadOnlyFsError struct {
 	Path string
 }
 
+// Error returns a formatted error message.
 func (e *ReadOnlyFsError) Error() string {
 	return fmt.Sprintf("cannot operate on read-only filesystem at %s", e.Path)
 }
