@@ -33,7 +33,6 @@ execute: |
         test-snapd-layout.sh -c "true"
 
         echo "layout declarations are honored"
-
         test-snapd-layout.sh -c "test -d /etc/demo"
         test-snapd-layout.sh -c "test -f /etc/demo.conf"
         test-snapd-layout.sh -c "test -h /etc/demo.cfg"

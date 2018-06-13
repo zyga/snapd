@@ -73,21 +73,17 @@ var (
 //
 // Directories are read only when they reside on file systems mounted in read
 // only mode or when the underlying file system itself is inherently read only.
-func IsReadOnly(dirFd int, dirName string) (bool, error) {
-	var fsData syscall.Statfs_t
-	if err := sysFstatfs(dirFd, &fsData); err != nil {
-		return false, fmt.Errorf("cannot fstatfs %q: %s", dirName, err)
-	}
+func IsReadOnly(dirFd int, dirName string, fsData *syscall.Statfs_t) bool {
 	// If something is mounted with f_flags & ST_RDONLY then is read-only.
 	if fsData.Flags&StReadOnly == StReadOnly {
-		return true, nil
+		return true
 	}
 	// If something is a known read-only file-system then it is safe.
 	// Older copies of snapd were not mounting squashfs as read only.
 	if fsData.Type == SquashfsMagic {
-		return true, nil
+		return true
 	}
-	return false, nil
+	return false
 }
 
 // IsSnapdCreatedPrivateTmpfs returns true if a directory is a tmpfs mounted by snapd.
@@ -97,14 +93,10 @@ func IsReadOnly(dirFd int, dirName string) (bool, error) {
 // the mount namespace. A directory is trusted if it is a tmpfs that was
 // mounted by snap-confine or snapd-update-ns. Note that sub-directories of a
 // trusted tmpfs are not considered trusted by this function.
-func IsSnapdCreatedPrivateTmpfs(dirFd int, dirName string, changes []*Change) (bool, error) {
-	var fsData syscall.Statfs_t
-	if err := sysFstatfs(dirFd, &fsData); err != nil {
-		return false, fmt.Errorf("cannot fstatfs %q: %s", dirName, err)
-	}
+func IsSnapdCreatedPrivateTmpfs(dirFd int, dirName string, fsData *syscall.Statfs_t, changes []*Change) bool {
 	// If something is not a tmpfs it cannot be the trusted tmpfs we are looking for.
 	if fsData.Type != TmpfsMagic {
-		return false, nil
+		return false
 	}
 	// Any of the past changes that mounted a tmpfs exactly at the directory we
 	// are inspecting is considered as trusted. This is conservative because it
@@ -118,8 +110,8 @@ func IsSnapdCreatedPrivateTmpfs(dirFd int, dirName string, changes []*Change) (b
 	// mount shadowing an active tmpfs.
 	for i := len(changes) - 1; i >= 0; i-- {
 		change := changes[i]
-		if change.Entry.Type == "tmpfs" && change.Entry.Dir == dirName {
-			return change.Action == Mount, nil
+		if change.Entry.Dir == dirName {
+			return change.Action == Mount && change.Entry.Type == "tmpfs"
 		}
 	}
 	// TODO: As a special exception, assume that a tmpfs over /var/lib is
@@ -127,7 +119,7 @@ func IsSnapdCreatedPrivateTmpfs(dirFd int, dirName string, changes []*Change) (b
 	// a particular behavior of LXD.  Once the quirk is migrated to a mount
 	// profile (or removed entirely if no longer necessary) the following code
 	// fragment can go away.
-	return dirName == "/var/lib", nil
+	return dirName == "/var/lib"
 }
 
 // ReadOnlyFsError is an error encapsulating encountered EROFS.
@@ -140,19 +132,140 @@ func (e *ReadOnlyFsError) Error() string {
 	return fmt.Sprintf("cannot operate on read-only filesystem at %s", e.Path)
 }
 
-// Secure is a helper for making filesystem operations free from certain kinds of attacks.
-type Secure struct{}
+// MimicPath returns the path of the directory where a mimic ought to be constructed.
+func (e *ReadOnlyFsError) MimicPath() string {
+	return e.Path
+}
 
-// CheckTrespassing inspects if a filesystem operation on the given path
-// segment would trespass on the host.
+// TrespassingError is an error when filesystem operation would affect the host.
+type TrespassingError struct {
+	Path string
+}
+
+// Error returns a formatted error message.
+func (e *TrespassingError) Error() string {
+	return fmt.Sprintf("cannot write to %q: it would affect the host file system", e.Path)
+}
+
+// MimicPath returns the path of the directory where a mimic ought to be constructed.
+func (e *TrespassingError) MimicPath() string {
+	return e.Path
+}
+
+// MimicRequiredError describes errors that require construction of a writable mimic.
+type MimicRequiredError interface {
+	Error() string
+	MimicPath() string
+}
+
+// Secure is a helper for making filesystem operations free from certain kinds of attacks.
+type Secure struct {
+	unrestrictedPrefixes []string
+	pastChanges          []*Change
+}
+
+// AddUnrestrictedPrefixes adds a list of directories where writing is allowed
+// even if it would hit the real host filesystem (or transit through the host
+// filesystem). This is intended to be used with certain well-known locations
+// such as /tmp, $SNAP_DATA and $SNAP.
+func (sec *Secure) AddUnrestrictedPrefixes(prefixes ...string) {
+	for _, prefix := range prefixes {
+		sec.unrestrictedPrefixes = append(sec.unrestrictedPrefixes, filepath.Clean(prefix)+"/")
+	}
+}
+
+// MockUnrestrictedPrefixes replaces the set of path prefixes without any restrictions.
+func (sec *Secure) MockUnrestrictedPrefixes(prefixes ...string) (restore func()) {
+	old := sec.unrestrictedPrefixes
+	sec.unrestrictedPrefixes = prefixes
+	return func() {
+		sec.unrestrictedPrefixes = old
+	}
+}
+
+// AddChange records the fact that a change was applied to the system.
+func (sec *Secure) AddChange(change *Change) {
+	sec.pastChanges = append(sec.pastChanges, change)
+}
+
+// CheckTrespassing checks if writing to a directory would trespass on the host.
 //
-// The idea of trespassing is so that we do not attempt to create a
-// directory, a file or a symlink in a directory that is usually beyond
-// control of snap applications. We are perfectly comfortable with creating
-// things in $SNAP_DATA or in /tmp but we don't want to do so in /etc or in
-// other sensitive places.
-func (sec *Secure) CheckTrespassing(dirFd int, dirName string, name string) error {
+// The check is only performed in restricted mode. If the check fails a
+// TrespassingError is returned.
+func (sec *Secure) CheckTrespassing(dirFd int, dirName string, restricted bool) error {
+	if !restricted {
+		return nil
+	}
+	// fmt.Printf("check trespassing dirFd:%d dirName:%q restricted:%v\n", dirFd, dirName, restricted)
+	// In restricted mode check the directory before attempting to write to it.
+	ok, err := sec.CanWriteToDirectory(dirFd, dirName)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		if dirName == "/" {
+			// If writing to / is not allowed then we are in a tough spot
+			// because we cannot construct a writable mimic over /. This
+			// should never happen in normal circumstances because the root
+			// filesystem is some kind of base snap.
+			return fmt.Errorf("cannot recover from trespassing over /")
+		}
+		// If writing is not allowed then report a trespassing error
+		return &TrespassingError{Path: dirName}
+	}
 	return nil
+}
+
+// IsRestricted returns true if a path follows restricted writing scheme.
+//
+// Writing to a restricted path results in step-by-step validation of each
+// directory, starting from the root of the file system. Unless writing is
+// allowed a mimic must be constructed to ensure that writes are not visible in
+// undesired locations of the host filesystem.
+//
+// Provided path is the full, absolute path of the entity that needs to be
+// created (directory, file or symbolic link).
+func (sec *Secure) IsRestricted(path string) bool {
+	// Anything rooted at one of the unrestricted prefixes is not restricted.
+	// Those are for things like /var/snap/, for example.
+	for _, prefix := range sec.unrestrictedPrefixes {
+		if strings.HasPrefix(path, prefix) {
+			return false
+		}
+	}
+	// All other paths are restricted
+	return true
+}
+
+// CanWriteToDirectory returns true if writing to a given directory is allowed.
+//
+// Writing is allowed in one of thee cases:
+// 1) The directory is in one of the explicitly permitted locations.
+//    This is the strongest permission as it explicitly allows writing to
+//    places that may show up on the host, one of the examples being $SNAP_DATA.
+// 2) The directory is on a read-only filesystem.
+// 3) The directory is on a tmpfs created by snapd.
+func (sec *Secure) CanWriteToDirectory(dirFd int, dirName string) (bool, error) {
+	if !sec.IsRestricted(dirName) {
+		return true, nil
+	}
+	var fsData syscall.Statfs_t
+	if err := sysFstatfs(dirFd, &fsData); err != nil {
+		return false, fmt.Errorf("cannot fstatfs %q: %s", dirName, err)
+	}
+	// Writing to read only directories is allowed because EROFS is handled
+	// by each of the writing helpers already.
+	if ok := IsReadOnly(dirFd, dirName, &fsData); ok {
+		return true, nil
+	}
+	// Writing to a trusted tmpfs is allowed because those are not leaking to
+	// the host.
+	if ok := IsSnapdCreatedPrivateTmpfs(dirFd, dirName, &fsData, sec.pastChanges); ok {
+		return true, nil
+	}
+	// If writing is not not allowed by one of the three rules above then it is
+	// disallowed.
+	return false, nil
 }
 
 // OpenPath creates a path file descriptor for the given
@@ -205,37 +318,42 @@ func (sec *Secure) OpenPath(path string) (int, error) {
 }
 
 // MkPrefix creates all the missing directories in a given base path and
-// returns the file descriptor to the leaf directory. This function is a base
-// for secure variants of mkdir, touch and symlink. None of the traversed
-// directories can be symbolic links.
-func (sec *Secure) MkPrefix(base string, perm os.FileMode, uid sys.UserID, gid sys.GroupID) (int, error) {
+// returns the file descriptor to the leaf directory as well as the restricted
+// flag. This function is a base for secure variants of mkdir, touch and
+// symlink. None of the traversed directories can be symbolic links.
+func (sec *Secure) MkPrefix(base string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) (int, bool, error) {
 	iter, err := strutil.NewPathIterator(base)
 	if err != nil {
 		// TODO: Reword the error and adjust the tests.
-		return -1, fmt.Errorf("cannot split unclean path %q", base)
+		return -1, false, fmt.Errorf("cannot split unclean path %q", base)
 	}
 	if !filepath.IsAbs(iter.Path()) {
-		return -1, fmt.Errorf("path %v is not absolute", iter.Path())
+		return -1, false, fmt.Errorf("path %v is not absolute", iter.Path())
 	}
 	iter.Next() // Advance iterator to '/'
 
-	const openFlags = syscall.O_NOFOLLOW | syscall.O_CLOEXEC | syscall.O_DIRECTORY
 	// Open the root directory and start there.
+	//
+	// NOTE: We don't have to check for possible trespassing on / here because
+	// we are going to check for it in sec.MkDir call below (which verifies
+	// that / is not violated)
+	const openFlags = syscall.O_NOFOLLOW | syscall.O_CLOEXEC | syscall.O_DIRECTORY
 	fd, err := sysOpen("/", openFlags, 0)
 	if err != nil {
-		return -1, fmt.Errorf("cannot open root directory: %v", err)
+		return -1, false, fmt.Errorf("cannot open root directory: %v", err)
 	}
+
+	// Now progress through subsequent directories.
 	for iter.Next() {
 		// Keep closing the previous descriptor as we go, so that we have the
 		// last one handy from the MkDir below.
 		defer sysClose(fd)
-		fd, err = sec.MkDir(fd, iter.CurrentBase(), iter.CurrentCleanName(), perm, uid, gid)
+		fd, restricted, err = sec.MkDir(fd, iter.CurrentBase(), iter.CurrentCleanName(), perm, uid, gid, restricted)
 		if err != nil {
-			return -1, err
+			return -1, false, err
 		}
 	}
-
-	return fd, nil
+	return fd, restricted, nil
 }
 
 // MkDir creates a directory with a given name.
@@ -243,12 +361,15 @@ func (sec *Secure) MkPrefix(base string, perm os.FileMode, uid sys.UserID, gid s
 // The directory is represented with a file descriptor and its name (for
 // convenience). This function is meant to be used to construct subsequent
 // elements of some path. The return value contains the newly created file
-// descriptor for the new directory or -1 on error.
-func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMode, uid sys.UserID, gid sys.GroupID) (int, error) {
+// descriptor for the new directory or -1 on error, the new value of the restricted flag and an error, if any.
+func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) (int, bool, error) {
+	// Check if we are trespassing on the desired directory.
+	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
+		return -1, false, err
+	}
+
 	made := true
-
 	const openFlags = syscall.O_NOFOLLOW | syscall.O_CLOEXEC | syscall.O_DIRECTORY
-
 	if err := sysMkdirat(dirFd, name, uint32(perm.Perm())); err != nil {
 		switch err {
 		case syscall.EEXIST:
@@ -257,14 +378,14 @@ func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMod
 			// Treat EROFS specially: this is a hint that we have to poke a
 			// hole using tmpfs. The path below is the location where we
 			// need to poke the hole.
-			return -1, &ReadOnlyFsError{Path: dirName}
+			return -1, false, &ReadOnlyFsError{Path: dirName}
 		default:
-			return -1, fmt.Errorf("cannot create directory %q: %v", filepath.Join(dirName, name), err)
+			return -1, false, fmt.Errorf("cannot create directory %q: %v", filepath.Join(dirName, name), err)
 		}
 	}
 	newFd, err := sysOpenat(dirFd, name, openFlags, 0)
 	if err != nil {
-		return -1, fmt.Errorf("cannot open directory %q: %v", filepath.Join(dirName, name), err)
+		return -1, false, fmt.Errorf("cannot open directory %q: %v", filepath.Join(dirName, name), err)
 	}
 	if made {
 		// Chown each segment that we made.
@@ -272,10 +393,22 @@ func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMod
 			// Close the FD we opened if we fail here since the caller will get
 			// an error and won't assume responsibility for the FD.
 			sysClose(newFd)
-			return -1, fmt.Errorf("cannot chown directory %q to %d.%d: %v", filepath.Join(dirName, name), uid, gid, err)
+			return -1, false, fmt.Errorf("cannot chown directory %q to %d.%d: %v", filepath.Join(dirName, name), uid, gid, err)
 		}
+		// As soon as we find a place that is safe to write we can switch
+		// off the restricted mode (and thus any subsequent checks). This
+		// is because we only allow "writing" to read-only filesystems
+		// where writes fail with EROFS or to a tmpfs that snapd has
+		// privately mounted inside the per-snap mount namespace. As soon
+		// as we start walking over such tmpfs any subsequent children are
+		// either read-only bind mounts from $SNAP, other tmpfs'es  (e.g.
+		// one explicitly constructed for a layout) or writable places that
+		// are bind-mounted from $SNAP_DATA or similar.
+		//
+		// In essence further checks are not useful.
+		restricted = false
 	}
-	return newFd, err
+	return newFd, restricted, err
 }
 
 // MkFile creates a file with a given name.
@@ -284,9 +417,13 @@ func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMod
 // convenience). This function is meant to be used to create the leaf file as a
 // preparation for a mount point. Existing files are reused without errors.
 // Newly created files have the specified mode and ownership.
-func (sec *Secure) MkFile(dirFd int, dirName string, name string, perm os.FileMode, uid sys.UserID, gid sys.GroupID) error {
-	made := true
+func (sec *Secure) MkFile(dirFd int, dirName string, name string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) error {
+	// Check if we are trespassing on the desired directory.
+	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
+		return err
+	}
 
+	made := true
 	// NOTE: Tests don't show O_RDONLY as has a value of 0 and is not
 	// translated to textual form. It is added here for explicitness.
 	const openFlags = syscall.O_NOFOLLOW | syscall.O_CLOEXEC | syscall.O_RDONLY
@@ -331,9 +468,13 @@ func (sec *Secure) MkFile(dirFd int, dirName string, name string, perm os.FileMo
 // The directory is represented with a file descriptor and its name (for
 // convenience). This function is meant to be used to create the leaf symlink.
 // Existing and identical symlinks are reused without errors.
-func (sec *Secure) MkSymlink(dirFd int, dirName string, name string, oldname string) error {
+func (sec *Secure) MkSymlink(dirFd int, dirName string, name string, oldname string, restricted bool) error {
+	// Check if we are trespassing on the desired directory.
+	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
+		return err
+	}
+
 	// Create the final path segment as a symlink.
-	// TODO: don't write links outside of tmpfs or $SNAP_{,USER_}{DATA,COMMON}
 	if err := sysSymlinkat(oldname, dirFd, name); err != nil {
 		switch err {
 		case syscall.EEXIST:
@@ -398,11 +539,18 @@ func (sec *Secure) MkdirAll(path string, perm os.FileMode, uid sys.UserID, gid s
 	if !filepath.IsAbs(path) {
 		return fmt.Errorf("cannot create directory with relative path: %q", path)
 	}
+	// Set initial value of the restricted flag based on the restricted status
+	// of the path. In restricted mode we do extra checks to ensure that writes
+	// don't leak into the host filesystem. In unrestricted mode no checks are
+	// performed and some writes are allowed to show up in the host (e.g. in
+	// $SNAP_DATA).
+	restricted := sec.IsRestricted(path)
+
 	base, name := filepath.Split(path)
 	base = filepath.Clean(base) // Needed to chomp the trailing slash.
 
 	// Create the prefix.
-	dirFd, err := sec.MkPrefix(base, perm, uid, gid)
+	dirFd, restricted, err := sec.MkPrefix(base, perm, uid, gid, restricted)
 	if err != nil {
 		return err
 	}
@@ -410,7 +558,7 @@ func (sec *Secure) MkdirAll(path string, perm os.FileMode, uid sys.UserID, gid s
 
 	if name != "" {
 		// Create the leaf as a directory.
-		leafFd, err := sec.MkDir(dirFd, base, name, perm, uid, gid)
+		leafFd, _, err := sec.MkDir(dirFd, base, name, perm, uid, gid, restricted)
 		if err != nil {
 			return err
 		}
@@ -439,11 +587,18 @@ func (sec *Secure) MkfileAll(path string, perm os.FileMode, uid sys.UserID, gid 
 	if strings.HasSuffix(path, "/") {
 		return fmt.Errorf("cannot create non-file path: %q", path)
 	}
+	// Set initial value of the restricted flag based on the restricted status
+	// of the path. In restricted mode we do extra checks to ensure that writes
+	// don't leak into the host filesystem. In unrestricted mode no checks are
+	// performed and some writes are allowed to show up in the host (e.g. in
+	// $SNAP_DATA).
+	restricted := sec.IsRestricted(path)
+
 	base, name := filepath.Split(path)
 	base = filepath.Clean(base) // Needed to chomp the trailing slash.
 
 	// Create the prefix.
-	dirFd, err := sec.MkPrefix(base, perm, uid, gid)
+	dirFd, restricted, err := sec.MkPrefix(base, perm, uid, gid, restricted)
 	if err != nil {
 		return err
 	}
@@ -451,7 +606,7 @@ func (sec *Secure) MkfileAll(path string, perm os.FileMode, uid sys.UserID, gid 
 
 	if name != "" {
 		// Create the leaf as a file.
-		err = sec.MkFile(dirFd, base, name, perm, uid, gid)
+		err = sec.MkFile(dirFd, base, name, perm, uid, gid, restricted)
 	}
 	return err
 }
@@ -474,20 +629,27 @@ func (sec *Secure) MksymlinkAll(path string, perm os.FileMode, uid sys.UserID, g
 	if oldname == "" {
 		return fmt.Errorf("cannot create symlink with empty target: %q", path)
 	}
+	// Set initial value of the restricted flag based on the restricted status
+	// of the path. In restricted mode we do extra checks to ensure that writes
+	// don't leak into the host filesystem. In unrestricted mode no checks are
+	// performed and some writes are allowed to show up in the host (e.g. in
+	// $SNAP_DATA).
+	restricted := sec.IsRestricted(path)
 
 	base, name := filepath.Split(path)
 	base = filepath.Clean(base) // Needed to chomp the trailing slash.
 
 	// Create the prefix.
-	dirFd, err := sec.MkPrefix(base, perm, uid, gid)
+	dirFd, restricted, err := sec.MkPrefix(base, perm, uid, gid, restricted)
 	if err != nil {
+		fmt.Errorf("error: %v\n", err)
 		return err
 	}
 	defer sysClose(dirFd)
 
 	if name != "" {
 		// Create the leaf as a symlink.
-		err = sec.MkSymlink(dirFd, base, name, oldname)
+		err = sec.MkSymlink(dirFd, base, name, oldname, restricted)
 	}
 	return err
 }
@@ -507,7 +669,6 @@ func planWritableMimic(dir, neededBy string) ([]*Change, error) {
 	// We need a place for "safe keeping" of what is present in the original
 	// directory as we are about to attach a tmpfs there, which will hide
 	// everything inside.
-	logger.Debugf("create-writable-mimic %q", dir)
 	safeKeepingDir := filepath.Join("/tmp/.snap/", dir)
 
 	var changes []*Change
