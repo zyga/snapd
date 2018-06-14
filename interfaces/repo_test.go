@@ -783,7 +783,7 @@ func (s *RepositorySuite) TestResolveDisconnectMatrixNoSnaps(c *C) {
 		// Case 1 (FAILURE)
 		// Disconnect anything connected to a specific plug or slot.
 		// The snap name is implicit and refers to the core snap.
-		{"", "", "", "slot", `snap "core" has no plug or slot named "slot"`},
+		{"", "", "", "slot", `snap "system" has no plug or slot named "slot"`},
 		// Case 2 (INVALID)
 		// The slot name is not provided.
 		{"", "", "producer", "", "allowed forms are .*"},
@@ -793,18 +793,18 @@ func (s *RepositorySuite) TestResolveDisconnectMatrixNoSnaps(c *C) {
 		// Case 4 (FAILURE)
 		// Disconnect everything from a specific plug or slot.
 		// The plug side implicit refers to the core snap.
-		{"", "plug", "", "", `snap "core" has no plug or slot named "plug"`},
+		{"", "plug", "", "", `snap "system" has no plug or slot named "plug"`},
 		// Case 5 (FAILURE)
 		// Disconnect a specific connection.
 		// The plug and slot side implicit refers to the core snap.
-		{"", "plug", "", "slot", `snap "core" has no plug named "plug"`},
+		{"", "plug", "", "slot", `snap "system" has no plug named "plug"`},
 		// Case 6 (INVALID)
 		// Slot name is not provided.
 		{"", "plug", "producer", "", "allowed forms are .*"},
 		// Case 7 (FAILURE)
 		// Disconnect a specific connection.
 		// The plug side implicit refers to the core snap.
-		{"", "plug", "producer", "slot", `snap "core" has no plug named "plug"`},
+		{"", "plug", "producer", "slot", `snap "system" has no plug named "plug"`},
 		// Case 8 (INVALID)
 		// Plug name is not provided.
 		{"consumer", "", "", "", "allowed forms are .*"},

@@ -429,6 +429,9 @@ func (r *Repository) ResolveConnect(plugSnapName, plugName, slotSnapName, slotNa
 	if slotSnapName == "" {
 		// Use the core snap if the slot-side snap name is empty
 		switch {
+		case r.slots["system"] != nil:
+			slotSnapName = "system"
+			// TODO: Remove support for "core" and "ubuntu-core"
 		case r.slots["core"] != nil:
 			slotSnapName = "core"
 		case r.slots["ubuntu-core"] != nil:
@@ -496,7 +499,8 @@ func (r *Repository) ResolveDisconnect(plugSnapName, plugName, slotSnapName, slo
 		// This is not strictly speaking true BUT when there's no core snap the
 		// produced error messages are consistent to when the is a core snap
 		// and it has the modern form.
-		coreSnapName = "core"
+		// TODO: simplify this given the presence of the virtual system snap
+		coreSnapName = "system"
 	}
 
 	// There are two allowed forms (see snap disconnect --help)
