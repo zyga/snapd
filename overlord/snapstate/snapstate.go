@@ -1662,8 +1662,24 @@ func CurrentInfo(st *state.State, name string) (*snap.Info, error) {
 	return info, err
 }
 
+var systemSnapState *SnapState = &SnapState{
+	SnapType: string(snap.TypeSystem),
+	Active:   true,
+	Sequence: []*snap.SideInfo{&snap.SystemSnap().SideInfo},
+	Current:  snap.SystemSnap().SideInfo.Revision,
+	Channel:  snap.SystemSnap().SideInfo.Channel,
+	Flags: Flags{
+		Required: true,
+	},
+}
+
 // Get retrieves the SnapState of the given snap.
 func Get(st *state.State, name string, snapst *SnapState) error {
+	if name == "system" {
+		*snapst = *systemSnapState
+		return nil
+	}
+
 	var snaps map[string]*json.RawMessage
 	err := st.Get("snaps", &snaps)
 	if err != nil {
@@ -1706,6 +1722,9 @@ func NumSnaps(st *state.State) (int, error) {
 
 // Set sets the SnapState of the given snap, overwriting any earlier state.
 func Set(st *state.State, name string, snapst *SnapState) {
+	if name == "system" {
+		return
+	}
 	var snaps map[string]*json.RawMessage
 	err := st.Get("snaps", &snaps)
 	if err != nil && err != state.ErrNoState {
