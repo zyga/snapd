@@ -35,7 +35,8 @@ const (
 	TypeBase   Type = "base"
 
 	// FIXME: this really should be TypeCore
-	TypeOS Type = "os"
+	TypeOS     Type = "os"
+	TypeSystem Type = "system"
 )
 
 // UnmarshalJSON sets *m to a copy of data.
@@ -68,7 +69,7 @@ func (m *Type) fromString(str string) error {
 		t = TypeApp
 	}
 
-	if t != TypeApp && t != TypeGadget && t != TypeOS && t != TypeKernel && t != TypeBase {
+	if t != TypeApp && t != TypeGadget && t != TypeOS && t != TypeKernel && t != TypeBase && t != TypeSystem {
 		return fmt.Errorf("invalid snap type: %q", str)
 	}
 
