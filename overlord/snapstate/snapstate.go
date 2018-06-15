@@ -58,7 +58,7 @@ const (
 
 func doInstall(st *state.State, snapst *SnapState, snapsup *SnapSetup, flags int) (*state.TaskSet, error) {
 	if snapsup.Name() == "system" {
-		return nil, fmt.Errorf("cannot install reserved snap name 'system'")
+		return nil, fmt.Errorf("the virtual system snap cannot be installed")
 	}
 	if snapst.IsInstalled() && !snapst.Active {
 		return nil, fmt.Errorf("cannot update disabled snap %q", snapsup.Name())

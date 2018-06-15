@@ -653,7 +653,7 @@ func (s snapmgrTestSuite) TestInstallFailsOnSystem(c *C) {
 	snapsup := &snapstate.SnapSetup{SideInfo: &snap.SideInfo{RealName: "system", SnapID: "some-snap-id", Revision: snap.R(1)}}
 	_, err := snapstate.DoInstall(s.state, nil, snapsup, 0)
 	c.Assert(err, NotNil)
-	c.Assert(err, ErrorMatches, `cannot install reserved snap name 'system'`)
+	c.Assert(err, ErrorMatches, `the virtual system snap cannot be installed`)
 }
 
 func (s *snapmgrTestSuite) TestUpdateCreatesDiscardAfterCurrentTasks(c *C) {
