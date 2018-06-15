@@ -273,6 +273,12 @@ func (m *InterfaceManager) reloadConnections(snapName string) ([]string, error) 
 		if snapName != "" && connRef.PlugRef.Snap != snapName && connRef.SlotRef.Snap != snapName {
 			continue
 		}
+		// Rename connections going to "core" snap to the "system" snap on the
+		// fly. This is done in memory only so that the old snapd state can
+		// stay compatible for reverting. This version of snapd will automatically
+		if connRef.SlotRef.Snap == "core" {
+			connRef.SlotRef.Snap = "system"
+		}
 
 		// Note: reloaded connections are not checked against policy again, and also we don't call BeforeConnect* methods on them.
 		if _, err := m.repo.Connect(connRef, conn.DynamicPlugAttrs, conn.DynamicSlotAttrs, nil); err != nil {
