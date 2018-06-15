@@ -221,6 +221,9 @@ const (
 var snapReadInfo = snap.ReadInfo
 
 func readInfo(name string, si *snap.SideInfo, flags int) (*snap.Info, error) {
+	if name == "system" {
+		return snap.SystemSnap(), nil
+	}
 	info, err := snapReadInfo(name, si)
 	if err != nil && flags&errorOnBroken != 0 {
 		return nil, err
