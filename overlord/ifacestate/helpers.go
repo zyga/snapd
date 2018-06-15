@@ -32,6 +32,7 @@ import (
 	"github.com/snapcore/snapd/overlord/assertstate"
 	"github.com/snapcore/snapd/overlord/snapstate"
 	"github.com/snapcore/snapd/overlord/state"
+	"github.com/snapcore/snapd/release"
 	"github.com/snapcore/snapd/snap"
 )
 
@@ -43,6 +44,9 @@ func (m *InterfaceManager) initialize(extraInterfaces []interfaces.Interface, ex
 		return err
 	}
 	if err := m.addBackends(extraBackends); err != nil {
+		return err
+	}
+	if err := m.addSystemInterfaces(); err != nil {
 		return err
 	}
 	if err := m.addSnaps(); err != nil {
@@ -94,6 +98,20 @@ func (m *InterfaceManager) addBackends(extra []interfaces.SecurityBackend) error
 		}
 		if err := m.repo.AddBackend(backend); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// addSystemInterfaces modifies the virtual system snap to add implicit slots.
+func (m *InterfaceManager) addSystemInterfaces() error {
+	// The system snap is a singleton so we may modify it here.
+	systemSnap := snap.SystemSnap()
+	for _, iface := range m.repo.AllInterfaces() {
+		si := interfaces.StaticInfoOf(iface)
+		if (release.OnClassic && si.ImplicitOnClassic) || (!release.OnClassic && si.ImplicitOnCore) {
+			name := iface.Name()
+			systemSnap.Slots[name] = &snap.SlotInfo{Name: name, Snap: systemSnap, Interface: name}
 		}
 	}
 	return nil
