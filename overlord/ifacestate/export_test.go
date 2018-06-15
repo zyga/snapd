@@ -27,7 +27,6 @@ import (
 )
 
 var (
-	AddImplicitSlots          = addImplicitSlots
 	SnapsWithSecurityProfiles = snapsWithSecurityProfiles
 	CheckConnectConflicts     = checkConnectConflicts
 	FindSymmetricAutoconnect  = findSymmetricAutoconnect
