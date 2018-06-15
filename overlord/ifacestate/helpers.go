@@ -519,5 +519,7 @@ func snapsWithSecurityProfiles(st *state.State) ([]*snap.Info, error) {
 		infos = append(infos, snapInfo)
 	}
 
+	// Add the virtual system snap to the list of returned snaps.
+	infos = append(infos, snap.SystemSnap())
 	return infos, nil
 }
