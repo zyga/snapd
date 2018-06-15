@@ -110,7 +110,7 @@ func (x *cmdInterfaces) Execute(args []string) error {
 		}
 		// The OS snap is special and enable abbreviated
 		// display syntax on the slot-side of the connection.
-		if slot.Snap == "core" || slot.Snap == "ubuntu-core" || slot.Snap == snap.UseNick("core") {
+		if slot.Snap == "core" || slot.Snap == "ubuntu-core" || slot.Snap == "system" || slot.Snap == snap.UseNick("core") {
 			fmt.Fprintf(w, ":%s\t", slot.Name)
 		} else {
 			fmt.Fprintf(w, "%s:%s\t", slot.Snap, slot.Name)
