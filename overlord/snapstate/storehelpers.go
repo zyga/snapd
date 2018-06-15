@@ -175,6 +175,10 @@ func preUpdateInfo(st *state.State, snapst *SnapState, amend bool, userID int) (
 		return nil, nil, err
 	}
 
+	if curInfo.Name() == "system" {
+		return curInfo, user, fmt.Errorf("virtual snaps cannot be refreshed")
+	}
+
 	if curInfo.SnapID == "" { // covers also trymode
 		if !amend {
 			return nil, nil, store.ErrLocalSnap
