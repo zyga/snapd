@@ -430,6 +430,11 @@ func (r *Repository) ResolveConnect(plugSnapName, plugName, slotSnapName, slotNa
 	if plugName == "" {
 		return nil, fmt.Errorf("cannot resolve connection, plug name is empty")
 	}
+
+	if slotSnapName == "core" && len(r.slots["snapd"]) > 0 {
+		slotSnapName = "snapd"
+	}
+
 	// Ensure that such plug exists
 	plug := r.plugs[plugSnapName][plugName]
 	if plug == nil {
@@ -509,6 +514,10 @@ func (r *Repository) ResolveDisconnect(plugSnapName, plugName, slotSnapName, slo
 		// produced error messages are consistent to when the is a core snap
 		// and it has the modern form.
 		coreSnapName = "core"
+	}
+
+	if slotSnapName == "core" && len(r.slots["snapd"]) > 0 {
+		slotSnapName = "snapd"
 	}
 
 	// There are two allowed forms (see snap disconnect --help)
