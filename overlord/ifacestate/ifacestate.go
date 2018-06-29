@@ -133,9 +133,23 @@ func checkConnectConflicts(st *state.State, plugSnap, slotSnap string, auto bool
 	return nil
 }
 
+func hasSnapdSnap(st *state.State) bool {
+	var snapst snapstate.SnapState
+	err := snapstate.Get(st, "snapd", &snapst)
+	return err == nil
+}
+
 // Connect returns a set of tasks for connecting an interface.
 //
 func Connect(st *state.State, plugSnap, plugName, slotSnap, slotName string) (*state.TaskSet, error) {
+	// When a request comes in asking for "core" explicitly but we also have
+	// "snapd" in the repository then transparently change the request to
+	// refer to "snapd". This keeps existing scripts, user command line
+	// history and anything else that names the core snap explicitly, working.
+	if slotSnap == "core" && hasSnapdSnap(st) {
+		slotSnap = "snapd"
+	}
+
 	const auto = false
 	if err := checkConnectConflicts(st, plugSnap, slotSnap, auto); err != nil {
 		return nil, err
@@ -266,6 +280,14 @@ func initialConnectAttributes(st *state.State, plugSnap string, plugName string,
 
 // Disconnect returns a set of tasks for  disconnecting an interface.
 func Disconnect(st *state.State, plugSnap, plugName, slotSnap, slotName string) (*state.TaskSet, error) {
+	// When a request comes in asking for "core" explicitly but we also have
+	// "snapd" in the repository then transparently change the request to
+	// refer to "snapd". This keeps existing scripts, user command line
+	// history and anything else that names the core snap explicitly, working.
+	if slotSnap == "core" && hasSnapdSnap(st) {
+		slotSnap = "snapd"
+	}
+
 	if err := snapstate.CheckChangeConflict(st, plugSnap, noConflictOnConnectTasks, nil); err != nil {
 		return nil, err
 	}

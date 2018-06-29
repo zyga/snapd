@@ -460,6 +460,14 @@ func (m *InterfaceManager) doDisconnect(task *state.Task, _ *tomb.Tomb) error {
 		return err
 	}
 
+	// When a request comes in asking for "core" explicitly but we also have
+	// "snapd" in the repository then transparently change the request to
+	// refer to "snapd". This keeps existing scripts, user command line
+	// history and anything else that names the core snap explicitly, working.
+	if slotRef.Snap == "core" && m.repo.HasSnapdSnap() {
+		slotRef.Snap = "snapd"
+	}
+
 	conns, err := getConns(st)
 	if err != nil {
 		return err
