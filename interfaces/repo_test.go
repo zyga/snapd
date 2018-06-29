@@ -118,6 +118,25 @@ func addPlugsSlots(c *C, repo *Repository, yamls ...string) []*snap.Info {
 	return result
 }
 
+// Test for Repository.HasSnapdSnap()
+
+func (s *RepositorySuite) TestHasSnapdSnap(c *C) {
+	snapdInfo := snaptest.MockInfo(c, `
+name: snapd
+version: 0
+type: app
+slots:
+    interface:
+`, nil)
+
+	c.Assert(s.emptyRepo.AddInterface(s.iface), IsNil)
+	c.Assert(s.emptyRepo.HasSnapdSnap(), Equals, false)
+	c.Assert(s.emptyRepo.AddSnap(snapdInfo), IsNil)
+	c.Assert(s.emptyRepo.HasSnapdSnap(), Equals, true)
+	c.Assert(s.emptyRepo.RemoveSnap("snapd"), IsNil)
+	c.Assert(s.emptyRepo.HasSnapdSnap(), Equals, false)
+}
+
 // Tests for Repository.AddInterface()
 
 func (s *RepositorySuite) TestAddInterface(c *C) {

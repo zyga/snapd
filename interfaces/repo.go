@@ -57,6 +57,16 @@ func NewRepository() *Repository {
 	return repo
 }
 
+// HasSnapdSnap returns true if the repository contains the "snapd" snap
+// with non-zero number of slots. This implies that snapd is the host for
+// implicit interfaces on the system.
+func (r *Repository) HasSnapdSnap() bool {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	return len(r.slots["snapd"]) > 0
+}
+
 // Interface returns an interface with a given name.
 func (r *Repository) Interface(interfaceName string) Interface {
 	r.m.Lock()
