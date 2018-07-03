@@ -2426,7 +2426,8 @@ func (s *interfaceManagerSuite) TestCoreConnectionsRenamed(c *C) {
 
 // Test that "network-bind" and "core-support" plugs are renamed to
 // "network-bind-plug" and "core-support-plug" in order not to clash with slots
-// with the same names.
+// with the same names. This test also shows how core-support-plug is removed
+// after being renamed.
 func (s *interfaceManagerSuite) TestAutomaticCorePlugsRenamed(c *C) {
 	s.mockSnap(c, coreSnapYaml+`
 plugs:
@@ -2438,12 +2439,13 @@ plugs:
 	// old plugs are gone
 	c.Assert(mgr.Repository().Plug("core", "network-bind"), IsNil)
 	c.Assert(mgr.Repository().Plug("core", "core-support"), IsNil)
-	// new plugs are present
-	c.Assert(mgr.Repository().Plug("core", "network-bind-plug"), Not(IsNil))
-	c.Assert(mgr.Repository().Plug("core", "core-support-plug"), Not(IsNil))
+	// new plugs are present (well, one of them)
+	c.Assert(mgr.Repository().Plug("core", "network-bind-plug"), NotNil)
+	// The core support plug is now removed from core.
+	c.Assert(mgr.Repository().Plug("core", "core-support-plug"), IsNil)
 	// slots are present and unchanged
-	c.Assert(mgr.Repository().Slot("core", "network-bind"), Not(IsNil))
-	c.Assert(mgr.Repository().Slot("core", "core-support"), Not(IsNil))
+	c.Assert(mgr.Repository().Slot("core", "network-bind"), NotNil)
+	c.Assert(mgr.Repository().Slot("core", "core-support"), NotNil)
 }
 
 func (s *interfaceManagerSuite) TestAutoConnectDuringCoreTransition(c *C) {

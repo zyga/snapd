@@ -51,6 +51,9 @@ func (m *InterfaceManager) initialize(extraInterfaces []interfaces.Interface, ex
 	if err := m.renameCorePlugConnection(); err != nil {
 		return err
 	}
+	if err := m.removeCoreSupportPlug(); err != nil {
+		return err
+	}
 	if err := removeStaleConnections(m.state); err != nil {
 		return err
 	}
@@ -196,6 +199,16 @@ func (m *InterfaceManager) renameCorePlugConnection() error {
 		setConns(m.state, conns)
 	}
 	return nil
+}
+
+// removeCoreSupportPlug removes the "core-support-plug" from the core snap.
+// This is done in anticipation of https://github.com/snapcore/core/pull/92
+func (m *InterfaceManager) removeCoreSupportPlug() error {
+	var err error
+	if m.repo.Plug("core", "core-support-plug") != nil {
+		err = m.repo.RemovePlug("core", "core-support-plug")
+	}
+	return err
 }
 
 // removeStaleConnections removes stale connections left by some older versions of snapd.
