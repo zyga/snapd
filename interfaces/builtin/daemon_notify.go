@@ -41,6 +41,9 @@ const daemonNotifyBaseDeclarationSlots = `
 const daemonNotifyConnectedPlugAppArmorTemplate = `
 # Allow sending notification messages to systemd through the notify socket
 {{notify-socket-rule}},
+
+# Allow using systemd-notify in shell scripts.
+/{,usr/}bin/systemd-notify ixr,
 `
 
 type daemoNotifyInterface struct {
