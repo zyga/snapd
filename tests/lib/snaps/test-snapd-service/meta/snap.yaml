@@ -1,5 +1,8 @@
 name: test-snapd-service
 version: 1.0
+plugs:
+    daemon-notify:
+        label: Needed to talk to systemd via NOTIFY_SOCKET, see sd_notify(3)
 apps:
     test-snapd-service:
         command: bin/start
@@ -12,32 +15,32 @@ apps:
     test-snapd-sighup-service:
         command: bin/start-stop-mode sighup
         stop-command: bin/stop-stop-mode sighup
-        daemon: simple
+        daemon: notify
         stop-mode: sighup
     test-snapd-sighup-all-service:
         command: bin/start-stop-mode sighup-all
         stop-command: bin/stop-stop-mode sighup-all
-        daemon: simple
+        daemon: notify
         stop-mode: sighup-all
     test-snapd-sigusr1-service:
         command: bin/start-stop-mode sigusr1
         stop-command: bin/stop-stop-mode sigusr1
-        daemon: simple
+        daemon: notify
         stop-mode: sigusr1
     test-snapd-sigusr1-all-service:
         command: bin/start-stop-mode sigusr1-all
         stop-command: bin/stop-stop-mode sigusr1-all
-        daemon: simple
+        daemon: notify
         stop-mode: sigusr1-all
     test-snapd-sigusr2-service:
         command: bin/start-stop-mode sigusr2
         stop-command: bin/stop-stop-mode sigusr2
-        daemon: simple
+        daemon: notify
         stop-mode: sigusr2
     test-snapd-sigusr2-all-service:
         command: bin/start-stop-mode sigusr2-all
         stop-command: bin/stop-stop-mode sigusr2-all
-        daemon: simple
+        daemon: notify
         stop-mode: sigusr2-all
     test-snapd-sigterm-service:
         command: bin/start-stop-mode-sigterm
@@ -50,7 +53,7 @@ apps:
     test-snapd-endure-service:
         command: bin/start-stop-mode endure
         stop-command: bin/stop-stop-mode endure
-        daemon: simple
+        daemon: notify
         refresh-mode: endure
     test-snapd-service-refuses-to-stop:
         command: bin/start
