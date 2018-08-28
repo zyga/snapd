@@ -32,4 +32,16 @@ sc_distro sc_classify_distro(void);
 
 bool sc_should_use_normal_mode(sc_distro distro, const char *base_snap_name);
 
+/**
+ * Return the location of /snap directory on the distribution.
+ *
+ * The returned value expresses where the host distribution chooses to mount
+ * snaps and host automatically generated application launchers.
+ *
+ * The return value is appropriate for the host distribution. Once inside a
+ * mount namespace after pivot_root the directory is constant and needs not to
+ * be inspected.
+ **/
+const char *sc_SNAP_MOUNT_DIR(void);
+
 #endif

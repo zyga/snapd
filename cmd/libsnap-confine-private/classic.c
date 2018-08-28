@@ -2,10 +2,14 @@
 #include "classic.h"
 #include "../libsnap-confine-private/cleanup-funcs.h"
 #include "../libsnap-confine-private/string-utils.h"
+#include "../libsnap-confine-private/utils.h"
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 static const char *os_release = "/etc/os-release";
@@ -60,4 +64,45 @@ sc_distro sc_classify_distro(void)
 bool sc_should_use_normal_mode(sc_distro distro, const char *base_snap_name)
 {
 	return distro != SC_DISTRO_CORE16 || !sc_streq(base_snap_name, "core");
+}
+
+static const char *canonical_SNAP_MOUNT_DIR = "/snap";
+static const char *alternative_SNAP_MOUNT_DIR = "/var/lib/snapd/snap";
+
+const char *sc_SNAP_MOUNT_DIR(void)
+{
+	struct stat stat_buf;
+
+	/* Check if we can use the canonical SNAP_MOUNT_DIR */
+	if (lstat(canonical_SNAP_MOUNT_DIR, &stat_buf) < 0) {
+		/* The /snap directory may be absent because of distribution policy.
+		 * This is never an error. We just try the alternative location. */
+		if (errno != ENOENT) {
+			die("cannot lstat %s", canonical_SNAP_MOUNT_DIR);
+		}
+	} else {
+		/* If /snap is not a directory (e.g. it can be a symlink) then IGNORE
+		 * that value as it is a compatibility choice expressed by the user.
+		 * The distribution policy is still that alternative mount directory be
+		 * the effective one. */
+		if ((stat_buf.st_mode & S_IFMT) == S_IFDIR) {
+			return canonical_SNAP_MOUNT_DIR;
+		}
+	}
+
+	/* Check if we can use the alternative SNAP_MOUNT_DIR */
+	if (lstat(alternative_SNAP_MOUNT_DIR, &stat_buf) < 0) {
+		/* The /var/lib/snapd/snap directory must exist if /snap was not a
+		 * directory. We don't have any other alternatives at this point. */
+		die("cannot lstat %s", alternative_SNAP_MOUNT_DIR);
+	}
+	if ((stat_buf.st_mode & S_IFMT) != S_IFDIR) {
+		/* If /snap is not a directory (e.g. it can be a symlink then IGNORE
+		 * that value as it is a compatibility choice expressed by the user.
+		 * The distribution policy is still that alternative mount directory be
+		 * the effective one. */
+		die("cannot use %s which is not a directory",
+		    alternative_SNAP_MOUNT_DIR);
+	}
+	return alternative_SNAP_MOUNT_DIR;
 }

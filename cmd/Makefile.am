@@ -310,7 +310,8 @@ snap-confine/%.1: snap-confine/%.rst
 endif
 
 snap-confine/snap-confine.apparmor: snap-confine/snap-confine.apparmor.in Makefile
-	sed -e 's,[@]LIBEXECDIR[@],$(libexecdir),g' -e 's,[@]SNAP_MOUNT_DIR[@],$(SNAP_MOUNT_DIR),' <$< >$@
+	sed -e 's,[@]LIBEXECDIR[@],$(libexecdir),g' -e 's![@]SNAP_MOUNT_DIR[@]!/{,/var/lib/snapd/}snap!' <$< >$@
+
 
 # Install the apparmor profile
 #
@@ -342,10 +343,6 @@ endif
 ##
 
 libexec_PROGRAMS += snap-mgmt/snap-mgmt
-
-snap-mgmt/snap-mgmt: snap-mgmt/snap-mgmt.sh.in Makefile snap-mgmt/$(am__dirstamp)
-	sed -e 's,[@]SNAP_MOUNT_DIR[@],$(SNAP_MOUNT_DIR),' <$< >$@
-
 
 ##
 ## ubuntu-core-launcher

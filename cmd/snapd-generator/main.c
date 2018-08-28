@@ -21,6 +21,7 @@
 
 #include "config.h"
 
+#include "../libsnap-confine-private/classic.h"
 #include "../libsnap-confine-private/cleanup-funcs.h"
 #include "../libsnap-confine-private/mountinfo.h"
 #include "../libsnap-confine-private/string-utils.h"
@@ -73,7 +74,7 @@ int main(int argc, char **argv)
 	// Construct the file name for a new systemd mount unit.
 	char fname[PATH_MAX + 1] = { 0 };
 	sc_must_snprintf(fname, sizeof fname,
-			 "%s/" SNAP_MOUNT_DIR ".mount", normal_dir);
+			 "%s/%s.mount", normal_dir, sc_SNAP_MOUNT_DIR());
 
 	// Open the mount unit and write the contents.
 	FILE *f SC_CLEANUP(sc_cleanup_file) = NULL;
@@ -90,8 +91,8 @@ int main(int argc, char **argv)
 		"Description=Ensure that the snap directory "
 		"shares mount events.\n");
 	fprintf(f, "[Mount]\n");
-	fprintf(f, "What=" SNAP_MOUNT_DIR "\n");
-	fprintf(f, "Where=" SNAP_MOUNT_DIR "\n");
+	fprintf(f, "What=%s\n", sc_SNAP_MOUNT_DIR());
+	fprintf(f, "Where=%s\n", sc_SNAP_MOUNT_DIR());
 	fprintf(f, "Type=none\n");
 	fprintf(f, "Options=bind,shared\n");
 	fprintf(f, "[Install]\n");

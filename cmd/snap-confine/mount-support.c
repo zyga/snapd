@@ -415,7 +415,7 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config)
 	// directory is always /snap. On the host it is a build-time configuration
 	// option stored in SNAP_MOUNT_DIR.
 	sc_must_snprintf(dst, sizeof dst, "%s/snap", scratch_dir);
-	sc_do_mount(SNAP_MOUNT_DIR, dst, NULL, MS_BIND | MS_REC | MS_SLAVE,
+	sc_do_mount(sc_SNAP_MOUNT_DIR(), dst, NULL, MS_BIND | MS_REC | MS_SLAVE,
 		    NULL);
 	sc_do_mount("none", dst, NULL, MS_REC | MS_SLAVE, NULL);
 	// Create the hostfs directory if one is missing. This directory is a part
@@ -640,7 +640,7 @@ void sc_populate_mount_ns(struct sc_apparmor *apparmor, int snap_update_ns_fd,
 		};
 		char rootfs_dir[PATH_MAX] = { 0 };
 		sc_must_snprintf(rootfs_dir, sizeof rootfs_dir,
-				 "%s/%s/current/", SNAP_MOUNT_DIR,
+				 "%s/%s/current/", sc_SNAP_MOUNT_DIR(),
 				 base_snap_name);
 		if (access(rootfs_dir, F_OK) != 0) {
 			if (sc_streq(base_snap_name, "core")) {
@@ -651,7 +651,7 @@ void sc_populate_mount_ns(struct sc_apparmor *apparmor, int snap_update_ns_fd,
 				base_snap_name = "ubuntu-core";
 				sc_must_snprintf(rootfs_dir, sizeof rootfs_dir,
 						 "%s/%s/current/",
-						 SNAP_MOUNT_DIR,
+						 sc_SNAP_MOUNT_DIR(),
 						 base_snap_name);
 				if (access(rootfs_dir, F_OK) != 0) {
 					die("cannot locate the core or legacy core snap (current symlink missing?)");
@@ -739,16 +739,16 @@ static bool is_mounted_with_shared_option(const char *dir)
 void sc_ensure_shared_snap_mount(void)
 {
 	if (!is_mounted_with_shared_option("/")
-	    && !is_mounted_with_shared_option(SNAP_MOUNT_DIR)) {
+	    && !is_mounted_with_shared_option(sc_SNAP_MOUNT_DIR())) {
 		// TODO: We could be more aggressive and refuse to function but since
 		// we have no data on actual environments that happen to limp along in
 		// this configuration let's not do that yet.  This code should be
 		// removed once we have a measurement and feedback mechanism that lets
 		// us decide based on measurable data.
-		sc_do_mount(SNAP_MOUNT_DIR, SNAP_MOUNT_DIR, "none",
+		sc_do_mount(sc_SNAP_MOUNT_DIR(), sc_SNAP_MOUNT_DIR(), "none",
 			    MS_BIND | MS_REC, 0);
-		sc_do_mount("none", SNAP_MOUNT_DIR, NULL, MS_SHARED | MS_REC,
-			    NULL);
+		sc_do_mount("none", sc_SNAP_MOUNT_DIR(), NULL,
+			    MS_SHARED | MS_REC, NULL);
 	}
 }
 

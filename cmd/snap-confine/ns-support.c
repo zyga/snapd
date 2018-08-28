@@ -252,7 +252,7 @@ static dev_t find_base_snap_device(const char *base_snap_name,
 	char base_squashfs_path[PATH_MAX];
 	sc_must_snprintf(base_squashfs_path,
 			 sizeof base_squashfs_path, "%s/%s/%s",
-			 SNAP_MOUNT_DIR, base_snap_name, base_snap_rev);
+			 sc_SNAP_MOUNT_DIR(), base_snap_name, base_snap_rev);
 	struct sc_mountinfo *mi SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
 	mi = sc_parse_mountinfo(NULL);
 	if (mi == NULL) {
@@ -330,7 +330,7 @@ static int sc_inspect_and_maybe_discard_stale_ns(int mnt_fd,
 
 	// Read the revision of the base snap by looking at the current symlink.
 	sc_must_snprintf(fname, sizeof fname, "%s/%s/current",
-			 SNAP_MOUNT_DIR, base_snap_name);
+			 sc_SNAP_MOUNT_DIR(), base_snap_name);
 	if (readlink(fname, base_snap_rev, sizeof base_snap_rev) < 0) {
 		die("cannot read revision of base snap %s", fname);
 	}

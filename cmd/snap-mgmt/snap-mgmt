@@ -7,7 +7,14 @@
 
 set -e
 
-SNAP_MOUNT_DIR="@SNAP_MOUNT_DIR@"
+if [ -d /snap ] && [ ! -L /snap ]; then
+	SNAP_MOUNT_DIR=/snap
+elif [ -d /var/lib/snapd/snap ]; then
+	SNAP_MOUNT_DIR=/var/lib/snapd/snap
+else
+	echo "Cannot determine SNAP_MOUNT_DIR" >&2
+	exit 1
+fi
 
 show_help() {
     exec cat <<'EOF'
