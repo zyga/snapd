@@ -151,7 +151,7 @@ func (s *utilsSuite) TestSecureMkdirAllWithRestrictedEtc(c *C) {
 	s.sys.InsertFstatfsResult(`fstatfs 4 <ptr>`, syscall.Statfs_t{Type: update.Ext4Magic})
 	s.sys.InsertFault(`mkdirat 3 "etc" 0755`, syscall.EEXIST)
 	c.Assert(s.sec.MkdirAll("/etc/demo", 0755, 123, 456), ErrorMatches,
-		`cannot write to "/etc": it would affect the host file system`)
+		`cannot write to "/etc/demo" because it would affect the host in "/etc"`)
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
 		{C: `open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, R: 3},
 		{C: `fstatfs 3 <ptr>`, R: syscall.Statfs_t{Type: update.SquashfsMagic}},
@@ -736,7 +736,7 @@ func (s *utilsSuite) TestSecureMksymlinkAllInEtc(c *C) {
 	s.sys.InsertFstatfsResult(`fstatfs 4 <ptr>`, syscall.Statfs_t{Type: update.Ext4Magic})
 	s.sys.InsertFault(`mkdirat 3 "etc" 0755`, syscall.EEXIST)
 	err := s.sec.MksymlinkAll("/etc/symlink", 0755, 0, 0, "/oldname")
-	c.Check(err, ErrorMatches, `cannot write to "/etc": it would affect the host file system`)
+	c.Check(err, ErrorMatches, `cannot write to "/etc/symlink" because it would affect the host in "/etc"`)
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
 		{C: `open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, R: 3},
 		{C: `fstatfs 3 <ptr>`, R: syscall.Statfs_t{Type: update.SquashfsMagic}},
@@ -755,7 +755,7 @@ func (s *utilsSuite) TestSecureMksymlinkAllDeepInEtc(c *C) {
 	s.sys.InsertFstatfsResult(`fstatfs 4 <ptr>`, syscall.Statfs_t{Type: update.Ext4Magic})
 	s.sys.InsertFault(`mkdirat 3 "etc" 0755`, syscall.EEXIST)
 	err := s.sec.MksymlinkAll("/etc/some/other/stuff/symlink", 0755, 0, 0, "/oldname")
-	c.Assert(err, ErrorMatches, `cannot write to "/etc/": it would affect the host file system`)
+	c.Assert(err, ErrorMatches, `cannot write to "/etc/some/other/stuff/symlink" because it would affect the host in "/etc/"`)
 	c.Assert(err.(*update.TrespassingError).MimicPath(), Equals, "/etc/")
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
 		{C: `open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, R: 3},
@@ -774,7 +774,7 @@ func (s *utilsSuite) TestSecureMkfileAllInEtc(c *C) {
 	s.sys.InsertFstatfsResult(`fstatfs 4 <ptr>`, syscall.Statfs_t{Type: update.Ext4Magic})
 	s.sys.InsertFault(`mkdirat 3 "etc" 0755`, syscall.EEXIST)
 	err := s.sec.MkfileAll("/etc/file", 0755, 0, 0)
-	c.Assert(err, ErrorMatches, `cannot write to "/etc": it would affect the host file system`)
+	c.Assert(err, ErrorMatches, `cannot write to "/etc/file" because it would affect the host in "/etc"`)
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
 		{C: `open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, R: 3},
 		{C: `fstatfs 3 <ptr>`, R: syscall.Statfs_t{Type: update.SquashfsMagic}},
@@ -792,7 +792,7 @@ func (s *utilsSuite) TestSecureMkdirAllInEtc(c *C) {
 	s.sys.InsertFstatfsResult(`fstatfs 4 <ptr>`, syscall.Statfs_t{Type: update.Ext4Magic})
 	s.sys.InsertFault(`mkdirat 3 "etc" 0755`, syscall.EEXIST)
 	err := s.sec.MkdirAll("/etc/dir", 0755, 0, 0)
-	c.Assert(err, ErrorMatches, `cannot write to "/etc": it would affect the host file system`)
+	c.Assert(err, ErrorMatches, `cannot write to "/etc/dir" because it would affect the host in "/etc"`)
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
 		{C: `open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, R: 3},
 		{C: `fstatfs 3 <ptr>`, R: syscall.Statfs_t{Type: update.SquashfsMagic}},
@@ -1234,10 +1234,10 @@ func (s *realSystemSuite) TestSecureOpenPathSymlinkedParent(c *C) {
 }
 
 func (s *realSystemSuite) TestTrespassingError(c *C) {
-	err := &update.TrespassingError{Path: "/"}
+	err := &update.TrespassingError{ViolatedPath: "/"}
 	c.Assert(err.MimicPath(), Equals, "/")
-	err = &update.TrespassingError{Path: "/var"}
+	err = &update.TrespassingError{ViolatedPath: "/var"}
 	c.Assert(err.MimicPath(), Equals, "/var")
-	err = &update.TrespassingError{Path: "/var/cache"}
+	err = &update.TrespassingError{ViolatedPath: "/var/cache"}
 	c.Assert(err.MimicPath(), Equals, "/var/cache")
 }

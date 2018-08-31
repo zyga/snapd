@@ -139,17 +139,18 @@ func (e *ReadOnlyFsError) MimicPath() string {
 
 // TrespassingError is an error when filesystem operation would affect the host.
 type TrespassingError struct {
-	Path string
+	ViolatedPath string
+	DesiredPath  string
 }
 
 // Error returns a formatted error message.
 func (e *TrespassingError) Error() string {
-	return fmt.Sprintf("cannot write to %q: it would affect the host file system", e.Path)
+	return fmt.Sprintf("cannot write to %q because it would affect the host in %q", e.DesiredPath, e.ViolatedPath)
 }
 
 // MimicPath returns the path of the directory where a mimic ought to be constructed.
 func (e *TrespassingError) MimicPath() string {
-	return e.Path
+	return e.ViolatedPath
 }
 
 // MimicRequiredError describes errors that require construction of a writable mimic.
@@ -210,8 +211,9 @@ func (sec *Secure) CheckTrespassing(dirFd int, dirName string, restricted bool) 
 			// filesystem is some kind of base snap.
 			return fmt.Errorf("cannot recover from trespassing over /")
 		}
-		// If writing is not allowed then report a trespassing error
-		return &TrespassingError{Path: dirName}
+		// If writing is not allowed then report a trespassing error.
+		// FIXME: we don't know the desired path here so the error is mildly unhelpful.
+		return &TrespassingError{ViolatedPath: dirName}
 	}
 	return nil
 }
@@ -365,6 +367,10 @@ func (sec *Secure) MkPrefix(base string, perm os.FileMode, uid sys.UserID, gid s
 func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) (int, bool, error) {
 	// Check if we are trespassing on the desired directory.
 	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
+		// TODO: this sucks, make it automatic.
+		if err, ok := err.(*TrespassingError); ok {
+			err.DesiredPath = filepath.Join(dirName, name)
+		}
 		return -1, false, err
 	}
 
@@ -420,6 +426,10 @@ func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMod
 func (sec *Secure) MkFile(dirFd int, dirName string, name string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) error {
 	// Check if we are trespassing on the desired directory.
 	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
+		// TODO: this sucks, make it automatic.
+		if err, ok := err.(*TrespassingError); ok {
+			err.DesiredPath = filepath.Join(dirName, name)
+		}
 		return err
 	}
 
@@ -471,6 +481,10 @@ func (sec *Secure) MkFile(dirFd int, dirName string, name string, perm os.FileMo
 func (sec *Secure) MkSymlink(dirFd int, dirName string, name string, oldname string, restricted bool) error {
 	// Check if we are trespassing on the desired directory.
 	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
+		// TODO: this sucks, make it automatic.
+		if err, ok := err.(*TrespassingError); ok {
+			err.DesiredPath = filepath.Join(dirName, name)
+		}
 		return err
 	}
 
@@ -552,6 +566,10 @@ func (sec *Secure) MkdirAll(path string, perm os.FileMode, uid sys.UserID, gid s
 	// Create the prefix.
 	dirFd, restricted, err := sec.MkPrefix(base, perm, uid, gid, restricted)
 	if err != nil {
+		// TODO: this sucks, make it automatic.
+		if err, ok := err.(*TrespassingError); ok {
+			err.DesiredPath = path
+		}
 		return err
 	}
 	defer sysClose(dirFd)
@@ -600,6 +618,10 @@ func (sec *Secure) MkfileAll(path string, perm os.FileMode, uid sys.UserID, gid 
 	// Create the prefix.
 	dirFd, restricted, err := sec.MkPrefix(base, perm, uid, gid, restricted)
 	if err != nil {
+		// TODO: this sucks, make it automatic.
+		if err, ok := err.(*TrespassingError); ok {
+			err.DesiredPath = path
+		}
 		return err
 	}
 	defer sysClose(dirFd)
@@ -642,7 +664,10 @@ func (sec *Secure) MksymlinkAll(path string, perm os.FileMode, uid sys.UserID, g
 	// Create the prefix.
 	dirFd, restricted, err := sec.MkPrefix(base, perm, uid, gid, restricted)
 	if err != nil {
-		fmt.Errorf("error: %v\n", err)
+		// TODO: this sucks, make it automatic.
+		if err, ok := err.(*TrespassingError); ok {
+			err.DesiredPath = path
+		}
 		return err
 	}
 	defer sysClose(dirFd)
