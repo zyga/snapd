@@ -143,6 +143,16 @@ type TrespassingError struct {
 	DesiredPath  string
 }
 
+// maybeSetDesiredPath extends TrespassingError with the real DesiredPath.
+// This function exists because the error checking code doesn't have the full
+// context of what the outermost caller intended so it doesn't know the full
+// pathname of the desired object.
+func maybeSetDesiredPath(err error, desiredPath string) {
+	if err, ok := err.(*TrespassingError); ok {
+		err.DesiredPath = desiredPath
+	}
+}
+
 // Error returns a formatted error message.
 func (e *TrespassingError) Error() string {
 	return fmt.Sprintf("cannot write to %q because it would affect the host in %q", e.DesiredPath, e.ViolatedPath)
@@ -197,7 +207,6 @@ func (sec *Secure) CheckTrespassing(dirFd int, dirName string, restricted bool) 
 	if !restricted {
 		return nil
 	}
-	// fmt.Printf("check trespassing dirFd:%d dirName:%q restricted:%v\n", dirFd, dirName, restricted)
 	// In restricted mode check the directory before attempting to write to it.
 	ok, err := sec.CanWriteToDirectory(dirFd, dirName)
 	if err != nil {
@@ -367,10 +376,7 @@ func (sec *Secure) MkPrefix(base string, perm os.FileMode, uid sys.UserID, gid s
 func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) (int, bool, error) {
 	// Check if we are trespassing on the desired directory.
 	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
-		// TODO: this sucks, make it automatic.
-		if err, ok := err.(*TrespassingError); ok {
-			err.DesiredPath = filepath.Join(dirName, name)
-		}
+		maybeSetDesiredPath(err, filepath.Join(dirName, name))
 		return -1, false, err
 	}
 
@@ -426,10 +432,7 @@ func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMod
 func (sec *Secure) MkFile(dirFd int, dirName string, name string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) error {
 	// Check if we are trespassing on the desired directory.
 	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
-		// TODO: this sucks, make it automatic.
-		if err, ok := err.(*TrespassingError); ok {
-			err.DesiredPath = filepath.Join(dirName, name)
-		}
+		maybeSetDesiredPath(err, filepath.Join(dirName, name))
 		return err
 	}
 
@@ -481,10 +484,7 @@ func (sec *Secure) MkFile(dirFd int, dirName string, name string, perm os.FileMo
 func (sec *Secure) MkSymlink(dirFd int, dirName string, name string, oldname string, restricted bool) error {
 	// Check if we are trespassing on the desired directory.
 	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
-		// TODO: this sucks, make it automatic.
-		if err, ok := err.(*TrespassingError); ok {
-			err.DesiredPath = filepath.Join(dirName, name)
-		}
+		maybeSetDesiredPath(err, filepath.Join(dirName, name))
 		return err
 	}
 
@@ -566,10 +566,7 @@ func (sec *Secure) MkdirAll(path string, perm os.FileMode, uid sys.UserID, gid s
 	// Create the prefix.
 	dirFd, restricted, err := sec.MkPrefix(base, perm, uid, gid, restricted)
 	if err != nil {
-		// TODO: this sucks, make it automatic.
-		if err, ok := err.(*TrespassingError); ok {
-			err.DesiredPath = path
-		}
+		maybeSetDesiredPath(err, path)
 		return err
 	}
 	defer sysClose(dirFd)
@@ -618,10 +615,7 @@ func (sec *Secure) MkfileAll(path string, perm os.FileMode, uid sys.UserID, gid 
 	// Create the prefix.
 	dirFd, restricted, err := sec.MkPrefix(base, perm, uid, gid, restricted)
 	if err != nil {
-		// TODO: this sucks, make it automatic.
-		if err, ok := err.(*TrespassingError); ok {
-			err.DesiredPath = path
-		}
+		maybeSetDesiredPath(err, path)
 		return err
 	}
 	defer sysClose(dirFd)
@@ -664,10 +658,7 @@ func (sec *Secure) MksymlinkAll(path string, perm os.FileMode, uid sys.UserID, g
 	// Create the prefix.
 	dirFd, restricted, err := sec.MkPrefix(base, perm, uid, gid, restricted)
 	if err != nil {
-		// TODO: this sucks, make it automatic.
-		if err, ok := err.(*TrespassingError); ok {
-			err.DesiredPath = path
-		}
+		maybeSetDesiredPath(err, path)
 		return err
 	}
 	defer sysClose(dirFd)
