@@ -75,7 +75,7 @@ func mimicRequired(err error) (needsMimic bool, path string) {
 		rofsErr := err.(*ReadOnlyFsError)
 		return true, rofsErr.Path
 	case *TrespassingError:
-		tErr := err.(*ReadOnlyFsError)
+		tErr := err.(*TrespassingError)
 		return true, tErr.MimicPath()
 	}
 	return false, ""
