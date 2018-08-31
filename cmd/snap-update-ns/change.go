@@ -159,7 +159,7 @@ func (c *Change) ensureTarget(sec *Secure) ([]*Change, error) {
 		case "symlink":
 			if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
 				// Create path verifies the symlink or fails if it is not what we wanted.
-				_, err = c.createPath(path, true, sec)
+				_, err = c.createPath(path, false, sec)
 			} else {
 				err = fmt.Errorf("cannot create symlink in %q: existing file in the way", path)
 			}
