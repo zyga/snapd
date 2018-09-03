@@ -165,7 +165,7 @@ func (s *utilsSuite) TestSecureMkdirAllWithRestrictedEtc(c *C) {
 
 // Ensure that writes to /etc/demo allowed if /etc is unrestricted.
 func (s *utilsSuite) TestSecureMkdirAllWithUnrestrictedEtc(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/etc")() // Mark /etc as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/etc")() // Mark /etc as unrestricted.
 	s.sys.InsertFstatfsResult(`fstatfs 3 <ptr>`, syscall.Statfs_t{Type: update.SquashfsMagic})
 	s.sys.InsertFstatfsResult(`fstatfs 4 <ptr>`, syscall.Statfs_t{Type: update.Ext4Magic})
 	s.sys.InsertFault(`mkdirat 3 "etc" 0755`, syscall.EEXIST)
@@ -185,7 +185,7 @@ func (s *utilsSuite) TestSecureMkdirAllWithUnrestrictedEtc(c *C) {
 
 // Ensure that we can detect read only filesystems.
 func (s *utilsSuite) TestSecureMkdirAllROFS(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/rofs/path")()       // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/rofs/path")()          // Treat test path as unrestricted.
 	s.sys.InsertFault(`mkdirat 3 "rofs" 0755`, syscall.EEXIST) // just realistic
 	s.sys.InsertFault(`mkdirat 4 "path" 0755`, syscall.EROFS)
 	err := s.sec.MkdirAll("/rofs/path", 0755, 123, 456)
@@ -203,7 +203,7 @@ func (s *utilsSuite) TestSecureMkdirAllROFS(c *C) {
 
 // Ensure that we don't chown existing directories.
 func (s *utilsSuite) TestSecureMkdirAllExistingDirsDontChown(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/abs/path")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/abs/path")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`mkdirat 3 "abs" 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`mkdirat 4 "path" 0755`, syscall.EEXIST)
 	err := s.sec.MkdirAll("/abs/path", 0755, 123, 456)
@@ -222,7 +222,7 @@ func (s *utilsSuite) TestSecureMkdirAllExistingDirsDontChown(c *C) {
 
 // Ensure that we we close everything when mkdirat fails.
 func (s *utilsSuite) TestSecureMkdirAllMkdiratError(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/abs")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/abs")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`mkdirat 3 "abs" 0755`, errTesting)
 	err := s.sec.MkdirAll("/abs", 0755, 123, 456)
 	c.Assert(err, ErrorMatches, `cannot create directory "/abs": testing`)
@@ -235,7 +235,7 @@ func (s *utilsSuite) TestSecureMkdirAllMkdiratError(c *C) {
 
 // Ensure that we we close everything when fchown fails.
 func (s *utilsSuite) TestSecureMkdirAllFchownError(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/path")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/path")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`fchown 4 123 456`, errTesting)
 	err := s.sec.MkdirAll("/path", 0755, 123, 456)
 	c.Assert(err, ErrorMatches, `cannot chown directory "/path" to 123.456: testing`)
@@ -251,7 +251,7 @@ func (s *utilsSuite) TestSecureMkdirAllFchownError(c *C) {
 
 // Check error path when we cannot open root directory.
 func (s *utilsSuite) TestSecureMkdirAllOpenRootError(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/abs/path")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/abs/path")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, errTesting)
 	err := s.sec.MkdirAll("/abs/path", 0755, 123, 456)
 	c.Assert(err, ErrorMatches, "cannot open root directory: testing")
@@ -262,7 +262,7 @@ func (s *utilsSuite) TestSecureMkdirAllOpenRootError(c *C) {
 
 // Check error path when we cannot open non-root directory.
 func (s *utilsSuite) TestSecureMkdirAllOpenError(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/abs/path")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/abs/path")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`openat 3 "abs" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, errTesting)
 	err := s.sec.MkdirAll("/abs/path", 0755, 123, 456)
 	c.Assert(err, ErrorMatches, `cannot open directory "/abs": testing`)
@@ -275,7 +275,7 @@ func (s *utilsSuite) TestSecureMkdirAllOpenError(c *C) {
 }
 
 func (s *utilsSuite) TestPlanWritableMimic(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/foo")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/foo")() // Treat test path as unrestricted.
 	s.sys.InsertSysLstatResult(`lstat "/foo" <ptr>`, syscall.Stat_t{Uid: 0, Gid: 0, Mode: 0755})
 	restore := update.MockReadDir(func(dir string) ([]os.FileInfo, error) {
 		c.Assert(dir, Equals, "/foo")
@@ -327,7 +327,7 @@ func (s *utilsSuite) TestPlanWritableMimic(c *C) {
 }
 
 func (s *utilsSuite) TestPlanWritableMimicErrors(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/foo")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/foo")() // Treat test path as unrestricted.
 
 	s.sys.InsertSysLstatResult(`lstat "/foo" <ptr>`, syscall.Stat_t{Uid: 0, Gid: 0, Mode: 0755})
 	restore := update.MockReadDir(func(dir string) ([]os.FileInfo, error) {
@@ -346,7 +346,7 @@ func (s *utilsSuite) TestPlanWritableMimicErrors(c *C) {
 }
 
 func (s *utilsSuite) TestExecWirableMimicSuccess(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/foo", "/tmp")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/foo", "/tmp")() // Treat test path as unrestricted.
 	// This plan is the same as in the test above. This is what comes out of planWritableMimic.
 	plan := []*update.Change{
 		{Entry: osutil.MountEntry{Name: "/foo", Dir: "/tmp/.snap/foo", Options: []string{"rbind"}}, Action: update.Mount},
@@ -375,7 +375,7 @@ func (s *utilsSuite) TestExecWirableMimicSuccess(c *C) {
 }
 
 func (s *utilsSuite) TestExecWirableMimicErrorWithRecovery(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/foo", "/tmp")() // Treat test paths as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/foo", "/tmp")() // Treat test paths as unrestricted.
 	// This plan is the same as in the test above. This is what comes out of planWritableMimic.
 	plan := []*update.Change{
 		{Entry: osutil.MountEntry{Name: "/foo", Dir: "/tmp/.snap/foo", Options: []string{"rbind"}}, Action: update.Mount},
@@ -484,7 +484,7 @@ var _ = Suite(&realSystemSuite{})
 
 func (s *realSystemSuite) SetUpTest(c *C) {
 	s.sec = &update.Secure{}
-	s.sec.AddUnrestrictedPrefixes("/tmp")
+	s.sec.AddUnrestrictedPaths("/tmp")
 }
 
 // Check that we can actually create directories.
@@ -546,7 +546,7 @@ func (s *utilsSuite) TestSecureMkfileAllLevel0(c *C) {
 
 // Ensure that we can create a file in the top-level directory.
 func (s *utilsSuite) TestSecureMkfileAllLevel1(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	c.Assert(s.sec.MkfileAll("/path", 0755, 123, 456), IsNil)
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
 		{C: `open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, R: 3},
@@ -559,7 +559,7 @@ func (s *utilsSuite) TestSecureMkfileAllLevel1(c *C) {
 
 // Ensure that we can create a file two levels from the top-level directory.
 func (s *utilsSuite) TestSecureMkfileAllLevel2(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/path")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/path")() // Treat test path as unrestricted.
 	c.Assert(s.sec.MkfileAll("/path/to", 0755, 123, 456), IsNil)
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
 		{C: `open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, R: 3},
@@ -576,7 +576,7 @@ func (s *utilsSuite) TestSecureMkfileAllLevel2(c *C) {
 
 // Ensure that we can create a file three levels from the top-level directory.
 func (s *utilsSuite) TestSecureMkfileAllLevel3(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/path/to")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/path/to")() // Treat test path as unrestricted.
 	c.Assert(s.sec.MkfileAll("/path/to/something", 0755, 123, 456), IsNil)
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
 		{C: `open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, R: 3},
@@ -597,7 +597,7 @@ func (s *utilsSuite) TestSecureMkfileAllLevel3(c *C) {
 
 // Ensure that we can detect read only filesystems.
 func (s *utilsSuite) TestSecureMkfileAllROFS(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/rofs")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/rofs")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`mkdirat 3 "rofs" 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`openat 4 "path" O_NOFOLLOW|O_CLOEXEC|O_CREAT|O_EXCL 0755`, syscall.EROFS)
 	err := s.sec.MkfileAll("/rofs/path", 0755, 123, 456)
@@ -615,7 +615,7 @@ func (s *utilsSuite) TestSecureMkfileAllROFS(c *C) {
 
 // Ensure that we don't chown existing files or directories.
 func (s *utilsSuite) TestSecureMkfileAllExistingDirsDontChown(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/abs")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/abs")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`mkdirat 3 "abs" 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`openat 4 "path" O_NOFOLLOW|O_CLOEXEC|O_CREAT|O_EXCL 0755`, syscall.EEXIST)
 	err := s.sec.MkfileAll("/abs/path", 0755, 123, 456)
@@ -634,7 +634,7 @@ func (s *utilsSuite) TestSecureMkfileAllExistingDirsDontChown(c *C) {
 
 // Ensure that we we close everything when openat fails.
 func (s *utilsSuite) TestSecureMkfileAllOpenat2ndError(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`openat 3 "abs" O_NOFOLLOW|O_CLOEXEC|O_CREAT|O_EXCL 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`openat 3 "abs" O_NOFOLLOW|O_CLOEXEC 0`, errTesting)
 	err := s.sec.MkfileAll("/abs", 0755, 123, 456)
@@ -649,7 +649,7 @@ func (s *utilsSuite) TestSecureMkfileAllOpenat2ndError(c *C) {
 
 // Ensure that we we close everything when openat (non-exclusive) fails.
 func (s *utilsSuite) TestSecureMkfileAllOpenatError(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`openat 3 "abs" O_NOFOLLOW|O_CLOEXEC|O_CREAT|O_EXCL 0755`, errTesting)
 	err := s.sec.MkfileAll("/abs", 0755, 123, 456)
 	c.Assert(err, ErrorMatches, `cannot open file "/abs": testing`)
@@ -662,7 +662,7 @@ func (s *utilsSuite) TestSecureMkfileAllOpenatError(c *C) {
 
 // Ensure that we we close everything when fchown fails.
 func (s *utilsSuite) TestSecureMkfileAllFchownError(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`fchown 4 123 456`, errTesting)
 	err := s.sec.MkfileAll("/path", 0755, 123, 456)
 	c.Assert(err, ErrorMatches, `cannot chown file "/path" to 123.456: testing`)
@@ -677,7 +677,7 @@ func (s *utilsSuite) TestSecureMkfileAllFchownError(c *C) {
 
 // Check error path when we cannot open root directory.
 func (s *utilsSuite) TestSecureMkfileAllOpenRootError(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/abs")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/abs")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, errTesting)
 	err := s.sec.MkfileAll("/abs/path", 0755, 123, 456)
 	c.Assert(err, ErrorMatches, "cannot open root directory: testing")
@@ -688,7 +688,7 @@ func (s *utilsSuite) TestSecureMkfileAllOpenRootError(c *C) {
 
 // Check error path when we cannot open non-root directory.
 func (s *utilsSuite) TestSecureMkfileAllOpenError(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/abs")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/abs")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`openat 3 "abs" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, errTesting)
 	err := s.sec.MkfileAll("/abs/path", 0755, 123, 456)
 	c.Assert(err, ErrorMatches, `cannot open directory "/abs": testing`)
@@ -702,7 +702,7 @@ func (s *utilsSuite) TestSecureMkfileAllOpenError(c *C) {
 
 // We want to create a symlink in $SNAP_DATA and that's fine.
 func (s *utilsSuite) TestSecureMksymlinkAllInSnapData(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/var/snap")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/var/snap")() // Treat test path as unrestricted.
 
 	s.sys.InsertFault(`mkdirat 3 "var" 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`mkdirat 4 "snap" 0755`, syscall.EEXIST)
@@ -756,7 +756,7 @@ func (s *utilsSuite) TestSecureMksymlinkAllDeepInEtc(c *C) {
 	s.sys.InsertFault(`mkdirat 3 "etc" 0755`, syscall.EEXIST)
 	err := s.sec.MksymlinkAll("/etc/some/other/stuff/symlink", 0755, 0, 0, "/oldname")
 	c.Assert(err, ErrorMatches, `cannot write to "/etc/some/other/stuff/symlink" because it would affect the host in "/etc/"`)
-	c.Assert(err.(*update.TrespassingError).MimicPath(), Equals, "/etc/")
+	c.Assert(err.(*update.TrespassingError).ViolatedPath, Equals, "/etc/")
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
 		{C: `open "/" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, R: 3},
 		{C: `fstatfs 3 <ptr>`, R: syscall.Statfs_t{Type: update.SquashfsMagic}},
@@ -808,7 +808,7 @@ func (s *utilsSuite) TestSecureMkdirAllInEtc(c *C) {
 func (s *utilsSuite) TestSecureMkdirAllInSNAP(c *C) {
 	// Allow creating directories under /snap/ related to this snap ("foo").
 	// This matches what is done inside main().
-	s.sec.AddUnrestrictedPrefixes("/snap/foo")
+	s.sec.AddUnrestrictedPaths("/snap/foo")
 
 	s.sys.InsertFault(`mkdirat 3 "snap" 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`mkdirat 4 "foo" 0755`, syscall.EEXIST)
@@ -1231,13 +1231,4 @@ func (s *realSystemSuite) TestSecureOpenPathSymlinkedParent(c *C) {
 	fd, err := s.sec.OpenPath(symlinkedPath)
 	c.Check(fd, Equals, -1)
 	c.Check(err, ErrorMatches, "not a directory")
-}
-
-func (s *realSystemSuite) TestTrespassingError(c *C) {
-	err := &update.TrespassingError{ViolatedPath: "/"}
-	c.Assert(err.MimicPath(), Equals, "/")
-	err = &update.TrespassingError{ViolatedPath: "/var"}
-	c.Assert(err.MimicPath(), Equals, "/var")
-	err = &update.TrespassingError{ViolatedPath: "/var/cache"}
-	c.Assert(err.MimicPath(), Equals, "/var/cache")
 }

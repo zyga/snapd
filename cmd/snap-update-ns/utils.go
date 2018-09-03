@@ -86,30 +86,44 @@ func IsReadOnly(dirFd int, dirName string, fsData *syscall.Statfs_t) bool {
 	return false
 }
 
-// IsSnapdCreatedPrivateTmpfs returns true if a directory is a tmpfs mounted by snapd.
+// IsSnapdCreatedPrivateTmpfs identifies tmpfs-es mounted by snapd.
 //
-// The function inspects the directory (represented as both an open file
-// descriptor and the absolute path) and a list of changes that were applied to
-// the mount namespace. A directory is trusted if it is a tmpfs that was
-// mounted by snap-confine or snapd-update-ns. Note that sub-directories of a
-// trusted tmpfs are not considered trusted by this function.
+// The function inspects the directory, represented as an open file
+// descriptor, absolute path name and a statfs_t buffer along with a list of
+// changes that were applied to the mount namespace.
+//
+// A directory is is a snapd-created private tmpfs only when the directory
+// represents a tmpfs that is present in the list of mount changes. The list
+// of changes is examined back-to-front so that most recent change is
+// inspected first. This allows us to correctly detect a tmpfs that was
+// mounted but then unmounted as such.
+//
+// Note that sub-directories of a tmpfs are not considered by this  function
+// as they can contain other arbitrary mount points that are more difficult to
+// analyze. In addition due to how this function is used such distinction is
+// not important for correctness so we can look at the more strict and limited
+// data set and still derive the correct answer.
+//
+// As special exception the /var/lib directory is implicitly mounted as a
+// tmpfs by snap-confine even if no mount change represents this here.
 func IsSnapdCreatedPrivateTmpfs(dirFd int, dirName string, fsData *syscall.Statfs_t, changes []*Change) bool {
-	// If something is not a tmpfs it cannot be the trusted tmpfs we are looking for.
+	// We are only looking for tmpfs-es
 	if fsData.Type != TmpfsMagic {
 		return false
 	}
-	// Any of the past changes that mounted a tmpfs exactly at the directory we
-	// are inspecting is considered as trusted. This is conservative because it
-	// doesn't trust sub-directories of a trusted tmpfs. This approach is
-	// sufficient for the intended use.
+	// Any of the past changes that mounted a tmpfs exactly at the directory
+	// we are inspecting is approved. This is conservative because it doesn't
+	// allow sub-directories of a tmpfs. This approach is sufficient for the
+	// intended use (see the semantics of the restricted mode for details).
 	//
 	// The algorithm goes over all the changes in reverse and picks up the
 	// first tmpfs mount or unmount action that matches the directory name.
-	// The set of constraints in snap-update-ns and snapd prevent from mounting
-	// over an existing mount point so we don't need to consider e.g. a bind
-	// mount shadowing an active tmpfs.
+	// The set of constraints in snap-update-ns and snapd prevent from
+	// mounting over an existing mount point so we don't need to consider e.g.
+	// a bind mount shadowing an active tmpfs.
 	for i := len(changes) - 1; i >= 0; i-- {
 		change := changes[i]
+		// FIXME: this is probably simplistic and incorrect
 		if change.Entry.Dir == dirName {
 			return change.Action == Mount && change.Entry.Type == "tmpfs"
 		}
@@ -130,11 +144,6 @@ type ReadOnlyFsError struct {
 // Error returns a formatted error message.
 func (e *ReadOnlyFsError) Error() string {
 	return fmt.Sprintf("cannot operate on read-only filesystem at %s", e.Path)
-}
-
-// MimicPath returns the path of the directory where a mimic ought to be constructed.
-func (e *ReadOnlyFsError) MimicPath() string {
-	return e.Path
 }
 
 // TrespassingError is an error when filesystem operation would affect the host.
@@ -158,39 +167,30 @@ func (e *TrespassingError) Error() string {
 	return fmt.Sprintf("cannot write to %q because it would affect the host in %q", e.DesiredPath, e.ViolatedPath)
 }
 
-// MimicPath returns the path of the directory where a mimic ought to be constructed.
-func (e *TrespassingError) MimicPath() string {
-	return e.ViolatedPath
-}
-
-// MimicRequiredError describes errors that require construction of a writable mimic.
-type MimicRequiredError interface {
-	Error() string
-	MimicPath() string
-}
-
 // Secure is a helper for making filesystem operations free from certain kinds of attacks.
 type Secure struct {
-	unrestrictedPrefixes []string
-	pastChanges          []*Change
+	unrestrictedPaths []string
+	pastChanges       []*Change
 }
 
-// AddUnrestrictedPrefixes adds a list of directories where writing is allowed
+// AddUnrestrictedPaths adds a list of directories where writing is allowed
 // even if it would hit the real host filesystem (or transit through the host
 // filesystem). This is intended to be used with certain well-known locations
 // such as /tmp, $SNAP_DATA and $SNAP.
-func (sec *Secure) AddUnrestrictedPrefixes(prefixes ...string) {
-	for _, prefix := range prefixes {
-		sec.unrestrictedPrefixes = append(sec.unrestrictedPrefixes, filepath.Clean(prefix)+"/")
+func (sec *Secure) AddUnrestrictedPaths(paths ...string) {
+	for _, path := range paths {
+		sec.unrestrictedPaths = append(sec.unrestrictedPaths, filepath.Clean(path)+"/")
 	}
 }
 
-// MockUnrestrictedPrefixes replaces the set of path prefixes without any restrictions.
-func (sec *Secure) MockUnrestrictedPrefixes(prefixes ...string) (restore func()) {
-	old := sec.unrestrictedPrefixes
-	sec.unrestrictedPrefixes = prefixes
+// MockUnrestrictedPaths replaces the set of paths without write restrictions.
+//
+// See the documentation of MkPrefix for a discussion of the restricted mode.
+func (sec *Secure) MockUnrestrictedPaths(paths ...string) (restore func()) {
+	old := sec.unrestrictedPaths
+	sec.unrestrictedPaths = paths
 	return func() {
-		sec.unrestrictedPrefixes = old
+		sec.unrestrictedPaths = old
 	}
 }
 
@@ -218,7 +218,7 @@ func (sec *Secure) CheckTrespassing(dirFd int, dirName string, restricted bool) 
 			// because we cannot construct a writable mimic over /. This
 			// should never happen in normal circumstances because the root
 			// filesystem is some kind of base snap.
-			return fmt.Errorf("cannot recover from trespassing over /")
+			return fmt.Errorf("cannot write to the real /")
 		}
 		// If writing is not allowed then report a trespassing error.
 		// FIXME: we don't know the desired path here so the error is mildly unhelpful.
@@ -237,10 +237,10 @@ func (sec *Secure) CheckTrespassing(dirFd int, dirName string, restricted bool) 
 // Provided path is the full, absolute path of the entity that needs to be
 // created (directory, file or symbolic link).
 func (sec *Secure) IsRestricted(path string) bool {
-	// Anything rooted at one of the unrestricted prefixes is not restricted.
+	// Anything rooted at one of the unrestricted paths is not restricted.
 	// Those are for things like /var/snap/, for example.
-	for _, prefix := range sec.unrestrictedPrefixes {
-		if strings.HasPrefix(path, prefix) {
+	for _, unrestrictedPath := range sec.unrestrictedPaths {
+		if strings.HasPrefix(path, unrestrictedPath) {
 			return false
 		}
 	}
@@ -332,7 +332,30 @@ func (sec *Secure) OpenPath(path string) (int, error) {
 // returns the file descriptor to the leaf directory as well as the restricted
 // flag. This function is a base for secure variants of mkdir, touch and
 // symlink. None of the traversed directories can be symbolic links.
-func (sec *Secure) MkPrefix(base string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) (int, bool, error) {
+//
+// This function obeys the restricted mode semantics. Writes outside of
+// private tmpfs created by snapd and outside of a set of unrestricted paths
+// will fail with TrespassingError.
+//
+// The restricted mode flag is provided as both input and output. It models
+// one of two modes in which filesystem objects are created. In the restricted
+// mode new filesystem objects can be created only on a tmpfs that was created
+// by snapd or along a path that was declared as trusted. Restricted mode is
+// designed to avoid creating empty files, empty directories or arbitrary
+// symlinks in unexpected places in the host filesystem. Expected places
+// include $SNAP_DATA, $SNAP_COMMON and (perhaps unexpectedly) $SNAP.
+// Restricted mode prevents such constructs from showing up in the host
+// filesystem by returning the TrespassingError which in turns triggers a
+// construction of a writable space that is private to the mount namespace,
+// the so-called writable mimic. Unrestricted mode has no such limitation.
+//
+// Restricted mode is only lifted by successful construction of a new empty
+// directory. Since we don't allow any writes to writable filesystems except
+// for tmpfs that snapd itself created (private to the mount namespace) this
+// guarantees that a newly created directory is indeed created on top of such
+// tmpfs, is not a part of existing mount or bind mount and thus becomes a
+// chain of equally private tmpfs tree.
+func (sec *Secure) MkPrefix(base string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) (dirFd int, newRestricted bool, err error) {
 	iter, err := strutil.NewPathIterator(base)
 	if err != nil {
 		// TODO: Reword the error and adjust the tests.
@@ -372,8 +395,16 @@ func (sec *Secure) MkPrefix(base string, perm os.FileMode, uid sys.UserID, gid s
 // The directory is represented with a file descriptor and its name (for
 // convenience). This function is meant to be used to construct subsequent
 // elements of some path. The return value contains the newly created file
-// descriptor for the new directory or -1 on error, the new value of the restricted flag and an error, if any.
-func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) (int, bool, error) {
+// descriptor for the new directory or -1 on error, the new value of the
+// restricted flag and an error, if any.
+//
+// This function obeys the restricted mode semantics. Writes outside of
+// private tmpfs created by snapd and outside of a set of unrestricted paths
+// will fail with TrespassingError.
+//
+// Please see the documentation of MkPrefix for the description of the
+// restricted flag.
+func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) (newFd int, newRestricted bool, err error) {
 	// Check if we are trespassing on the desired directory.
 	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
 		maybeSetDesiredPath(err, filepath.Join(dirName, name))
@@ -395,7 +426,7 @@ func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMod
 			return -1, false, fmt.Errorf("cannot create directory %q: %v", filepath.Join(dirName, name), err)
 		}
 	}
-	newFd, err := sysOpenat(dirFd, name, openFlags, 0)
+	newFd, err = sysOpenat(dirFd, name, openFlags, 0)
 	if err != nil {
 		return -1, false, fmt.Errorf("cannot open directory %q: %v", filepath.Join(dirName, name), err)
 	}
@@ -426,9 +457,16 @@ func (sec *Secure) MkDir(dirFd int, dirName string, name string, perm os.FileMod
 // MkFile creates a file with a given name.
 //
 // The directory is represented with a file descriptor and its name (for
-// convenience). This function is meant to be used to create the leaf file as a
-// preparation for a mount point. Existing files are reused without errors.
+// convenience). This function is meant to be used to create the leaf file as
+// a preparation for a mount point. Existing files are reused without errors.
 // Newly created files have the specified mode and ownership.
+//
+// This function obeys the restricted mode semantics. Writes outside of
+// private tmpfs created by snapd and outside of a set of unrestricted paths
+// will fail with TrespassingError.
+//
+// Please see the documentation of MkPrefix for the description of the
+// restricted flag.
 func (sec *Secure) MkFile(dirFd int, dirName string, name string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, restricted bool) error {
 	// Check if we are trespassing on the desired directory.
 	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
@@ -444,7 +482,6 @@ func (sec *Secure) MkFile(dirFd int, dirName string, name string, perm os.FileMo
 	// Open the final path segment as a file. Try to create the file (so that
 	// we know if we need to chown it) but fall back to just opening an
 	// existing one.
-
 	newFd, err := sysOpenat(dirFd, name, openFlags|syscall.O_CREAT|syscall.O_EXCL, uint32(perm.Perm()))
 	if err != nil {
 		switch err {
@@ -481,6 +518,13 @@ func (sec *Secure) MkFile(dirFd int, dirName string, name string, perm os.FileMo
 // The directory is represented with a file descriptor and its name (for
 // convenience). This function is meant to be used to create the leaf symlink.
 // Existing and identical symlinks are reused without errors.
+//
+// This function obeys the restricted mode semantics. Writes outside of
+// private tmpfs created by snapd and outside of a set of unrestricted paths
+// will fail with TrespassingError.
+//
+// Please see the documentation of MkPrefix for the description of the
+// restricted flag.
 func (sec *Secure) MkSymlink(dirFd int, dirName string, name string, oldname string, restricted bool) error {
 	// Check if we are trespassing on the desired directory.
 	if err := sec.CheckTrespassing(dirFd, dirName, restricted); err != nil {
@@ -543,6 +587,10 @@ func (sec *Secure) MkSymlink(dirFd int, dirName string, name string, oldname str
 // The uid and gid are used for the fchown(2) system call which is performed
 // after each segment is created and opened. The special value -1 may be used
 // to request that ownership is not changed.
+//
+// This function obeys the restricted mode semantics. Writes outside of
+// private tmpfs created by snapd and outside of a set of unrestricted paths
+// will fail with TrespassingError.
 func (sec *Secure) MkdirAll(path string, perm os.FileMode, uid sys.UserID, gid sys.GroupID) error {
 	if path != filepath.Clean(path) {
 		// TODO: Reword the error and adjust the tests.
@@ -588,6 +636,10 @@ func (sec *Secure) MkdirAll(path string, perm os.FileMode, uid sys.UserID, gid s
 // This function is like MkdirAll but it creates an empty file instead of
 // a directory for the final path component. Each created directory component
 // is chowned to the desired user and group.
+//
+// This function obeys the restricted mode semantics. Writes outside of
+// private tmpfs created by snapd and outside of a set of unrestricted paths
+// will fail with TrespassingError.
 func (sec *Secure) MkfileAll(path string, perm os.FileMode, uid sys.UserID, gid sys.GroupID) error {
 	if path != filepath.Clean(path) {
 		// TODO: Reword the error and adjust the tests.
@@ -628,6 +680,10 @@ func (sec *Secure) MkfileAll(path string, perm os.FileMode, uid sys.UserID, gid 
 }
 
 // MksymlinkAll is a secure implementation of "ln -s".
+//
+// This function obeys the restricted mode semantics. Writes outside of
+// private tmpfs created by snapd and outside of a set of unrestricted paths
+// will fail with TrespassingError.
 func (sec *Secure) MksymlinkAll(path string, perm os.FileMode, uid sys.UserID, gid sys.GroupID, oldname string) error {
 	if path != filepath.Clean(path) {
 		// TODO: Reword the error and adjust the tests.

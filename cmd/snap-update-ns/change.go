@@ -73,10 +73,12 @@ func mimicRequired(err error) (needsMimic bool, path string) {
 	switch err.(type) {
 	case *ReadOnlyFsError:
 		rofsErr := err.(*ReadOnlyFsError)
+		logger.Debugf("writable mimic required over %q to write through a read-only filesystem", rofsErr.Path)
 		return true, rofsErr.Path
 	case *TrespassingError:
 		tErr := err.(*TrespassingError)
-		return true, tErr.MimicPath()
+		logger.Debugf("writable mimic required over %q to hide modifications from host filesystem", tErr.ViolatedPath)
+		return true, tErr.ViolatedPath
 	}
 	return false, ""
 }

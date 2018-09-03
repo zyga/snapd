@@ -353,7 +353,7 @@ func (s *changeSuite) TestPerformFilesystemMountWithError(c *C) {
 
 // Change.Perform wants to mount a filesystem but the mount point isn't there.
 func (s *changeSuite) TestPerformFilesystemMountWithoutMountPoint(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/target"`, syscall.ENOENT)
 	chg := &update.Change{Action: update.Mount, Entry: osutil.MountEntry{Name: "device", Dir: "/target", Type: "type"}}
 	synth, err := chg.Perform(s.sec)
@@ -373,7 +373,7 @@ func (s *changeSuite) TestPerformFilesystemMountWithoutMountPoint(c *C) {
 
 // Change.Perform wants to create a filesystem but the mount point isn't there and cannot be created.
 func (s *changeSuite) TestPerformFilesystemMountWithoutMountPointWithErrors(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/target"`, syscall.ENOENT)
 	s.sys.InsertFault(`mkdirat 3 "target" 0755`, errTesting)
 	chg := &update.Change{Action: update.Mount, Entry: osutil.MountEntry{Name: "device", Dir: "/target", Type: "type"}}
@@ -390,7 +390,7 @@ func (s *changeSuite) TestPerformFilesystemMountWithoutMountPointWithErrors(c *C
 
 // Change.Perform wants to mount a filesystem but the mount point isn't there and the parent is read-only.
 func (s *changeSuite) TestPerformFilesystemMountWithoutMountPointAndReadOnlyBase(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/rofs/target"`, syscall.ENOENT)
 	s.sys.InsertFault(`mkdirat 3 "rofs" 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`openat 3 "target" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, syscall.ENOENT, nil) // works on 2nd try
@@ -481,7 +481,7 @@ func (s *changeSuite) TestPerformFilesystemMountWithoutMountPointAndReadOnlyBase
 
 // Change.Perform wants to mount a filesystem but the mount point isn't there and the parent is read-only and mimic fails during planning.
 func (s *changeSuite) TestPerformFilesystemMountWithoutMountPointAndReadOnlyBaseErrorWhilePlanning(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/rofs/target"`, syscall.ENOENT)
 	s.sys.InsertFault(`mkdirat 3 "rofs" 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`openat 3 "target" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, syscall.ENOENT)
@@ -517,7 +517,7 @@ func (s *changeSuite) TestPerformFilesystemMountWithoutMountPointAndReadOnlyBase
 
 // Change.Perform wants to mount a filesystem but the mount point isn't there and the parent is read-only and mimic fails during execution.
 func (s *changeSuite) TestPerformFilesystemMountWithoutMountPointAndReadOnlyBaseErrorWhileExecuting(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/rofs/target"`, syscall.ENOENT)
 	s.sys.InsertFault(`mkdirat 3 "rofs" 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`openat 3 "target" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, syscall.ENOENT)
@@ -730,7 +730,7 @@ func (s *changeSuite) TestPerformDirectoryBindMountWithError(c *C) {
 
 // Change.Perform wants to bind mount a directory but the mount point isn't there.
 func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountPoint(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertOsLstatResult(`lstat "/source"`, testutil.FileInfoDir)
 	s.sys.InsertFault(`lstat "/target"`, syscall.ENOENT)
 	s.sys.InsertFstatResult(`fstat 4 <ptr>`, syscall.Stat_t{})
@@ -764,7 +764,7 @@ func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountPoint(c *C) {
 
 // Change.Perform wants to bind mount a directory but the mount source isn't there.
 func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountSource(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/source"`, syscall.ENOENT)
 	s.sys.InsertOsLstatResult(`lstat "/target"`, testutil.FileInfoDir)
 	s.sys.InsertFstatResult(`fstat 4 <ptr>`, syscall.Stat_t{})
@@ -798,7 +798,7 @@ func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountSource(c *C) {
 
 // Change.Perform wants to create a directory bind mount but the mount point isn't there and cannot be created.
 func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountPointWithErrors(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/target"`, syscall.ENOENT)
 	s.sys.InsertFault(`mkdirat 3 "target" 0755`, errTesting)
 	chg := &update.Change{Action: update.Mount, Entry: osutil.MountEntry{Name: "/source", Dir: "/target", Options: []string{"bind"}}}
@@ -815,7 +815,7 @@ func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountPointWithErrors(c
 
 // Change.Perform wants to create a directory bind mount but the mount source isn't there and cannot be created.
 func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountSourceWithErrors(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/source"`, syscall.ENOENT)
 	s.sys.InsertFault(`mkdirat 3 "source" 0755`, errTesting)
 	s.sys.InsertOsLstatResult(`lstat "/target"`, testutil.FileInfoDir)
@@ -834,7 +834,7 @@ func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountSourceWithErrors(
 
 // Change.Perform wants to bind mount a directory but the mount point isn't there and the parent is read-only.
 func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountPointAndReadOnlyBase(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/rofs/target"`, syscall.ENOENT)
 	s.sys.InsertFault(`mkdirat 3 "rofs" 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`openat 3 "target" O_NOFOLLOW|O_CLOEXEC|O_DIRECTORY 0`, syscall.ENOENT, nil) // works on 2nd try
@@ -942,7 +942,7 @@ func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountPointAndReadOnlyB
 
 // Change.Perform wants to bind mount a directory but the mount source isn't there and the parent is read-only.
 func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountSourceAndReadOnlyBase(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertOsLstatResult(`lstat "/rofs"`, testutil.FileInfoDir)
 	s.sys.InsertFault(`lstat "/rofs/source"`, syscall.ENOENT)
 	s.sys.InsertOsLstatResult(`lstat "/target"`, testutil.FileInfoDir)
@@ -967,7 +967,7 @@ func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountSourceAndReadOnly
 
 // Change.Perform wants to bind mount a directory but the mount source isn't there and the parent is read-only but this is for a layout.
 func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountSourceAndReadOnlyBaseForLayout(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertOsLstatResult(`lstat "/target"`, testutil.FileInfoDir)
 	s.sys.InsertFault(`lstat "/rofs/source"`, syscall.ENOENT)
 	s.sys.InsertFault(`mkdirat 3 "rofs" 0755`, syscall.EEXIST)
@@ -1231,7 +1231,7 @@ func (s *changeSuite) TestPerformFileBindMountWithError(c *C) {
 
 // Change.Perform wants to bind mount a file but the mount point isn't there.
 func (s *changeSuite) TestPerformFileBindMountWithoutMountPoint(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertOsLstatResult(`lstat "/source"`, testutil.FileInfoFile)
 	s.sys.InsertFault(`lstat "/target"`, syscall.ENOENT)
 	s.sys.InsertFstatResult(`fstat 4 <ptr>`, syscall.Stat_t{})
@@ -1264,7 +1264,7 @@ func (s *changeSuite) TestPerformFileBindMountWithoutMountPoint(c *C) {
 
 // Change.Perform wants to create a directory bind mount but the mount point isn't there and cannot be created.
 func (s *changeSuite) TestPerformFileBindMountWithoutMountPointWithErrors(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/target"`, syscall.ENOENT)
 	s.sys.InsertFault(`openat 3 "target" O_NOFOLLOW|O_CLOEXEC|O_CREAT|O_EXCL 0755`, errTesting)
 	chg := &update.Change{Action: update.Mount, Entry: osutil.MountEntry{Name: "/source", Dir: "/target", Options: []string{"bind", "x-snapd.kind=file"}}}
@@ -1281,7 +1281,7 @@ func (s *changeSuite) TestPerformFileBindMountWithoutMountPointWithErrors(c *C) 
 
 // Change.Perform wants to bind mount a file but the mount source isn't there.
 func (s *changeSuite) TestPerformFileBindMountWithoutMountSource(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/source"`, syscall.ENOENT)
 	s.sys.InsertOsLstatResult(`lstat "/target"`, testutil.FileInfoFile)
 	s.sys.InsertFstatResult(`fstat 4 <ptr>`, syscall.Stat_t{})
@@ -1314,7 +1314,7 @@ func (s *changeSuite) TestPerformFileBindMountWithoutMountSource(c *C) {
 
 // Change.Perform wants to create a file bind mount but the mount source isn't there and cannot be created.
 func (s *changeSuite) TestPerformFileBindMountWithoutMountSourceWithErrors(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/source"`, syscall.ENOENT)
 	s.sys.InsertFault(`openat 3 "source" O_NOFOLLOW|O_CLOEXEC|O_CREAT|O_EXCL 0755`, errTesting)
 	s.sys.InsertOsLstatResult(`lstat "/target"`, testutil.FileInfoFile)
@@ -1333,7 +1333,7 @@ func (s *changeSuite) TestPerformFileBindMountWithoutMountSourceWithErrors(c *C)
 
 // Change.Perform wants to bind mount a file but the mount point isn't there and the parent is read-only.
 func (s *changeSuite) TestPerformFileBindMountWithoutMountPointAndReadOnlyBase(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/rofs/target"`, syscall.ENOENT)
 	s.sys.InsertFault(`mkdirat 3 "rofs" 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`openat 4 "target" O_NOFOLLOW|O_CLOEXEC|O_CREAT|O_EXCL 0755`, syscall.EROFS, nil) // works on 2nd try
@@ -1558,7 +1558,7 @@ func (s *changeSuite) TestPerformCreateSymlinkNameLstatError(c *C) {
 
 // Change.Perform wants to create a symlink.
 func (s *changeSuite) TestPerformCreateSymlinkWTF(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/name"`, syscall.ENOENT)
 	chg := &update.Change{Action: update.Mount, Entry: osutil.MountEntry{Name: "unused", Dir: "/name", Options: []string{"x-snapd.kind=symlink", "x-snapd.symlink=/oldname"}}}
 	synth, err := chg.Perform(s.sec)
@@ -1574,7 +1574,7 @@ func (s *changeSuite) TestPerformCreateSymlinkWTF(c *C) {
 
 // Change.Perform wants to create a symlink but it fails.
 func (s *changeSuite) TestPerformCreateSymlinkWithError(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/name"`, syscall.ENOENT)
 	s.sys.InsertFault(`symlinkat "/oldname" 3 "name"`, errTesting)
 	chg := &update.Change{Action: update.Mount, Entry: osutil.MountEntry{Name: "unused", Dir: "/name", Options: []string{"x-snapd.kind=symlink", "x-snapd.symlink=/oldname"}}}
@@ -1603,7 +1603,7 @@ func (s *changeSuite) TestPerformCreateSymlinkWithNoTargetError(c *C) {
 
 // Change.Perform wants to create a symlink but the base directory isn't there.
 func (s *changeSuite) TestPerformCreateSymlinkWithoutBaseDir(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/base/name"`, syscall.ENOENT)
 	chg := &update.Change{Action: update.Mount, Entry: osutil.MountEntry{Name: "unused", Dir: "/base/name", Options: []string{"x-snapd.kind=symlink", "x-snapd.symlink=/oldname"}}}
 	synth, err := chg.Perform(s.sec)
@@ -1623,7 +1623,7 @@ func (s *changeSuite) TestPerformCreateSymlinkWithoutBaseDir(c *C) {
 
 // Change.Perform wants to create a symlink but the base directory isn't there and cannot be created.
 func (s *changeSuite) TestPerformCreateSymlinkWithoutBaseDirWithErrors(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/base/name"`, syscall.ENOENT)
 	s.sys.InsertFault(`mkdirat 3 "base" 0755`, errTesting)
 	chg := &update.Change{Action: update.Mount, Entry: osutil.MountEntry{Name: "unused", Dir: "/base/name", Options: []string{"x-snapd.kind=symlink", "x-snapd.symlink=/oldname"}}}
@@ -1640,7 +1640,7 @@ func (s *changeSuite) TestPerformCreateSymlinkWithoutBaseDirWithErrors(c *C) {
 
 // Change.Perform wants to create a symlink but the base directory isn't there and the parent is read-only.
 func (s *changeSuite) TestPerformCreateSymlinkWithoutBaseDirAndReadOnlyBase(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertFault(`lstat "/rofs/name"`, syscall.ENOENT)
 	s.sys.InsertFault(`mkdirat 3 "rofs" 0755`, syscall.EEXIST)
 	s.sys.InsertFault(`symlinkat "/oldname" 4 "name"`, syscall.EROFS, nil) // works on 2nd try
@@ -1738,7 +1738,7 @@ func (s *changeSuite) TestPerformCreateSymlinkWithFileInTheWay(c *C) {
 
 // Change.Perform wants to create a symlink but a correct symlink is already present.
 func (s *changeSuite) TestPerformCreateSymlinkWithGoodSymlinkPresent(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertOsLstatResult(`lstat "/name"`, testutil.FileInfoSymlink)
 	s.sys.InsertFault(`symlinkat "/oldname" 3 "name"`, syscall.EEXIST)
 	s.sys.InsertFstatResult(`fstat 4 <ptr>`, syscall.Stat_t{Mode: syscall.S_IFLNK})
@@ -1761,7 +1761,7 @@ func (s *changeSuite) TestPerformCreateSymlinkWithGoodSymlinkPresent(c *C) {
 
 // Change.Perform wants to create a symlink but a incorrect symlink is already present.
 func (s *changeSuite) TestPerformCreateSymlinkWithBadSymlinkPresent(c *C) {
-	defer s.sec.MockUnrestrictedPrefixes("/")() // Treat test path as unrestricted.
+	defer s.sec.MockUnrestrictedPaths("/")() // Treat test path as unrestricted.
 	s.sys.InsertOsLstatResult(`lstat "/name"`, testutil.FileInfoSymlink)
 	s.sys.InsertFault(`symlinkat "/oldname" 3 "name"`, syscall.EEXIST)
 	s.sys.InsertFstatResult(`fstat 4 <ptr>`, syscall.Stat_t{Mode: syscall.S_IFLNK})
