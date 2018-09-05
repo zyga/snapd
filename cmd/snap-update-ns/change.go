@@ -133,6 +133,7 @@ func (c *Change) createPath(path string, pokeHoles bool, sec *Secure) ([]*Change
 }
 
 func (c *Change) ensureTarget(sec *Secure) ([]*Change, error) {
+	fmt.Printf("ensure TARGET %q\n", c)
 	var changes []*Change
 
 	kind := c.Entry.XSnapdKind()
@@ -161,12 +162,14 @@ func (c *Change) ensureTarget(sec *Secure) ([]*Change, error) {
 		case "symlink":
 			if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
 				// Create path verifies the symlink or fails if it is not what we wanted.
+				fmt.Printf("\tgoing to create path %q poking holes (never)\n", path)
 				_, err = c.createPath(path, false, sec)
 			} else {
 				err = fmt.Errorf("cannot create symlink in %q: existing file in the way", path)
 			}
 		}
 	} else if os.IsNotExist(err) {
+		fmt.Printf("\tgoing to create path %q poking holes (always)\n", path)
 		changes, err = c.createPath(path, true, sec)
 	} else {
 		// If we cannot inspect the element let's just bail out.
@@ -176,6 +179,7 @@ func (c *Change) ensureTarget(sec *Secure) ([]*Change, error) {
 }
 
 func (c *Change) ensureSource(sec *Secure) ([]*Change, error) {
+	fmt.Printf("ensure SOURCE %q\n", c)
 	var changes []*Change
 
 	// We only have to do ensure bind mount source exists.
@@ -216,6 +220,7 @@ func (c *Change) ensureSource(sec *Secure) ([]*Change, error) {
 		// snap they apply to. As such they are useless for content sharing but
 		// very much useful to layouts.
 		pokeHoles := c.Entry.XSnapdOrigin() == "layout"
+		fmt.Printf("\tgoing to create path %q holes:%v\n", path, pokeHoles)
 		changes, err = c.createPath(path, pokeHoles, sec)
 	} else {
 		// If we cannot inspect the element let's just bail out.

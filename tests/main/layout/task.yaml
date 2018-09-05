@@ -29,6 +29,9 @@ execute: |
             install_local test-snapd-layout
         fi
 
+        # Make a symlink that's the same as desired except for link target.
+        ln -fs /INCORRECT /etc/demo.conf
+
         echo "snap declaring layouts doesn't explode on startup"
         test-snapd-layout.sh -c "true"
 
