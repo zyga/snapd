@@ -74,6 +74,7 @@ hack: snap-confine/snap-confine-debug snap-confine/snap-confine.apparmor snap-up
 	sudo install -m 755 snap-seccomp/snap-seccomp $(DESTDIR)$(libexecdir)/snap-seccomp
 	sudo install -m 755 snap-discard-ns/snap-discard-ns $(DESTDIR)$(libexecdir)/snap-discard-ns
 	sudo install -m 755 snapd/snapd $(DESTDIR)$(libexecdir)/snapd
+	sudo install -m 644 ../data/info $(DESTDIR)$(libexecdir)/info
 
 # for the hack target also:
 snap-update-ns/snap-update-ns: snap-update-ns/*.go snap-update-ns/*.[ch]
