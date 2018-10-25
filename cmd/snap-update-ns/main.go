@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jessevdk/go-flags"
 
@@ -83,10 +84,34 @@ func run() error {
 		return err
 	}
 
+	var logPath string
 	if opts.UserMounts {
-		return applyUserFstab(opts.Positionals.SnapName)
+		logPath = fmt.Sprintf("%s/snap.%s.%d.log", dirs.SnapRunNsDir, opts.Positionals.SnapName, os.Getuid())
+	} else {
+		logPath = fmt.Sprintf("%s/snap.%s.log", dirs.SnapRunNsDir, opts.Positionals.SnapName)
 	}
-	return applyFstab(opts.Positionals.SnapName, opts.FromSnapConfine)
+	logFile, err := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("cannot open log file: %s", err)
+	}
+	defer logFile.Close()
+	restore := LogMountChangesTo(logFile)
+	defer restore()
+
+	now := time.Now().Format("2006/01/02 15:04:05")
+	if opts.FromSnapConfine {
+		fmt.Fprintf(logFile, "Invoked by snap-confine on %s\n", now)
+	} else {
+		fmt.Fprintf(logFile, "Invoked by snapd on %s\n", now)
+	}
+
+	if opts.UserMounts {
+		err = applyUserFstab(opts.Positionals.SnapName)
+	} else {
+		err = applyFstab(opts.Positionals.SnapName, opts.FromSnapConfine)
+	}
+	fmt.Fprintf(logFile, "Finished processing requests\n")
+	return err
 }
 
 func applyFstab(instanceName string, fromSnapConfine bool) error {

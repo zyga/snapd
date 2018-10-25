@@ -224,6 +224,15 @@ func (c *Change) ensureSource(as *Assumptions) ([]*Change, error) {
 	return changes, err
 }
 
+var mountLogFile *os.File
+
+// LogMountChangesTo arranges so that mount changes are logged to a given file.
+func LogMountChangesTo(logFile *os.File) (restore func()) {
+	old := mountLogFile
+	mountLogFile = logFile
+	return func() { mountLogFile = old }
+}
+
 // changePerformImpl is the real implementation of Change.Perform
 func changePerformImpl(c *Change, as *Assumptions) (changes []*Change, err error) {
 	if c.Action == Mount {
@@ -292,8 +301,14 @@ func (c *Change) lowLevelPerform(as *Assumptions) error {
 			// Use Secure.BindMount for bind mounts
 			if flags&syscall.MS_BIND == syscall.MS_BIND {
 				err = BindMount(c.Entry.Name, c.Entry.Dir, uint(flags))
+				if mountLogFile != nil && err == nil {
+					fmt.Fprintf(mountLogFile, "\tBind-mounted %s -> %s with options %s\n", c.Entry.Name, c.Entry.Dir, c.Entry.Options)
+				}
 			} else {
 				err = sysMount(c.Entry.Name, c.Entry.Dir, c.Entry.Type, uintptr(flags), strings.Join(unparsed, ","))
+				if mountLogFile != nil && err == nil {
+					fmt.Fprintf(mountLogFile, "\tMounted %s at %s with type %s and options %s\n", c.Entry.Name, c.Entry.Dir, c.Entry.Type, c.Entry.Options)
+				}
 			}
 			logger.Debugf("mount %q %q %q %d %q (error: %v)", c.Entry.Name, c.Entry.Dir, c.Entry.Type, uintptr(flags), strings.Join(unparsed, ","), err)
 			if err == nil {
@@ -307,6 +322,9 @@ func (c *Change) lowLevelPerform(as *Assumptions) error {
 		case "symlink":
 			err = osRemove(c.Entry.Dir)
 			logger.Debugf("remove %q (error: %v)", c.Entry.Dir, err)
+			if mountLogFile != nil && err == nil {
+				fmt.Fprintf(mountLogFile, "\tRemoved %s\n", c.Entry.Dir)
+			}
 		case "", "file":
 			// Detach the mount point instead of unmounting it if requested.
 			flags := umountNoFollow
@@ -320,6 +338,9 @@ func (c *Change) lowLevelPerform(as *Assumptions) error {
 				as.AddChange(c)
 			}
 			logger.Debugf("umount %q (error: %v)", c.Entry.Dir, err)
+			if mountLogFile != nil && err == nil {
+				fmt.Fprintf(mountLogFile, "\tUnmounted %s\n", c.Entry.Dir)
+			}
 			if err != nil {
 				return err
 			}
@@ -370,6 +391,9 @@ func (c *Change) lowLevelPerform(as *Assumptions) error {
 			// more than one errno value.
 			if kind == "" && (err == syscall.ENOTEMPTY || err == syscall.EEXIST) {
 				return nil
+			}
+			if mountLogFile != nil && err == nil {
+				fmt.Fprintf(mountLogFile, "Removed %s\n", path)
 			}
 		}
 		return err

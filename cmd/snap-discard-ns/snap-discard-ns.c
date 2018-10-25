@@ -92,10 +92,14 @@ int main(int argc, char** argv) {
     char usr_fstab_pattern[PATH_MAX];
     char sys_mnt_pattern[PATH_MAX];
     char usr_mnt_pattern[PATH_MAX];
+    char sys_log_pattern[PATH_MAX];
+    char usr_log_pattern[PATH_MAX];
     sc_must_snprintf(sys_fstab_pattern, sizeof sys_fstab_pattern, "snap\\.%s\\.fstab", snap_instance_name);
     sc_must_snprintf(usr_fstab_pattern, sizeof usr_fstab_pattern, "snap\\.%s\\.*\\.fstab", snap_instance_name);
     sc_must_snprintf(sys_mnt_pattern, sizeof sys_mnt_pattern, "%s\\.mnt", snap_instance_name);
     sc_must_snprintf(usr_mnt_pattern, sizeof usr_mnt_pattern, "%s\\.*\\.mnt", snap_instance_name);
+    sc_must_snprintf(sys_log_pattern, sizeof sys_log_pattern, "snap\\.%s\\.log", snap_instance_name);
+    sc_must_snprintf(usr_log_pattern, sizeof usr_log_pattern, "snap\\.%s\\.*\\.log", snap_instance_name);
 
     DIR* ns_dir = fdopendir(ns_dir_fd);
     if (ns_dir == NULL) {
@@ -128,11 +132,13 @@ int main(int argc, char** argv) {
             const char* pattern;
             bool unmount;
         };
-        struct variant variants[4] = {
+        struct variant variants[] = {
             {.pattern = sys_mnt_pattern, .unmount = true},
             {.pattern = usr_mnt_pattern, .unmount = true},
             {.pattern = sys_fstab_pattern},
             {.pattern = usr_fstab_pattern},
+            {.pattern = sys_log_pattern},
+            {.pattern = usr_log_pattern},
         };
         for (size_t i = 0; i < sizeof variants / sizeof *variants; ++i) {
             struct variant* v = &variants[i];

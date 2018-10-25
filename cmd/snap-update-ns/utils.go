@@ -192,6 +192,10 @@ func MkDir(dirFd int, dirName string, name string, perm os.FileMode, uid sys.Use
 			return -1, fmt.Errorf("cannot create directory %q: %v", filepath.Join(dirName, name), err)
 		}
 	}
+	if mountLogFile != nil && made {
+		fmt.Fprintf(mountLogFile, "\tCreated directory %s\n", filepath.Join(dirName, name))
+	}
+
 	newFd, err := sysOpenat(dirFd, name, openFlags, 0)
 	if err != nil {
 		return -1, fmt.Errorf("cannot open directory %q: %v", filepath.Join(dirName, name), err)
@@ -260,6 +264,9 @@ func MkFile(dirFd int, dirName string, name string, perm os.FileMode, uid sys.Us
 	defer sysClose(newFd)
 
 	if made {
+		if mountLogFile != nil {
+			fmt.Fprintf(mountLogFile, "\tCreated empty file %s\n", filepath.Join(dirName, name))
+		}
 		// Chown the file if we made it.
 		if err := sysFchown(newFd, uid, gid); err != nil {
 			return fmt.Errorf("cannot chown file %q to %d.%d: %v", filepath.Join(dirName, name), uid, gid, err)
@@ -317,6 +324,9 @@ func MkSymlink(dirFd int, dirName string, name string, oldname string, rs *Restr
 		default:
 			return fmt.Errorf("cannot create symlink %q: %v", filepath.Join(dirName, name), err)
 		}
+	}
+	if mountLogFile != nil {
+		fmt.Fprintf(mountLogFile, "\tCreated symlink %s -> %s\n", filepath.Join(dirName, name), oldname)
 	}
 
 	return nil
