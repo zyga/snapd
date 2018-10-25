@@ -393,7 +393,7 @@ func (c *Change) lowLevelPerform(as *Assumptions) error {
 				return nil
 			}
 			if mountLogFile != nil && err == nil {
-				fmt.Fprintf(mountLogFile, "Removed %s\n", path)
+				fmt.Fprintf(mountLogFile, "\tRemoved %s\n", path)
 			}
 		}
 		return err
