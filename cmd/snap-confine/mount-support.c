@@ -808,8 +808,9 @@ void sc_setup_user_mounts(struct sc_apparmor *apparmor, int snap_update_ns_fd,
 			die("cannot allocate memory for snap name");
 		}
 		char *argv[] = {
-			"snap-update-ns", "--user-mounts", snap_name_copy,
-			NULL
+			"snap-update-ns", "--from-snap-confine",
+			"--user-mounts",
+			snap_name_copy, NULL
 		};
 		char *envp[3] = { NULL };
 		int last_env = 0;
