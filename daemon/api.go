@@ -64,6 +64,7 @@ import (
 	"github.com/snapcore/snapd/overlord/snapshotstate"
 	"github.com/snapcore/snapd/overlord/snapstate"
 	"github.com/snapcore/snapd/overlord/state"
+	"github.com/snapcore/snapd/perf"
 	"github.com/snapcore/snapd/progress"
 	"github.com/snapcore/snapd/release"
 	"github.com/snapcore/snapd/snap"
@@ -2551,6 +2552,12 @@ func postDebug(c *Command, r *http.Request, user *auth.UserState) Response {
 		sort.Strings(status.Unreachable)
 
 		return SyncResponse(status, nil)
+	case "speed":
+		// This is all nil-safe.
+		samples := perf.GetRingBuffer().Samples()
+		sort.Sort(perf.ByDecreasingDuration(samples))
+		// TODO: add snapd-side aggregation / sorting / filtering
+		return SyncResponse(samples, nil)
 	default:
 		return BadRequest("unknown debug action: %v", a.Action)
 	}

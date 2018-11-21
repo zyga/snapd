@@ -38,6 +38,7 @@ import (
 	"github.com/snapcore/snapd/overlord/devicestate"
 	"github.com/snapcore/snapd/overlord/snapstate"
 	"github.com/snapcore/snapd/overlord/state"
+	"github.com/snapcore/snapd/perf"
 	"github.com/snapcore/snapd/snap"
 )
 
@@ -71,13 +72,30 @@ func (m *InterfaceManager) initialize(extraInterfaces []interfaces.Interface, ex
 	if err := removeStaleConnections(m.state); err != nil {
 		return err
 	}
-	if _, err := m.reloadConnections(""); err != nil {
+
+	perf.MeasureAndStore(func() {
+		_, err = m.reloadConnections("")
+	}, &perf.Sample{
+		Name:      "reload connections",
+		ManagerID: "iface",
+		Kind:      perf.KindStartup,
+	})
+	if err != nil {
 		return err
 	}
+
 	if m.profilesNeedRegeneration() {
-		if err := m.regenerateAllSecurityProfiles(); err != nil {
+		perf.MeasureAndStore(func() {
+			err = m.regenerateAllSecurityProfiles()
+		}, &perf.Sample{
+			Name:      "regenerate profiles",
+			ManagerID: "iface",
+			Kind:      perf.KindStartup,
+		})
+		if err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
@@ -181,8 +199,17 @@ func (m *InterfaceManager) regenerateAllSecurityProfiles() error {
 			if backend.Name() == "" {
 				continue // Test backends have no name, skip them to simplify testing.
 			}
+			perf.MeasureAndStore(func() {
+				err = backend.Setup(snapInfo, opts, m.repo)
+			}, &perf.Sample{
+				Name:      "regenerate snap security",
+				ManagerID: "iface",
+				Kind:      perf.KindStartup,
+				SnapName:  snapName,
+				MiscID:    string(backend.Name()),
+			})
 			// Refresh security of this snap and backend
-			if err := backend.Setup(snapInfo, opts, m.repo); err != nil {
+			if err != nil {
 				// Let's log this but carry on
 				logger.Noticef("cannot regenerate %s profile for snap %q: %s",
 					backend.Name(), snapName, err)
@@ -317,8 +344,21 @@ func (m *InterfaceManager) setupSecurityByBackend(task *state.Task, snaps []*sna
 	// backend and run it for all snaps. See LP: 1802581
 	for _, backend := range m.repo.Backends() {
 		for i, snapInfo := range snaps {
+			sample := &perf.Sample{
+				Kind: perf.KindAPI, // It would be nice to inherit this somehow.
+				Name: "setup security for snap",
+				// Change().ID() cannot be called without holding the lock.
+				ChangeID:  task.Change().ID(),
+				TaskID:    task.ID(),
+				SnapName:  snapInfo.InstanceName(),
+				ManagerID: "iface",
+				MiscID:    string(backend.Name()),
+			}
 			st.Unlock()
-			err := backend.Setup(snapInfo, opts[i], m.repo)
+			var err error
+			perf.MeasureAndStore(func() {
+				err = backend.Setup(snapInfo, opts[i], m.repo)
+			}, sample)
 			st.Lock()
 			if err != nil {
 				task.Errorf("cannot setup %s for snap %q: %s", backend.Name(), snapInfo.InstanceName(), err)
@@ -335,8 +375,21 @@ func (m *InterfaceManager) setupSnapSecurity(task *state.Task, snapInfo *snap.In
 	instanceName := snapInfo.InstanceName()
 
 	for _, backend := range m.repo.Backends() {
+		sample := &perf.Sample{
+			Kind: perf.KindAPI, // It would be nice to inherit this somehow.
+			Name: "setup security for snap",
+			// Change().ID() cannot be called without holding the lock.
+			ChangeID:  task.Change().ID(),
+			TaskID:    task.ID(),
+			SnapName:  snapInfo.InstanceName(),
+			ManagerID: "iface",
+			MiscID:    string(backend.Name()),
+		}
 		st.Unlock()
-		err := backend.Setup(snapInfo, opts, m.repo)
+		var err error
+		perf.MeasureAndStore(func() {
+			err = backend.Setup(snapInfo, opts, m.repo)
+		}, sample)
 		st.Lock()
 		if err != nil {
 			task.Errorf("cannot setup %s for snap %q: %s", backend.Name(), instanceName, err)
@@ -349,8 +402,21 @@ func (m *InterfaceManager) setupSnapSecurity(task *state.Task, snapInfo *snap.In
 func (m *InterfaceManager) removeSnapSecurity(task *state.Task, instanceName string) error {
 	st := task.State()
 	for _, backend := range m.repo.Backends() {
+		sample := &perf.Sample{
+			Kind: perf.KindAPI, // It would be nice to inherit this somehow.
+			Name: "remove security for snap",
+			// Change().ID() cannot be called without holding the lock.
+			ChangeID:  task.Change().ID(),
+			TaskID:    task.ID(),
+			SnapName:  instanceName,
+			ManagerID: "iface",
+			MiscID:    string(backend.Name()),
+		}
 		st.Unlock()
-		err := backend.Remove(instanceName)
+		var err error
+		perf.MeasureAndStore(func() {
+			err = backend.Remove(instanceName)
+		}, sample)
 		st.Lock()
 		if err != nil {
 			task.Errorf("cannot setup %s for snap %q: %s", backend.Name(), instanceName, err)

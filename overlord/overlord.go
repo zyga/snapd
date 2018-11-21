@@ -42,9 +42,11 @@ import (
 	"github.com/snapcore/snapd/overlord/hookstate"
 	"github.com/snapcore/snapd/overlord/ifacestate"
 	"github.com/snapcore/snapd/overlord/patch"
+	"github.com/snapcore/snapd/overlord/perfstate"
 	"github.com/snapcore/snapd/overlord/snapshotstate"
 	"github.com/snapcore/snapd/overlord/snapstate"
 	"github.com/snapcore/snapd/overlord/state"
+	"github.com/snapcore/snapd/perf"
 	"github.com/snapcore/snapd/store"
 )
 
@@ -84,6 +86,7 @@ type Overlord struct {
 	deviceMgr *devicestate.DeviceManager
 	cmdMgr    *cmdstate.CommandManager
 	shotMgr   *snapshotstate.SnapshotManager
+	perfMgr   *perfstate.PerformanceManager
 }
 
 var storeNew = store.New
@@ -100,7 +103,11 @@ func New() (*Overlord, error) {
 		ensureBefore:   o.ensureBefore,
 		requestRestart: o.requestRestart,
 	}
-	s, err := loadState(backend)
+	var s *state.State
+	var err error
+	perf.StoreSample(perf.Measure(func() {
+		s, err = loadState(backend)
+	}, &perf.Sample{Name: "load state", Kind: perf.KindStartup}))
 	if err != nil {
 		return nil, err
 	}
@@ -114,31 +121,46 @@ func New() (*Overlord, error) {
 	}
 	o.runner.AddOptionalHandler(matchAnyUnknownTask, handleUnknownTask, nil)
 
-	hookMgr, err := hookstate.Manager(s, o.runner)
+	var hookMgr *hookstate.HookManager
+	perf.MeasureAndStore(func() {
+		hookMgr, err = hookstate.Manager(s, o.runner)
+	}, &perf.Sample{Name: "prepare hook manager", Kind: perf.KindStartup})
 	if err != nil {
 		return nil, err
 	}
 	o.addManager(hookMgr)
 
-	snapMgr, err := snapstate.Manager(s, o.runner)
+	var snapMgr *snapstate.SnapManager
+	perf.MeasureAndStore(func() {
+		snapMgr, err = snapstate.Manager(s, o.runner)
+	}, &perf.Sample{Name: "prepare snap manager", Kind: perf.KindStartup})
 	if err != nil {
 		return nil, err
 	}
 	o.addManager(snapMgr)
 
-	assertMgr, err := assertstate.Manager(s, o.runner)
+	var assertMgr *assertstate.AssertManager
+	perf.MeasureAndStore(func() {
+		assertMgr, err = assertstate.Manager(s, o.runner)
+	}, &perf.Sample{Name: "prepare assertion manager", Kind: perf.KindStartup})
 	if err != nil {
 		return nil, err
 	}
 	o.addManager(assertMgr)
 
-	ifaceMgr, err := ifacestate.Manager(s, hookMgr, o.runner, nil, nil)
+	var ifaceMgr *ifacestate.InterfaceManager
+	perf.MeasureAndStore(func() {
+		ifaceMgr, err = ifacestate.Manager(s, hookMgr, o.runner, nil, nil)
+	}, &perf.Sample{Name: "prepare interface manager", Kind: perf.KindStartup})
 	if err != nil {
 		return nil, err
 	}
 	o.addManager(ifaceMgr)
 
-	deviceMgr, err := devicestate.Manager(s, hookMgr, o.runner)
+	var deviceMgr *devicestate.DeviceManager
+	perf.MeasureAndStore(func() {
+		deviceMgr, err = devicestate.Manager(s, hookMgr, o.runner)
+	}, &perf.Sample{Name: "prepare device manager", Kind: perf.KindStartup})
 	if err != nil {
 		return nil, err
 	}
@@ -149,11 +171,18 @@ func New() (*Overlord, error) {
 
 	configstateInit(hookMgr)
 
+	var perfMgr *perfstate.PerformanceManager
+	perf.MeasureAndStore(func() {
+		perfMgr = perfstate.Manager(s)
+	}, &perf.Sample{Name: "prepare performance manager", Kind: perf.KindStartup})
+	o.addManager(perfMgr)
+
 	// the shared task runner should be added last!
 	o.stateEng.AddManager(o.runner)
 
 	s.Lock()
 	defer s.Unlock()
+
 	// setting up the store
 	proxyConf := proxyconf.New(s)
 	authContext := auth.NewAuthContext(s, o.deviceMgr)
@@ -164,7 +193,10 @@ func New() (*Overlord, error) {
 
 	snapstate.ReplaceStore(s, sto)
 
-	if err := o.snapMgr.SyncCookies(s); err != nil {
+	perf.StoreSample(perf.Measure(func() {
+		err = o.snapMgr.SyncCookies(s)
+	}, &perf.Sample{Name: "synchronize snap cookies", Kind: perf.KindStartup}))
+	if err != nil {
 		return nil, fmt.Errorf("failed to generate cookies: %q", err)
 	}
 
@@ -187,6 +219,8 @@ func (o *Overlord) addManager(mgr StateManager) {
 		o.cmdMgr = x
 	case *snapshotstate.SnapshotManager:
 		o.shotMgr = x
+	case *perfstate.PerformanceManager:
+		o.perfMgr = x
 	}
 	o.stateEng.AddManager(mgr)
 }
