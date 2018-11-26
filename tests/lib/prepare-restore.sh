@@ -431,6 +431,17 @@ prepare_suite_each() {
 restore_suite_each() {
     # shellcheck source=tests/lib/reset.sh
     "$TESTSLIB"/reset.sh --reuse-core
+
+    # Remove snapd specific entries from apparmor cache.
+    rm -f /var/cache/apparmor/snap-update-ns.*
+    rm -f /var/cache/apparmor/snap.*
+    # Remove snapd specific apparmor profiles from the the kernel.
+    test -d /sys/kernel/security/apparmor/policy/profiles && (
+        cd /sys/kernel/security/apparmor/policy/profiles
+        for profie in snap.* snap-update-ns.*; do
+            echo -n "$(cat $profile/name)" /sys/kernel/security/apparmor/.remove
+        done
+    )
 }
 
 restore_suite() {
