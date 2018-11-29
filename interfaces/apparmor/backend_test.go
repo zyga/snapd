@@ -526,20 +526,20 @@ func (s *backendSuite) TestCombineSnippetsChangeProfile(c *C) {
 	defer restoreClassicTemplate()
 
 	type changeProfileScenario struct {
-		features []string
-		expected string
+		parserFeatures []string
+		expected       string
 	}
 
 	var changeProfileScenarios = []changeProfileScenario{{
-		features: []string{},
-		expected: "change_profile,",
+		parserFeatures: []string{},
+		expected:       "change_profile,",
 	}, {
-		features: []string{"unsafe"},
-		expected: "change_profile unsafe /**,",
+		parserFeatures: []string{"unsafe"},
+		expected:       "change_profile unsafe /**,",
 	}}
 
 	for i, scenario := range changeProfileScenarios {
-		restore = apparmor.MockParserFeatures(func() []string { return scenario.features })
+		restore = release.MockAppArmorFeatures([]string{"kernel-feature"}, scenario.parserFeatures)
 		defer restore()
 
 		snapInfo := s.InstallSnap(c, interfaces.ConfinementOptions{Classic: true}, "", ifacetest.SambaYamlV1, 1)
@@ -1442,32 +1442,28 @@ func (s *backendSuite) TestNsProfile(c *C) {
 func (s *backendSuite) TestSandboxFeatures(c *C) {
 	restore := release.MockAppArmorLevel(release.FullAppArmor)
 	defer restore()
-	restore = apparmor.MockKernelFeatures(func() []string { return []string{"foo", "bar"} })
-	defer restore()
-	restore = apparmor.MockParserFeatures(func() []string { return []string{"baz", "norf"} })
-	defer restore()
 
-	c.Assert(s.Backend.SandboxFeatures(), DeepEquals, []string{"kernel:foo", "kernel:bar", "parser:baz", "parser:norf", "support-level:full", "policy:default"})
+	c.Assert(s.Backend.SandboxFeatures(), DeepEquals, []string{
+		"kernel:mocked-kernel-feature", "parser:mocked-parser-feature",
+		"support-level:full", "policy:default",
+	})
 }
 
 func (s *backendSuite) TestSandboxFeaturesPartial(c *C) {
-	restore := release.MockAppArmorLevel(release.PartialAppArmor)
-	defer restore()
-	restore = release.MockReleaseInfo(&release.OS{ID: "opensuse-tumbleweed"})
+	restore := release.MockReleaseInfo(&release.OS{ID: "opensuse-tumbleweed"})
 	defer restore()
 	restore = osutil.MockKernelVersion("4.16.10-1-default")
 	defer restore()
-	restore = apparmor.MockKernelFeatures(func() []string { return []string{"foo", "bar"} })
+	restore = release.MockAppArmorFeatures([]string{"file", "signal"}, []string{"unsafe"})
 	defer restore()
-	restore = apparmor.MockParserFeatures(func() []string { return []string{"baz", "norf"} })
-	defer restore()
-
-	c.Assert(s.Backend.SandboxFeatures(), DeepEquals, []string{"kernel:foo", "kernel:bar", "parser:baz", "parser:norf", "support-level:partial", "policy:default"})
+	c.Assert(s.Backend.SandboxFeatures(), DeepEquals, []string{
+		"kernel:file", "kernel:signal", "parser:unsafe", "support-level:partial", "policy:default"})
 
 	restore = osutil.MockKernelVersion("4.14.1-default")
 	defer restore()
 
-	c.Assert(s.Backend.SandboxFeatures(), DeepEquals, []string{"kernel:foo", "kernel:bar", "parser:baz", "parser:norf", "support-level:partial", "policy:downgraded"})
+	c.Assert(s.Backend.SandboxFeatures(), DeepEquals, []string{
+		"kernel:file", "kernel:signal", "parser:unsafe", "support-level:partial", "policy:downgraded"})
 }
 
 func (s *backendSuite) TestParallelInstanceSetupSnapUpdateNS(c *C) {

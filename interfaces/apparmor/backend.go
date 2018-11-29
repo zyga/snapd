@@ -60,8 +60,6 @@ var (
 	procSelfExe           = "/proc/self/exe"
 	isHomeUsingNFS        = osutil.IsHomeUsingNFS
 	isRootWritableOverlay = osutil.IsRootWritableOverlay
-	kernelFeatures        = release.AppArmorFeatures
-	parserFeatures        = release.AppArmorParserFeatures
 )
 
 // Backend is responsible for maintaining apparmor profiles for snaps and parts of snapd.
@@ -522,8 +520,8 @@ func addContent(securityTag string, snapInfo *snap.Info, opts interfaces.Confine
 		case "###PROFILEATTACH###":
 			return fmt.Sprintf("profile \"%s\"", securityTag)
 		case "###CHANGEPROFILE_RULE###":
-			for _, f := range parserFeatures() {
-				if f == "unsafe" {
+			for _, feature := range release.AppArmorParserFeatures() {
+				if feature == "unsafe" {
 					return fmt.Sprintf("change_profile unsafe /**,")
 				}
 			}
@@ -582,36 +580,24 @@ func (b *Backend) NewSpecification() interfaces.Specification {
 
 // SandboxFeatures returns the list of apparmor features supported by the kernel.
 func (b *Backend) SandboxFeatures() []string {
-	if release.AppArmorLevel() == release.NoAppArmor {
-		return nil
-	}
-
-	features := kernelFeatures()
-	pFeatures := parserFeatures()
-	tags := make([]string, 0, len(features)+len(pFeatures))
-	for _, feature := range features {
+	kernelFeatures := release.AppArmorKernelFeatures()
+	parserFeatures := release.AppArmorParserFeatures()
+	tags := make([]string, 0, len(kernelFeatures)+len(parserFeatures)+2)
+	for _, feature := range kernelFeatures {
 		// Prepend "kernel:" to apparmor kernel features to namespace them and
 		// allow us to introduce our own tags later.
 		tags = append(tags, "kernel:"+feature)
 	}
-
-	for _, feature := range pFeatures {
+	for _, feature := range parserFeatures {
 		// Prepend "parser:" to apparmor kernel features to namespace
 		// them and allow us to introduce our own tags later.
 		tags = append(tags, "parser:"+feature)
 	}
-
-	level := "full"
+	tags = append(tags, fmt.Sprintf("support-level:%s", release.AppArmorLevel()))
 	policy := "default"
-	if release.AppArmorLevel() == release.PartialAppArmor {
-		level = "partial"
-
-		if downgradeConfinement() {
-			policy = "downgraded"
-		}
+	if release.AppArmorLevel() == release.PartialAppArmor && downgradeConfinement() {
+		policy = "downgraded"
 	}
-	tags = append(tags, fmt.Sprintf("support-level:%s", level))
 	tags = append(tags, fmt.Sprintf("policy:%s", policy))
-
 	return tags
 }
