@@ -64,6 +64,8 @@ type systemKey struct {
 	// kernel version or similar settings. If those change we may
 	// need to change the generated profiles (e.g. when the user
 	// boots into a more featureful seccomp).
+
+	// TODO: rename this to AppArmorKernelFeatures
 	AppArmorFeatures       []string `json:"apparmor-features"`
 	AppArmorParserMtime    int64    `json:"apparmor-parser-mtime"`
 	AppArmorParserFeatures []string `json:"apparmor-parser-features"`
@@ -118,7 +120,7 @@ func generateSystemKey() (*systemKey, error) {
 	sk.BuildID = buildID
 
 	// Add apparmor-features (which is already sorted)
-	sk.AppArmorFeatures = release.AppArmorFeatures()
+	sk.AppArmorFeatures = release.AppArmorKernelFeatures()
 
 	// Add apparmor-parser-mtime
 	sk.AppArmorParserMtime = release.AppArmorParserMtime()
