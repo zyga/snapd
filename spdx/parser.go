@@ -74,13 +74,6 @@ func (p *parser) Validate() error {
 	return p.validate(0)
 }
 
-func (p *parser) advance(id string) error {
-	if p.s.Text() != id {
-		return fmt.Errorf("expected %q got %q", id, p.s.Text())
-	}
-	return nil
-}
-
 func (p *parser) validate(depth int) error {
 	last := ""
 
