@@ -28,7 +28,7 @@ import (
 type Winsize struct {
 	Row    uint16
 	Col    uint16
-	xpixel uint16 // unused
+	Xpixel uint16 // unused
 	Ypixel uint16 // unused
 }
 
