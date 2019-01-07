@@ -20,7 +20,7 @@
 package ifacetest
 
 import (
-	. "gopkg.in/check.v1"
+	"gopkg.in/check.v1"
 
 	"github.com/snapcore/snapd/dirs"
 	"github.com/snapcore/snapd/interfaces"
@@ -36,7 +36,7 @@ type BackendSuite struct {
 	restoreSanitize func()
 }
 
-func (s *BackendSuite) SetUpTest(c *C) {
+func (s *BackendSuite) SetUpTest(c *check.C) {
 	// Isolate this test to a temporary directory
 	s.RootDir = c.MkDir()
 	dirs.SetRootDir(s.RootDir)
@@ -44,12 +44,12 @@ func (s *BackendSuite) SetUpTest(c *C) {
 	s.Repo = interfaces.NewRepository()
 	s.Iface = &TestInterface{InterfaceName: "iface"}
 	err := s.Repo.AddInterface(s.Iface)
-	c.Assert(err, IsNil)
+	c.Assert(err, check.IsNil)
 
 	s.restoreSanitize = snap.MockSanitizePlugsSlots(func(snapInfo *snap.Info) {})
 }
 
-func (s *BackendSuite) TearDownTest(c *C) {
+func (s *BackendSuite) TearDownTest(c *check.C) {
 	dirs.SetRootDir("/")
 	s.restoreSanitize()
 }
@@ -147,7 +147,7 @@ slots:
 // Support code for tests
 
 // InstallSnap "installs" a snap from YAML.
-func (s *BackendSuite) InstallSnap(c *C, opts interfaces.ConfinementOptions, instanceName, snapYaml string, revision int) *snap.Info {
+func (s *BackendSuite) InstallSnap(c *check.C, opts interfaces.ConfinementOptions, instanceName, snapYaml string, revision int) *snap.Info {
 	snapInfo := snaptest.MockInfo(c, snapYaml, &snap.SideInfo{
 		Revision: snap.R(revision),
 	})
@@ -155,53 +155,53 @@ func (s *BackendSuite) InstallSnap(c *C, opts interfaces.ConfinementOptions, ins
 	if instanceName != "" {
 		_, instanceKey := snap.SplitInstanceName(instanceName)
 		snapInfo.InstanceKey = instanceKey
-		c.Assert(snapInfo.InstanceName(), Equals, instanceName)
+		c.Assert(snapInfo.InstanceName(), check.Equals, instanceName)
 	}
 
 	s.addPlugsSlots(c, snapInfo)
 	err := s.Backend.Setup(snapInfo, opts, s.Repo)
-	c.Assert(err, IsNil)
+	c.Assert(err, check.IsNil)
 	return snapInfo
 }
 
 // UpdateSnap "updates" an existing snap from YAML.
-func (s *BackendSuite) UpdateSnap(c *C, oldSnapInfo *snap.Info, opts interfaces.ConfinementOptions, snapYaml string, revision int) *snap.Info {
+func (s *BackendSuite) UpdateSnap(c *check.C, oldSnapInfo *snap.Info, opts interfaces.ConfinementOptions, snapYaml string, revision int) *snap.Info {
 	newSnapInfo := snaptest.MockInfo(c, snapYaml, &snap.SideInfo{
 		Revision: snap.R(revision),
 	})
-	c.Assert(newSnapInfo.InstanceName(), Equals, oldSnapInfo.InstanceName())
+	c.Assert(newSnapInfo.InstanceName(), check.Equals, oldSnapInfo.InstanceName())
 	s.removePlugsSlots(c, oldSnapInfo)
 	s.addPlugsSlots(c, newSnapInfo)
 	err := s.Backend.Setup(newSnapInfo, opts, s.Repo)
-	c.Assert(err, IsNil)
+	c.Assert(err, check.IsNil)
 	return newSnapInfo
 }
 
 // RemoveSnap "removes" an "installed" snap.
-func (s *BackendSuite) RemoveSnap(c *C, snapInfo *snap.Info) {
+func (s *BackendSuite) RemoveSnap(c *check.C, snapInfo *snap.Info) {
 	err := s.Backend.Remove(snapInfo.InstanceName())
-	c.Assert(err, IsNil)
+	c.Assert(err, check.IsNil)
 	s.removePlugsSlots(c, snapInfo)
 }
 
-func (s *BackendSuite) addPlugsSlots(c *C, snapInfo *snap.Info) {
+func (s *BackendSuite) addPlugsSlots(c *check.C, snapInfo *snap.Info) {
 	for _, plugInfo := range snapInfo.Plugs {
 		err := s.Repo.AddPlug(plugInfo)
-		c.Assert(err, IsNil)
+		c.Assert(err, check.IsNil)
 	}
 	for _, slotInfo := range snapInfo.Slots {
 		err := s.Repo.AddSlot(slotInfo)
-		c.Assert(err, IsNil)
+		c.Assert(err, check.IsNil)
 	}
 }
 
-func (s *BackendSuite) removePlugsSlots(c *C, snapInfo *snap.Info) {
+func (s *BackendSuite) removePlugsSlots(c *check.C, snapInfo *snap.Info) {
 	for _, plug := range s.Repo.Plugs(snapInfo.InstanceName()) {
 		err := s.Repo.RemovePlug(plug.Snap.InstanceName(), plug.Name)
-		c.Assert(err, IsNil)
+		c.Assert(err, check.IsNil)
 	}
 	for _, slot := range s.Repo.Slots(snapInfo.InstanceName()) {
 		err := s.Repo.RemoveSlot(slot.Snap.InstanceName(), slot.Name)
-		c.Assert(err, IsNil)
+		c.Assert(err, check.IsNil)
 	}
 }
