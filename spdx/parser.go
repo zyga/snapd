@@ -26,10 +26,9 @@ import (
 )
 
 const (
-	opUNSET = ""
-	opAND   = "AND"
-	opOR    = "OR"
-	opWITH  = "WITH"
+	opAND  = "AND"
+	opOR   = "OR"
+	opWITH = "WITH"
 )
 
 func isOperator(tok string) bool {
