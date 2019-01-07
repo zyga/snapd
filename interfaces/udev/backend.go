@@ -151,11 +151,7 @@ func (b *Backend) Remove(snapName string) error {
 }
 
 func (b *Backend) deriveContent(spec *Specification, snapInfo *snap.Info) (content []string) {
-	for _, snippet := range spec.Snippets() {
-		content = append(content, snippet)
-	}
-
-	return content
+	return append(content, spec.Snippets()...)
 }
 
 func (b *Backend) NewSpecification() interfaces.Specification {
