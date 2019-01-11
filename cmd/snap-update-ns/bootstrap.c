@@ -330,16 +330,26 @@ static int parse_arg_u(int argc, char * const *argv, int *optind, unsigned long 
 	errno = 0;
 	char *uid_text_end = NULL;
 	unsigned long parsed_uid = strtoul(uid_text, &uid_text_end, 10);
-	if (
-			/* Reject overflow in parsed representation */
-			(parsed_uid == ULONG_MAX && errno != 0)
-			/* Reject leading whitespace allowed by strtoul. */
-			|| (isspace(*uid_text))
-			/* Reject empty string. */
-			|| (*uid_text == '\0')
-			/* Reject partially parsed strings. */
-			|| (*uid_text != '\0' && uid_text_end != NULL
-				&& *uid_text_end != '\0')) {
+	/* Reject overflow in parsed representation */
+	if (parsed_uid == ULONG_MAX && errno != 0) {
+		bootstrap_msg = "cannot parse user id";
+		bootstrap_errno = errno;
+		return -1;
+	}
+	/* Reject leading whitespace allowed by strtoul. */
+	if (isspace(*uid_text)) {
+		bootstrap_msg = "cannot parse user id";
+		bootstrap_errno = errno;
+		return -1;
+	}
+	/* Reject empty string. */
+	if (*uid_text == '\0') {
+		bootstrap_msg = "cannot parse user id";
+		bootstrap_errno = errno;
+		return -1;
+	}
+	/* Reject partially parsed strings. */
+	if (*uid_text != '\0' && uid_text_end != NULL && *uid_text_end != '\0') {
 		bootstrap_msg = "cannot parse user id";
 		bootstrap_errno = errno;
 		return -1;
