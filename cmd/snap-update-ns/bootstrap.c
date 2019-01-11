@@ -330,8 +330,9 @@ static int parse_arg_u(int argc, char * const *argv, int *optind, unsigned long 
 	errno = 0;
 	char *uid_text_end = NULL;
 	unsigned long parsed_uid = strtoul(uid_text, &uid_text_end, 10);
+	int saved_errno = errno;
 	/* Reject overflow in parsed representation */
-	if (parsed_uid == ULONG_MAX && errno != 0) {
+	if (parsed_uid == ULONG_MAX && saved_errno != 0) {
 		bootstrap_msg = "cannot parse user id";
 		bootstrap_errno = errno;
 		return -1;
