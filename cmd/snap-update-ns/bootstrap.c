@@ -337,7 +337,8 @@ static int parse_arg_u(int argc, char * const *argv, int *optind, unsigned long 
 		return -1;
 	}
 	/* Reject leading whitespace allowed by strtoul. */
-	if (isspace(*uid_text)) {
+	char c = *uid_text;
+	if (c == ' ' || c == '\t' || c == '\v' || c == '\r' || c == '\n') {
 		bootstrap_msg = "cannot parse user id";
 		bootstrap_errno = errno;
 		return -1;
