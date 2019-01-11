@@ -76,20 +76,10 @@ static int setns_into_snap(const char *snap_name)
 	return err;
 }
 
-// switch_to_privileged_user drops to the real user ID while retaining
+// switch_to_privileged_user drops to the specific user and group ID while retaining
 // CAP_SYS_ADMIN, for operations such as mount().
-static int switch_to_privileged_user()
+static int switch_to_specific_privileged_user(uid_t real_uid, gid_t real_gid)
 {
-	uid_t real_uid;
-	gid_t real_gid;
-
-	real_uid = getuid();
-	if (real_uid == 0) {
-		// We're running as root: no need to switch IDs
-		return 0;
-	}
-	real_gid = getgid();
-
 	// _LINUX_CAPABILITY_VERSION_3 valid for kernel >= 2.6.26. See
 	// https://github.com/torvalds/linux/blob/master/kernel/capability.c
 	struct __user_cap_header_struct hdr =
@@ -486,11 +476,11 @@ void bootstrap(int argc, char **argv, char **envp)
 	const char *snap_name = NULL;
 	bool should_setns = false;
 	bool process_user_fstab = false;
-	unsigned long uid = 0;
+	unsigned long uid = getuid();
 	process_arguments(argc, argv, &snap_name, &should_setns,
 			  &process_user_fstab, &uid);
-	if (process_user_fstab) {
-		switch_to_privileged_user();
+	if (process_user_fstab && uid != 0) {
+		switch_to_specific_privileged_user(uid, getgid());
 		// switch_to_privileged_user sets bootstrap_{errno,msg}
 	} else if (snap_name != NULL && should_setns) {
 		setns_into_snap(snap_name);
