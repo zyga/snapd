@@ -423,6 +423,9 @@ void process_arguments(int argc, char *const *argv, const char **snap_name_out,
 				// --from-snap-confine and with --user-mounts.
 				should_setns = true;
 				user_fstab = true;
+			} else if (!strcmp(arg, "--help")) {
+				/* This is fine */
+				return;
 			} else {
 				bootstrap_errno = 0;
 				bootstrap_msg = "unsupported option";
