@@ -467,7 +467,15 @@ func addUpdateNSProfile(snapInfo *snap.Info, opts interfaces.ConfinementOptions,
 
 func downgradeConfinement() bool {
 	kver := osutil.KernelVersion()
+	// NOTE: eventually this should all go away. We are making incremental
+	// changes to improve the sandbox without breaking people in the wild.
 	switch {
+	case release.DistroLike("debian"):
+		if cmp, _ := strutil.VersionCompare(kver, "4.19"); cmp >= 0 {
+			// As a special exception, for Debian 10 which ships Linux
+			// 4.19, do not downgrade the confinement template.
+			return false
+		}
 	case release.DistroLike("opensuse-tumbleweed"):
 		if cmp, _ := strutil.VersionCompare(kver, "4.16"); cmp >= 0 {
 			// As a special exception, for openSUSE Tumbleweed which ships Linux
