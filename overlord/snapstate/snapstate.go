@@ -781,6 +781,20 @@ func UpdateMany(ctx context.Context, st *state.State, names []string, userID int
 
 	}
 
+	// Perform soft-refresh check to see if we can refresh at this moment.
+	tr := config.NewTransaction(st)
+	refreshAppAwareness, err := config.GetFeatureFlag(tr, features.RefreshAppAwareness)
+	if err != nil {
+		return nil, nil, err
+	}
+	if refreshAppAwareness {
+		for _, name := range names {
+			if err := SoftRefreshCheck(st, name); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+
 	return doUpdate(ctx, st, names, updates, params, userID, flags)
 }
 
@@ -1185,6 +1199,18 @@ func Update(st *state.State, name, channel string, revision snap.Revision, userI
 			updateFlags.Classic = false
 		}
 		return channel, updateFlags, &snapst
+	}
+
+	// Perform soft-refresh check to see if we can refresh at this moment.
+	tr := config.NewTransaction(st)
+	refreshAppAwareness, err := config.GetFeatureFlag(tr, features.RefreshAppAwareness)
+	if err != nil {
+		return nil, err
+	}
+	if refreshAppAwareness {
+		if err := SoftRefreshCheck(st, name); err != nil {
+			return nil, err
+		}
 	}
 
 	_, tts, err := doUpdate(context.TODO(), st, []string{name}, updates, params, userID, &flags)
