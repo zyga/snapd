@@ -29,7 +29,7 @@ import (
 	"strconv"
 
 	"github.com/snapcore/snapd/dirs"
-	"github.com/snapcore/snapd/overlord/state"
+	"github.com/snapcore/snapd/snap"
 )
 
 func parsePid(text string) (int, error) {
@@ -102,16 +102,8 @@ func deletePidsOfSecurityTag(pidSet map[int]bool, securityTag string) error {
 	return nil
 }
 
-func SoftRefreshCheck(st *state.State, snapName string) error {
-	var snapst SnapState
-	err := Get(st, snapName, &snapst)
-	if err != nil {
-		return err
-	}
-	info, err := snapst.CurrentInfo()
-	if err != nil {
-		return err
-	}
+func SoftRefreshCheck(info *snap.Info) error {
+	snapName := info.SnapName()
 	pidSet, err := pidsOfSnap(snapName)
 	if err != nil {
 		return err
@@ -136,12 +128,7 @@ func SoftRefreshCheck(st *state.State, snapName string) error {
 	return nil
 }
 
-func HardRefreshCheck(st *state.State, snapName string) error {
-	var snapst SnapState
-	err := Get(st, snapName, &snapst)
-	if err != nil {
-		return err
-	}
+func HardRefreshCheck(snapName string) error {
 	pidSet, err := pidsOfSnap(snapName)
 	if err != nil {
 		return err

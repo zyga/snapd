@@ -31,7 +31,7 @@ import (
 	"github.com/snapcore/snapd/dirs"
 	"github.com/snapcore/snapd/overlord/snapstate"
 	"github.com/snapcore/snapd/overlord/state"
-	"github.com/snapcore/snapd/snap"
+	"github.com/snapcore/snapd/snap/snaptest"
 )
 
 type refreshSuite struct {
@@ -39,10 +39,6 @@ type refreshSuite struct {
 }
 
 var _ = Suite(&refreshSuite{})
-
-func (s *refreshSuite) SetUpTest(c *C) {
-	s.state = state.New(nil)
-}
 
 func writePids(c *C, dir string, pids []int) {
 	err := os.MkdirAll(dir, 0755)
@@ -56,57 +52,26 @@ func writePids(c *C, dir string, pids []int) {
 }
 
 func (s *refreshSuite) TestSoftRefreshCheck(c *C) {
+	yamlText := `
+name: foo
+version: 1
+apps:
+  daemon:
+    command: dummy
+    daemon: simple
+  app:
+    command: dummy
+hooks:
+  configure:
+`
+	info := snaptest.MockInfo(c, yamlText, nil)
+
 	// Mock directory locations.
 	dirs.SetRootDir(c.MkDir())
 	defer dirs.SetRootDir("")
 
-	s.state.Lock()
-	defer s.state.Unlock()
-
-	// Mock the presence of the foo snap
-	snapstate.Set(s.state, "foo", &snapstate.SnapState{
-		Active: true,
-		Sequence: []*snap.SideInfo{
-			{RealName: "foo", Revision: snap.R(5), SnapID: "foo-id"},
-		},
-		Current:  snap.R(5),
-		SnapType: "app",
-		UserID:   1,
-	})
-
-	// Mock the info about the foo snap.
-	restore := snapstate.MockSnapReadInfo(func(name string, si *snap.SideInfo) (*snap.Info, error) {
-		if name != "foo" {
-			panic("expected only foo snap")
-		}
-
-		info := &snap.Info{
-			SideInfo: *si,
-			Type:     snap.TypeApp,
-		}
-		info.Apps = map[string]*snap.AppInfo{
-			"daemon": {
-				Snap:   info,
-				Name:   "daemon",
-				Daemon: "simple",
-			},
-			"app": {
-				Snap: info,
-				Name: "app",
-			},
-		}
-		info.Hooks = map[string]*snap.HookInfo{
-			"configure": {
-				Snap: info,
-				Name: "configure",
-			},
-		}
-		return info, nil
-	})
-	defer restore()
-
-	// There are no errors when directories are absent.
-	err := snapstate.SoftRefreshCheck(s.state, "foo")
+	// There are no errors when cgroups are absent.
+	err := snapstate.SoftRefreshCheck(info)
 	c.Check(err, IsNil)
 
 	snapPath := filepath.Join(dirs.FreezerCgroupDir, "snap.foo")
@@ -116,20 +81,20 @@ func (s *refreshSuite) TestSoftRefreshCheck(c *C) {
 
 	// Processes not traced to a service block refresh.
 	writePids(c, snapPath, []int{100})
-	err = snapstate.SoftRefreshCheck(s.state, "foo")
+	err = snapstate.SoftRefreshCheck(info)
 	c.Check(err, ErrorMatches, `snap "foo" has running apps or hooks`)
 
 	// Services are excluded from the check.
 	writePids(c, snapPath, []int{100})
 	writePids(c, daemonPath, []int{100})
-	err = snapstate.SoftRefreshCheck(s.state, "foo")
+	err = snapstate.SoftRefreshCheck(info)
 	c.Check(err, IsNil)
 
 	// Apps are not excluded.
 	writePids(c, snapPath, []int{100, 101})
 	writePids(c, daemonPath, []int{100})
 	writePids(c, appPath, []int{101})
-	err = snapstate.SoftRefreshCheck(s.state, "foo")
+	err = snapstate.SoftRefreshCheck(info)
 	c.Check(err, ErrorMatches, `snap "foo" has running apps or hooks`)
 	c.Check(err.(*snapstate.BusySnapError).Pids(), DeepEquals, []int{101})
 
@@ -138,7 +103,7 @@ func (s *refreshSuite) TestSoftRefreshCheck(c *C) {
 	writePids(c, daemonPath, []int{})
 	writePids(c, appPath, []int{})
 	writePids(c, hookPath, []int{105})
-	err = snapstate.SoftRefreshCheck(s.state, "foo")
+	err = snapstate.SoftRefreshCheck(info)
 	c.Check(err, ErrorMatches, `snap "foo" has running apps or hooks`)
 	c.Check(err.(*snapstate.BusySnapError).Pids(), DeepEquals, []int{105})
 }
@@ -148,22 +113,8 @@ func (s *refreshSuite) TestHardRefreshCheck(c *C) {
 	dirs.SetRootDir(c.MkDir())
 	defer dirs.SetRootDir("")
 
-	s.state.Lock()
-	defer s.state.Unlock()
-
-	// Mock the presence of the foo snap
-	snapstate.Set(s.state, "foo", &snapstate.SnapState{
-		Active: true,
-		Sequence: []*snap.SideInfo{
-			{RealName: "foo", Revision: snap.R(5), SnapID: "foo-id"},
-		},
-		Current:  snap.R(5),
-		SnapType: "app",
-		UserID:   1,
-	})
-
-	// There are no errors when directories are absent.
-	err := snapstate.HardRefreshCheck(s.state, "foo")
+	// There are no errors when cgroups are absent.
+	err := snapstate.HardRefreshCheck("foo")
 	c.Check(err, IsNil)
 
 	snapPath := filepath.Join(dirs.FreezerCgroupDir, "snap.foo")
@@ -173,20 +124,20 @@ func (s *refreshSuite) TestHardRefreshCheck(c *C) {
 
 	// Presence of any processes blocks refresh.
 	writePids(c, snapPath, []int{100})
-	err = snapstate.HardRefreshCheck(s.state, "foo")
+	err = snapstate.HardRefreshCheck("foo")
 	c.Check(err, ErrorMatches, `snap "foo" has running apps or hooks`)
 
 	// Services are not excluded from the check.
 	writePids(c, snapPath, []int{100})
 	writePids(c, daemonPath, []int{100})
-	err = snapstate.HardRefreshCheck(s.state, "foo")
+	err = snapstate.HardRefreshCheck("foo")
 	c.Check(err, ErrorMatches, `snap "foo" has running apps or hooks`)
 	c.Check(err.(*snapstate.BusySnapError).Pids(), DeepEquals, []int{100})
 
 	// Apps are not excluded from the check.
 	writePids(c, snapPath, []int{101})
 	writePids(c, appPath, []int{101})
-	err = snapstate.HardRefreshCheck(s.state, "foo")
+	err = snapstate.HardRefreshCheck("foo")
 	c.Check(err, ErrorMatches, `snap "foo" has running apps or hooks`)
 	c.Check(err.(*snapstate.BusySnapError).Pids(), DeepEquals, []int{101})
 
@@ -195,7 +146,7 @@ func (s *refreshSuite) TestHardRefreshCheck(c *C) {
 	writePids(c, daemonPath, []int{})
 	writePids(c, appPath, []int{})
 	writePids(c, hookPath, []int{105})
-	err = snapstate.HardRefreshCheck(s.state, "foo")
+	err = snapstate.HardRefreshCheck("foo")
 	c.Check(err, ErrorMatches, `snap "foo" has running apps or hooks`)
 	c.Check(err.(*snapstate.BusySnapError).Pids(), DeepEquals, []int{105})
 }

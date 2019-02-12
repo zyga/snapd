@@ -789,7 +789,16 @@ func UpdateMany(ctx context.Context, st *state.State, names []string, userID int
 	}
 	if refreshAppAwareness {
 		for _, name := range names {
-			if err := SoftRefreshCheck(st, name); err != nil {
+			var snapst SnapState
+			err := Get(st, name, &snapst)
+			if err != nil && err != state.ErrNoState {
+				return nil, nil, err
+			}
+			info, err := snapst.CurrentInfo()
+			if err != nil {
+				return nil, nil, err
+			}
+			if err := SoftRefreshCheck(info); err != nil {
 				return nil, nil, err
 			}
 		}
@@ -1208,7 +1217,11 @@ func Update(st *state.State, name, channel string, revision snap.Revision, userI
 		return nil, err
 	}
 	if refreshAppAwareness {
-		if err := SoftRefreshCheck(st, name); err != nil {
+		info, err := snapst.CurrentInfo()
+		if err != nil {
+			return nil, err
+		}
+		if err := SoftRefreshCheck(info); err != nil {
 			return nil, err
 		}
 	}
