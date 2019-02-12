@@ -44,6 +44,17 @@ func (s *refreshSuite) SetUpTest(c *C) {
 	s.state = state.New(nil)
 }
 
+func writePids(c *C, dir string, pids []int) {
+	err := os.MkdirAll(dir, 0755)
+	c.Assert(err, IsNil)
+	var buf bytes.Buffer
+	for _, pid := range pids {
+		fmt.Fprintf(&buf, "%d\n", pid)
+	}
+	err = ioutil.WriteFile(filepath.Join(dir, "cgroup.procs"), buf.Bytes(), 0644)
+	c.Assert(err, IsNil)
+}
+
 func (s *refreshSuite) TestSoftRefreshCheck(c *C) {
 	// Mock directory locations.
 	dirs.SetRootDir(c.MkDir())
@@ -98,46 +109,35 @@ func (s *refreshSuite) TestSoftRefreshCheck(c *C) {
 	err := snapstate.SoftRefreshCheck(s.state, "foo")
 	c.Check(err, IsNil)
 
-	writePids := func(dir string, pids []int) {
-		err := os.MkdirAll(dir, 0755)
-		c.Assert(err, IsNil)
-		var buf bytes.Buffer
-		for _, pid := range pids {
-			fmt.Fprintf(&buf, "%d\n", pid)
-		}
-		err = ioutil.WriteFile(filepath.Join(dir, "cgroup.procs"), buf.Bytes(), 0644)
-		c.Assert(err, IsNil)
-	}
-
 	snapPath := filepath.Join(dirs.FreezerCgroupDir, "snap.foo")
 	daemonPath := filepath.Join(dirs.PidsCgroupDir, "snap.foo.daemon")
 	appPath := filepath.Join(dirs.PidsCgroupDir, "snap.foo.app")
 	hookPath := filepath.Join(dirs.PidsCgroupDir, "snap.foo.hooks.configure")
 
 	// Processes not traced to a service block refresh.
-	writePids(snapPath, []int{100})
+	writePids(c, snapPath, []int{100})
 	err = snapstate.SoftRefreshCheck(s.state, "foo")
 	c.Check(err, ErrorMatches, `snap "foo" has running apps or hooks`)
 
 	// Services are excluded from the check.
-	writePids(snapPath, []int{100})
-	writePids(daemonPath, []int{100})
+	writePids(c, snapPath, []int{100})
+	writePids(c, daemonPath, []int{100})
 	err = snapstate.SoftRefreshCheck(s.state, "foo")
 	c.Check(err, IsNil)
 
 	// Apps are not excluded.
-	writePids(snapPath, []int{100, 101})
-	writePids(daemonPath, []int{100})
-	writePids(appPath, []int{101})
+	writePids(c, snapPath, []int{100, 101})
+	writePids(c, daemonPath, []int{100})
+	writePids(c, appPath, []int{101})
 	err = snapstate.SoftRefreshCheck(s.state, "foo")
 	c.Check(err, ErrorMatches, `snap "foo" has running apps or hooks`)
 	c.Check(err.(*snapstate.BusySnapError).Pids(), DeepEquals, []int{101})
 
 	// Hooks are not excluded.
-	writePids(snapPath, []int{105})
-	writePids(daemonPath, []int{})
-	writePids(appPath, []int{})
-	writePids(hookPath, []int{105})
+	writePids(c, snapPath, []int{105})
+	writePids(c, daemonPath, []int{})
+	writePids(c, appPath, []int{})
+	writePids(c, hookPath, []int{105})
 	err = snapstate.SoftRefreshCheck(s.state, "foo")
 	c.Check(err, ErrorMatches, `snap "foo" has running apps or hooks`)
 	c.Check(err.(*snapstate.BusySnapError).Pids(), DeepEquals, []int{105})
