@@ -782,8 +782,7 @@ func UpdateMany(ctx context.Context, st *state.State, names []string, userID int
 	}
 
 	// Perform soft-refresh check to see if we can refresh at this moment.
-	tr := config.NewTransaction(st)
-	refreshAppAwareness, err := config.GetFeatureFlag(tr, features.RefreshAppAwareness)
+	refreshAppAwareness, err := getRefreshAppAwareness(st)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1211,8 +1210,7 @@ func Update(st *state.State, name, channel string, revision snap.Revision, userI
 	}
 
 	// Perform soft-refresh check to see if we can refresh at this moment.
-	tr := config.NewTransaction(st)
-	refreshAppAwareness, err := config.GetFeatureFlag(tr, features.RefreshAppAwareness)
+	refreshAppAwareness, err := getRefreshAppAwareness(st)
 	if err != nil {
 		return nil, err
 	}
@@ -2219,4 +2217,9 @@ func ModelPastSeeding(st *state.State) (*asserts.Model, error) {
 	}
 
 	return modelAs, nil
+}
+
+func getRefreshAppAwareness(st *state.State) (bool, error) {
+	tr := config.NewTransaction(st)
+	return config.GetFeatureFlag(tr, features.RefreshAppAwareness)
 }
