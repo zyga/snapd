@@ -136,6 +136,27 @@ func SoftRefreshCheck(st *state.State, snapName string) error {
 	return nil
 }
 
+func HardRefreshCheck(st *state.State, snapName string) error {
+	var snapst SnapState
+	err := Get(st, snapName, &snapst)
+	if err != nil {
+		return err
+	}
+	pidSet, err := pidsOfSnap(snapName)
+	if err != nil {
+		return err
+	}
+	if len(pidSet) > 0 {
+		pids := make([]int, 0, len(pidSet))
+		for pid := range pidSet {
+			pids = append(pids, pid)
+		}
+		sort.Ints(pids)
+		return &BusySnapError{pids: pids, snapName: snapName}
+	}
+	return nil
+}
+
 type BusySnapError struct {
 	pids     []int
 	snapName string
