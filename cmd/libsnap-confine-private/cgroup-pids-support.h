@@ -10,7 +10,7 @@
  * given snap. The name of the cgroup is "snap.$snap_name.$app_name" for apps
  * or "snap.$snap_name.hook.$hook_name" for hooks.
  *
- * The "tasks" file belonging to the cgroup contains the set of all the
+ * The "cgroup.procs" file belonging to the cgroup contains the set of all the
  * threads that originate from the given snap app or hook. Examining that
  * file one can reliably determine if the set is empty or not.
  *

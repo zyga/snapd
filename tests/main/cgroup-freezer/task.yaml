@@ -23,9 +23,9 @@ execute: |
         test -e /var/snap/test-snapd-sh/current/1.stamp && break
         sleep 0.1
     done
-    # While the process is alive its PID can be seen in the tasks file of the
+    # While the process is alive its PID can be seen in the cgroup.procs file of the
     # control group.
-    MATCH "$pid1" < /sys/fs/cgroup/freezer/snap.test-snapd-sh/tasks
+    MATCH "$pid1" < /sys/fs/cgroup/freezer/snap.test-snapd-sh/cgroup.procs
 
     # Start a second process so that we can check adding tasks to an existing
     # control group.
@@ -36,14 +36,14 @@ execute: |
         test -e /var/snap/test-snapd-sh/current/2.stamp && break
         sleep 0.1
     done
-    MATCH "$pid2" < /sys/fs/cgroup/freezer/snap.test-snapd-sh/tasks
+    MATCH "$pid2" < /sys/fs/cgroup/freezer/snap.test-snapd-sh/cgroup.procs
 
     # When the process terminates the control group is updated and the task no
     # longer registers there.
     kill "$pid1"
     wait "$pid1" || true  # wait returns the exit code and we kill the process
-    MATCH -v "$pid1" < /sys/fs/cgroup/freezer/snap.test-snapd-sh/tasks
+    MATCH -v "$pid1" < /sys/fs/cgroup/freezer/snap.test-snapd-sh/cgroup.procs
 
     kill "$pid2"
     wait "$pid2" || true  # same as above
-    MATCH -v "$pid2" < /sys/fs/cgroup/freezer/snap.test-snapd-sh/tasks
+    MATCH -v "$pid2" < /sys/fs/cgroup/freezer/snap.test-snapd-sh/cgroup.procs

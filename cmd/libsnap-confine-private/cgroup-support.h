@@ -9,7 +9,7 @@
  * The code assumes that an existing hierarchy rooted at "parent". It follows
  * up with a sub-hierarchy called "name", creating it if necessary. The created
  * sub-hierarchy is made to belong to root.root and the specified process is
- * moved there.
+ * moved there by writing to the cgroups.procs file.
  **/
 void sc_cgroup_create_and_join(const char *parent, const char *name, pid_t pid);
 
