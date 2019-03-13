@@ -88,6 +88,8 @@ func (up *UserProfileUpdate) LoadDesiredProfile() (*osutil.MountProfile, error) 
 //
 // Per-user mount profiles are not persisted yet.
 func (up *UserProfileUpdate) SaveCurrentProfile(profile *osutil.MountProfile) error {
+	// TODO: when persistent user mount namespaces are enabled save the
+	// current, per-user mount profile here.
 	return nil
 }
 
@@ -95,6 +97,8 @@ func (up *UserProfileUpdate) SaveCurrentProfile(profile *osutil.MountProfile) er
 //
 // Per-user mount profiles are not persisted yet.
 func (up *UserProfileUpdate) LoadCurrentProfile() (*osutil.MountProfile, error) {
+	// TODO: when persistent user mount namespaces are enabled load the
+	// current, per-user mount profile here.
 	return &osutil.MountProfile{}, nil
 }
 

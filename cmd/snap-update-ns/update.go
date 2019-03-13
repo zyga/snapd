@@ -93,6 +93,7 @@ func executeMountProfileUpdate(up MountProfileUpdate) error {
 			// store them.
 			origin := change.Entry.XSnapdOrigin()
 			if origin == "layout" || origin == "overname" {
+				// TODO: convert the test to a method over origin.
 				return err
 			} else if err != ErrIgnoredMissingMount {
 				logger.Noticef("cannot change mount namespace according to change %s: %s", change, err)
