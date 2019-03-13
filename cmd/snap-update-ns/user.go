@@ -78,14 +78,14 @@ func (up *UserProfileUpdate) LoadDesiredProfile() (*osutil.MountProfile, error) 
 	return profile, nil
 }
 
-func applyUserFstab(up MountProfileUpdate, snapName string) error {
+func applyUserFstab(up MountProfileUpdate) error {
 	desired, err := up.LoadDesiredProfile()
 	if err != nil {
-		return fmt.Errorf("cannot load desired user mount profile of snap %q: %s", snapName, err)
+		return err
 	}
 	debugShowProfile(desired, "desired mount profile")
 	as := up.Assumptions()
-	_, err = applyProfile(up, snapName, &osutil.MountProfile{}, desired, as)
+	_, err = applyProfile(up, &osutil.MountProfile{}, desired, as)
 	return err
 }
 

@@ -23,7 +23,6 @@ import (
 	"fmt"
 
 	"github.com/snapcore/snapd/dirs"
-	"github.com/snapcore/snapd/logger"
 	"github.com/snapcore/snapd/snap"
 )
 
@@ -76,7 +75,7 @@ func (up *SystemProfileUpdate) Assumptions() *Assumptions {
 	return as
 }
 
-func applySystemFstab(up MountProfileUpdate, snapName string) error {
+func applySystemFstab(up MountProfileUpdate) error {
 	unlock, err := up.Lock()
 	if err != nil {
 		return err
@@ -103,12 +102,11 @@ func applySystemFstab(up MountProfileUpdate, snapName string) error {
 		as.AddChange(&Change{Action: Mount, Entry: entry})
 	}
 
-	currentAfter, err := applyProfile(up, snapName, currentBefore, desired, as)
+	currentAfter, err := applyProfile(up, currentBefore, desired, as)
 	if err != nil {
 		return err
 	}
 
-	logger.Debugf("saving current mount profile of snap %q", snapName)
 	return up.SaveCurrentProfile(currentAfter)
 }
 
