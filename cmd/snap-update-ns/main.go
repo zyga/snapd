@@ -83,5 +83,5 @@ func run() error {
 	} else {
 		up = NewSystemProfileUpdate(opts.Positionals.SnapName, opts.FromSnapConfine)
 	}
-	return applyFstab(up)
+	return executeMountProfileUpdate(up)
 }

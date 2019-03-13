@@ -44,7 +44,7 @@ type MountProfileUpdate interface {
 	PerformChange(*Change, *Assumptions) ([]*Change, error)
 }
 
-func applyFstab(up MountProfileUpdate) error {
+func executeMountProfileUpdate(up MountProfileUpdate) error {
 	unlock, err := up.Lock()
 	if err != nil {
 		return err
