@@ -46,6 +46,10 @@ func (s *commonSuite) SetUpTest(c *C) {
 		filepath.Join(s.dir, "desired.fstab"))
 }
 
+func (s *commonSuite) TestInstanceName(c *C) {
+	c.Check(s.up.InstanceName(), Equals, "foo")
+}
+
 func (s *commonSuite) TestNeededChanges(c *C) {
 	// Smoke test for computing needed changes.
 	// Complete tests for the algorithm are in changes_test.go

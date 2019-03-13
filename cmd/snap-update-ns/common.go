@@ -33,6 +33,11 @@ type CommonProfileUpdate struct {
 	desiredProfilePath string
 }
 
+// InstanceName returns the snap instance name being updated.
+func (up *CommonProfileUpdate) InstanceName() string {
+	return up.instanceName
+}
+
 func (up *CommonProfileUpdate) Lock() (unlock func(), err error) {
 	return func() {}, nil
 }
