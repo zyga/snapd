@@ -41,10 +41,16 @@ func NewUserProfileUpdate(instanceName string, fromSnapConfine bool, uid int) *U
 		CommonProfileUpdate: CommonProfileUpdate{
 			instanceName:       instanceName,
 			fromSnapConfine:    fromSnapConfine,
+			currentProfilePath: currentUserProfilePath(instanceName, uid),
 			desiredProfilePath: desiredUserProfilePath(instanceName),
 		},
 		uid: uid,
 	}
+}
+
+// UID returns the user ID of the mount namespace being updated.
+func (up *UserProfileUpdate) UID() int {
+	return up.uid
 }
 
 // Lock acquires locks / freezes needed to synchronize mount namespace changes.
@@ -78,18 +84,44 @@ func (up *UserProfileUpdate) LoadDesiredProfile() (*osutil.MountProfile, error) 
 	return profile, nil
 }
 
+// SaveCurrentProfile does nothing at all.
+//
+// Per-user mount profiles are not persisted yet.
+func (up *UserProfileUpdate) SaveCurrentProfile(profile *osutil.MountProfile) error {
+	return nil
+}
+
+// LoadCurrentProfile returns the empty profile.
+//
+// Per-user mount profiles are not persisted yet.
+func (up *UserProfileUpdate) LoadCurrentProfile() (*osutil.MountProfile, error) {
+	return &osutil.MountProfile{}, nil
+}
+
 func applyUserFstab(up MountProfileUpdate) error {
 	desired, err := up.LoadDesiredProfile()
 	if err != nil {
 		return err
 	}
 	debugShowProfile(desired, "desired mount profile")
+
+	current, err := up.LoadCurrentProfile()
+	if err != nil {
+		return err
+	}
+	debugShowProfile(current, "current mount profile")
+
 	as := up.Assumptions()
-	_, err = applyProfile(up, &osutil.MountProfile{}, desired, as)
+	_, err = applyProfile(up, current, desired, as)
 	return err
 }
 
 // desiredUserProfilePath returns the path of the fstab-like file with the desired, user-specific mount profile for a snap.
 func desiredUserProfilePath(snapName string) string {
 	return fmt.Sprintf("%s/snap.%s.user-fstab", dirs.SnapMountPolicyDir, snapName)
+}
+
+// currentUserProfilePath returns the path of the fstab-like file with the applied, user-specific mount profile for a snap.
+func currentUserProfilePath(snapName string, uid int) string {
+	return fmt.Sprintf("%s/snap.%s.%d.user-fstab", dirs.SnapRunNsDir, snapName, uid)
 }
