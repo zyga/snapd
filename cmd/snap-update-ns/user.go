@@ -98,24 +98,6 @@ func (up *UserProfileUpdate) LoadCurrentProfile() (*osutil.MountProfile, error) 
 	return &osutil.MountProfile{}, nil
 }
 
-func applyUserFstab(up MountProfileUpdate) error {
-	desired, err := up.LoadDesiredProfile()
-	if err != nil {
-		return err
-	}
-	debugShowProfile(desired, "desired mount profile")
-
-	current, err := up.LoadCurrentProfile()
-	if err != nil {
-		return err
-	}
-	debugShowProfile(current, "current mount profile")
-
-	as := up.Assumptions()
-	_, err = applyProfile(up, current, desired, as)
-	return err
-}
-
 // desiredUserProfilePath returns the path of the fstab-like file with the desired, user-specific mount profile for a snap.
 func desiredUserProfilePath(snapName string) string {
 	return fmt.Sprintf("%s/snap.%s.user-fstab", dirs.SnapMountPolicyDir, snapName)

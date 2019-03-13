@@ -20,6 +20,7 @@
 package main
 
 import (
+	"github.com/snapcore/snapd/logger"
 	"github.com/snapcore/snapd/osutil"
 )
 
@@ -41,4 +42,104 @@ type MountProfileUpdate interface {
 	// The returned changes represent any additional synthesized changes that
 	// were made as a prerequisite to complete the desired operation.
 	PerformChange(*Change, *Assumptions) ([]*Change, error)
+}
+
+func applySystemFstab(up MountProfileUpdate) error {
+	unlock, err := up.Lock()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	// Read the desired and current mount profiles. Note that missing files
+	// count as empty profiles so that we can gracefully handle a mount
+	// interface connection/disconnection.
+	desired, err := up.LoadDesiredProfile()
+	if err != nil {
+		return err
+	}
+	debugShowProfile(desired, "desired mount profile")
+
+	currentBefore, err := up.LoadCurrentProfile()
+	if err != nil {
+		return err
+	}
+	debugShowProfile(currentBefore, "current mount profile (before applying changes)")
+	// Synthesize mount changes that were applied before for the purpose of the tmpfs detector.
+	as := up.Assumptions()
+	for _, entry := range currentBefore.Entries {
+		as.AddChange(&Change{Action: Mount, Entry: entry})
+	}
+
+	currentAfter, err := applyProfile(up, currentBefore, desired, as)
+	if err != nil {
+		return err
+	}
+
+	return up.SaveCurrentProfile(currentAfter)
+}
+
+func applyUserFstab(up MountProfileUpdate) error {
+	desired, err := up.LoadDesiredProfile()
+	if err != nil {
+		return err
+	}
+	debugShowProfile(desired, "desired mount profile")
+
+	current, err := up.LoadCurrentProfile()
+	if err != nil {
+		return err
+	}
+	debugShowProfile(current, "current mount profile")
+
+	as := up.Assumptions()
+	_, err = applyProfile(up, current, desired, as)
+	return err
+}
+
+func applyProfile(up MountProfileUpdate, currentBefore, desired *osutil.MountProfile, as *Assumptions) (*osutil.MountProfile, error) {
+	// Compute the needed changes and perform each change if
+	// needed, collecting those that we managed to perform or that
+	// were performed already.
+	changesNeeded := up.NeededChanges(currentBefore, desired)
+	debugShowChanges(changesNeeded, "mount changes needed")
+
+	logger.Debugf("performing mount changes:")
+	var changesMade []*Change
+	for _, change := range changesNeeded {
+		logger.Debugf("\t * %s", change)
+		synthesised, err := up.PerformChange(change, as)
+		changesMade = append(changesMade, synthesised...)
+		if len(synthesised) > 0 {
+			logger.Debugf("\tsynthesised additional mount changes:")
+			for _, synth := range synthesised {
+				logger.Debugf(" * \t\t%s", synth)
+			}
+		}
+		if err != nil {
+			// We may have done something even if Perform itself has
+			// failed. We need to collect synthesized changes and
+			// store them.
+			origin := change.Entry.XSnapdOrigin()
+			if origin == "layout" || origin == "overname" {
+				return nil, err
+			} else if err != ErrIgnoredMissingMount {
+				logger.Noticef("cannot change mount namespace according to change %s: %s", change, err)
+			}
+			continue
+		}
+
+		changesMade = append(changesMade, change)
+	}
+
+	// Compute the new current profile so that it contains only changes that were made
+	// and save it back for next runs.
+	var currentAfter osutil.MountProfile
+	for _, change := range changesMade {
+		if change.Action == Mount || change.Action == Keep {
+			currentAfter.Entries = append(currentAfter.Entries, change.Entry)
+		}
+	}
+	debugShowProfile(&currentAfter, "current mount profile (after applying changes)")
+	return &currentAfter, nil
 }
