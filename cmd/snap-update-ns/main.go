@@ -80,8 +80,8 @@ func run() error {
 	var up MountProfileUpdate
 	if opts.UserMounts {
 		up = NewUserProfileUpdate(opts.Positionals.SnapName, opts.FromSnapConfine, os.Getuid())
-		return applyUserFstab(up)
+	} else {
+		up = NewSystemProfileUpdate(opts.Positionals.SnapName, opts.FromSnapConfine)
 	}
-	up = NewSystemProfileUpdate(opts.Positionals.SnapName, opts.FromSnapConfine)
-	return applySystemFstab(up)
+	return applyFstab(up)
 }

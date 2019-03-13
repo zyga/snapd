@@ -44,7 +44,7 @@ type MountProfileUpdate interface {
 	PerformChange(*Change, *Assumptions) ([]*Change, error)
 }
 
-func applySystemFstab(up MountProfileUpdate) error {
+func applyFstab(up MountProfileUpdate) error {
 	unlock, err := up.Lock()
 	if err != nil {
 		return err
@@ -69,48 +69,6 @@ func applySystemFstab(up MountProfileUpdate) error {
 		as.AddChange(&Change{Action: Mount, Entry: entry})
 	}
 
-	currentAfter, err := applyProfile(up, currentBefore, desired, as)
-	if err != nil {
-		return err
-	}
-
-	return up.SaveCurrentProfile(currentAfter)
-}
-
-func applyUserFstab(up MountProfileUpdate) error {
-	unlock, err := up.Lock()
-	if err != nil {
-		return err
-	}
-	defer unlock()
-
-	desired, err := up.LoadDesiredProfile()
-	if err != nil {
-		return err
-	}
-	debugShowProfile(desired, "desired mount profile")
-
-	currentBefore, err := up.LoadCurrentProfile()
-	if err != nil {
-		return err
-	}
-	debugShowProfile(currentBefore, "current mount profile (before applying changes)")
-
-	// Synthesize mount changes that were applied before for the purpose of the tmpfs detector.
-	as := up.Assumptions()
-	for _, entry := range currentBefore.Entries {
-		as.AddChange(&Change{Action: Mount, Entry: entry})
-	}
-
-	currentAfter, err := applyProfile(up, currentBefore, desired, as)
-	if err != nil {
-		return err
-	}
-
-	return up.SaveCurrentProfile(currentAfter)
-}
-
-func applyProfile(up MountProfileUpdate, currentBefore, desired *osutil.MountProfile, as *Assumptions) (*osutil.MountProfile, error) {
 	// Compute the needed changes and perform each change if
 	// needed, collecting those that we managed to perform or that
 	// were performed already.
@@ -135,7 +93,7 @@ func applyProfile(up MountProfileUpdate, currentBefore, desired *osutil.MountPro
 			// store them.
 			origin := change.Entry.XSnapdOrigin()
 			if origin == "layout" || origin == "overname" {
-				return nil, err
+				return err
 			} else if err != ErrIgnoredMissingMount {
 				logger.Noticef("cannot change mount namespace according to change %s: %s", change, err)
 			}
@@ -154,5 +112,5 @@ func applyProfile(up MountProfileUpdate, currentBefore, desired *osutil.MountPro
 		}
 	}
 	debugShowProfile(&currentAfter, "current mount profile (after applying changes)")
-	return &currentAfter, nil
+	return up.SaveCurrentProfile(&currentAfter)
 }
