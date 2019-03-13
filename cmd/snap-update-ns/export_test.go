@@ -211,6 +211,14 @@ func (as *Assumptions) UnrestrictedPaths() []string {
 	return as.unrestrictedPaths
 }
 
+func (up *CommonProfileUpdate) FromSnapConfine() bool {
+	return up.fromSnapConfine
+}
+
+func (up *CommonProfileUpdate) SetFromSnapConfine(v bool) {
+	up.fromSnapConfine = v
+}
+
 func (up *CommonProfileUpdate) CurrentProfilePath() string {
 	return up.currentProfilePath
 }
@@ -219,9 +227,10 @@ func (up *CommonProfileUpdate) DesiredProfilePath() string {
 	return up.desiredProfilePath
 }
 
-func NewCommonProfileUpdate(instanceName string, currentProfilePath, desiredProfilePath string) *CommonProfileUpdate {
+func NewCommonProfileUpdate(instanceName string, fromSnapConfine bool, currentProfilePath, desiredProfilePath string) *CommonProfileUpdate {
 	return &CommonProfileUpdate{
 		instanceName:       instanceName,
+		fromSnapConfine:    fromSnapConfine,
 		currentProfilePath: currentProfilePath,
 		desiredProfilePath: desiredProfilePath,
 	}

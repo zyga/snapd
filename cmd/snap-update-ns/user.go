@@ -37,14 +37,22 @@ type UserProfileUpdate struct {
 }
 
 // NewUserProfileUpdate returns encapsulated information for performing a per-user mount namespace update.
-func NewUserProfileUpdate(instanceName string, uid int) *UserProfileUpdate {
+func NewUserProfileUpdate(instanceName string, fromSnapConfine bool, uid int) *UserProfileUpdate {
 	return &UserProfileUpdate{
 		CommonProfileUpdate: CommonProfileUpdate{
 			instanceName:       instanceName,
+			fromSnapConfine:    fromSnapConfine,
 			desiredProfilePath: desiredUserProfilePath(instanceName),
 		},
 		uid: uid,
 	}
+}
+
+// Lock acquires locks / freezes needed to synchronize mount namespace changes.
+func (up *UserProfileUpdate) Lock() (unlock func(), err error) {
+	// TODO: when persistent user mount namespaces are enabled, grab a lock
+	// protecting the snap and freeze snap processes here.
+	return func() {}, nil
 }
 
 // Assumptions returns information about file system mutability rules.
@@ -72,7 +80,8 @@ func (up *UserProfileUpdate) LoadDesiredProfile() (*osutil.MountProfile, error) 
 }
 
 func applyUserFstab(snapName string) error {
-	up := NewUserProfileUpdate(snapName, os.Getuid())
+	fromSnapConfine := true // currently always true, no persistence yet.
+	up := NewUserProfileUpdate(snapName, fromSnapConfine, os.Getuid())
 
 	desired, err := up.LoadDesiredProfile()
 	if err != nil {

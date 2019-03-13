@@ -37,14 +37,25 @@ type systemSuite struct{}
 
 var _ = Suite(&systemSuite{})
 
+func (s *systemSuite) TestLock(c *C) {
+	dirs.SetRootDir(c.MkDir())
+	defer dirs.SetRootDir("/")
+
+	up := update.NewSystemProfileUpdate("foo", false)
+	unlock, err := up.Lock()
+	c.Assert(err, IsNil)
+	c.Check(unlock, NotNil)
+	unlock()
+}
+
 func (s *systemSuite) TestAssumptions(c *C) {
 	// Non-instances can access /tmp, /var/snap and /snap/$SNAP_NAME
-	up := update.NewSystemProfileUpdate("foo")
+	up := update.NewSystemProfileUpdate("foo", false)
 	as := up.Assumptions()
 	c.Check(as.UnrestrictedPaths(), DeepEquals, []string{"/tmp", "/var/snap", "/snap/foo"})
 
 	// Instances can, in addition, access /snap/$SNAP_INSTANCE_NAME
-	up = update.NewSystemProfileUpdate("foo_instance")
+	up = update.NewSystemProfileUpdate("foo_instance", false)
 	as = up.Assumptions()
 	c.Check(as.UnrestrictedPaths(), DeepEquals, []string{"/tmp", "/var/snap", "/snap/foo_instance", "/snap/foo"})
 }
@@ -54,7 +65,7 @@ func (s *systemSuite) TestLoadDesiredProfile(c *C) {
 	dirs.SetRootDir(c.MkDir())
 	defer dirs.SetRootDir("/")
 
-	up := update.NewSystemProfileUpdate("foo")
+	up := update.NewSystemProfileUpdate("foo", false)
 	text := "/snap/foo/42/dir /snap/bar/13/dir none bind,rw 0 0\n"
 
 	// Write a desired system mount profile for snap "foo".
@@ -76,7 +87,7 @@ func (s *systemSuite) TestLoadCurrentProfile(c *C) {
 	dirs.SetRootDir(c.MkDir())
 	defer dirs.SetRootDir("/")
 
-	up := update.NewSystemProfileUpdate("foo")
+	up := update.NewSystemProfileUpdate("foo", false)
 	text := "/snap/foo/42/dir /snap/bar/13/dir none bind,rw 0 0\n"
 
 	// Write a current system mount profile for snap "foo".
@@ -100,7 +111,7 @@ func (s *systemSuite) TestSaveCurrentProfile(c *C) {
 	defer dirs.SetRootDir("/")
 	c.Assert(os.MkdirAll(dirs.SnapRunNsDir, 0755), IsNil)
 
-	up := update.NewSystemProfileUpdate("foo")
+	up := update.NewSystemProfileUpdate("foo", false)
 	text := "/snap/foo/42/dir /snap/bar/13/dir none bind,rw 0 0\n"
 
 	// Prepare a mount profile to be saved.
