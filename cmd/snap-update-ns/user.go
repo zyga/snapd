@@ -30,17 +30,43 @@ import (
 // UserProfileUpdate contains information about update to per-user mount namespace.
 type UserProfileUpdate struct {
 	CommonProfileUpdate
+	// uid is the numeric user identifier associated with the user for which
+	// the update operation is occurring. It may be the current UID but doesn't
+	// need to be.
+	uid int
+}
+
+// NewUserProfileUpdate returns encapsulated information for performing a per-user mount namespace update.
+func NewUserProfileUpdate(instanceName string, uid int) *UserProfileUpdate {
+	return &UserProfileUpdate{
+		CommonProfileUpdate: CommonProfileUpdate{
+			instanceName:       instanceName,
+			desiredProfilePath: desiredUserProfilePath(instanceName),
+		},
+		uid: uid,
+	}
+}
+
+// LoadDesiredProfile loads the desired, per-user mount profile, expanding user-specific variables.
+func (up *UserProfileUpdate) LoadDesiredProfile() (*osutil.MountProfile, error) {
+	profile, err := up.CommonProfileUpdate.LoadDesiredProfile()
+	if err != nil {
+		return nil, err
+	}
+	// TODO: when SNAP_USER_DATA, SNAP_USER_COMMON or other variables relating
+	// to the user name and their home directory need to be expanded then
+	// handle them here.
+	expandXdgRuntimeDir(profile, up.uid)
+	return profile, nil
 }
 
 func applyUserFstab(snapName string) error {
-	up := &UserProfileUpdate{}
-	desiredProfilePath := desiredUserProfilePath(snapName)
-	desired, err := osutil.LoadMountProfile(desiredProfilePath)
+	up := NewUserProfileUpdate(snapName, os.Getuid())
+
+	desired, err := up.LoadDesiredProfile()
 	if err != nil {
 		return fmt.Errorf("cannot load desired user mount profile of snap %q: %s", snapName, err)
 	}
-
-	expandXdgRuntimeDir(desired, os.Getuid())
 	debugShowProfile(desired, "desired mount profile")
 
 	// TODO: configure the secure helper and inform it about directories that
