@@ -83,11 +83,6 @@ func applySystemFstab(up MountProfileUpdate, snapName string) error {
 	}
 	defer unlock()
 
-	as := up.Assumptions()
-	return computeAndSaveSystemChanges(up, snapName, as)
-}
-
-func computeAndSaveSystemChanges(up MountProfileUpdate, snapName string, as *Assumptions) error {
 	// Read the desired and current mount profiles. Note that missing files
 	// count as empty profiles so that we can gracefully handle a mount
 	// interface connection/disconnection.
@@ -103,6 +98,7 @@ func computeAndSaveSystemChanges(up MountProfileUpdate, snapName string, as *Ass
 	}
 	debugShowProfile(currentBefore, "current mount profile (before applying changes)")
 	// Synthesize mount changes that were applied before for the purpose of the tmpfs detector.
+	as := up.Assumptions()
 	for _, entry := range currentBefore.Entries {
 		as.AddChange(&Change{Action: Mount, Entry: entry})
 	}
