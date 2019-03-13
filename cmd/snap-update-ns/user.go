@@ -47,6 +47,17 @@ func NewUserProfileUpdate(instanceName string, uid int) *UserProfileUpdate {
 	}
 }
 
+// Assumptions returns information about file system mutability rules.
+func (up *UserProfileUpdate) Assumptions() *Assumptions {
+	// TODO: configure the secure helper and inform it about directories that
+	// can be created without trespassing.
+	as := &Assumptions{}
+	// TODO: Handle /home/*/snap/* when we do per-user mount namespaces and
+	// allow defining layout items that refer to SNAP_USER_DATA and
+	// SNAP_USER_COMMON.
+	return as
+}
+
 // LoadDesiredProfile loads the desired, per-user mount profile, expanding user-specific variables.
 func (up *UserProfileUpdate) LoadDesiredProfile() (*osutil.MountProfile, error) {
 	profile, err := up.CommonProfileUpdate.LoadDesiredProfile()
@@ -68,13 +79,7 @@ func applyUserFstab(snapName string) error {
 		return fmt.Errorf("cannot load desired user mount profile of snap %q: %s", snapName, err)
 	}
 	debugShowProfile(desired, "desired mount profile")
-
-	// TODO: configure the secure helper and inform it about directories that
-	// can be created without trespassing.
-	as := &Assumptions{}
-	// TODO: Handle /home/*/snap/* when we do per-user mount namespaces and
-	// allow defining layout items that refer to SNAP_USER_DATA and
-	// SNAP_USER_COMMON.
+	as := up.Assumptions()
 	_, err = applyProfile(up, snapName, &osutil.MountProfile{}, desired, as)
 	return err
 }

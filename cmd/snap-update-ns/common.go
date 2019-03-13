@@ -42,10 +42,6 @@ func (up *CommonProfileUpdate) Lock() (unlock func(), err error) {
 	return func() {}, nil
 }
 
-func (up *CommonProfileUpdate) Assumptions() *Assumptions {
-	return nil
-}
-
 // NeededChanges computes the sequence of mount changes needed to transform current profile to desired profile.
 func (up *CommonProfileUpdate) NeededChanges(current, desired *osutil.MountProfile) []*Change {
 	return NeededChanges(current, desired)
