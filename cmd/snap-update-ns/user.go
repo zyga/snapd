@@ -21,7 +21,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/snapcore/snapd/dirs"
 	"github.com/snapcore/snapd/osutil"
@@ -79,10 +78,7 @@ func (up *UserProfileUpdate) LoadDesiredProfile() (*osutil.MountProfile, error) 
 	return profile, nil
 }
 
-func applyUserFstab(snapName string) error {
-	fromSnapConfine := true // currently always true, no persistence yet.
-	up := NewUserProfileUpdate(snapName, fromSnapConfine, os.Getuid())
-
+func applyUserFstab(up MountProfileUpdate, snapName string) error {
 	desired, err := up.LoadDesiredProfile()
 	if err != nil {
 		return fmt.Errorf("cannot load desired user mount profile of snap %q: %s", snapName, err)

@@ -76,9 +76,7 @@ func (up *SystemProfileUpdate) Assumptions() *Assumptions {
 	return as
 }
 
-func applySystemFstab(instanceName string, fromSnapConfine bool) error {
-	up := NewSystemProfileUpdate(instanceName, fromSnapConfine)
-
+func applySystemFstab(up MountProfileUpdate, snapName string) error {
 	unlock, err := up.Lock()
 	if err != nil {
 		return err
@@ -86,7 +84,7 @@ func applySystemFstab(instanceName string, fromSnapConfine bool) error {
 	defer unlock()
 
 	as := up.Assumptions()
-	return computeAndSaveSystemChanges(up, instanceName, as)
+	return computeAndSaveSystemChanges(up, snapName, as)
 }
 
 func computeAndSaveSystemChanges(up MountProfileUpdate, snapName string, as *Assumptions) error {

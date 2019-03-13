@@ -381,7 +381,8 @@ func (s *mainSuite) TestApplyUserFstab(c *C) {
 	err = ioutil.WriteFile(desiredProfilePath, []byte(desiredProfileContent), 0644)
 	c.Assert(err, IsNil)
 
-	err = update.ApplyUserFstab("foo")
+	up := update.NewUserProfileUpdate(snapName, true, 1000)
+	err = update.ApplyUserFstab(up, "foo")
 	c.Assert(err, IsNil)
 
 	xdgRuntimeDir := fmt.Sprintf("%s/%d", dirs.XdgRuntimeDirBase, os.Getuid())
