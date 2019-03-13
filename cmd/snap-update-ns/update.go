@@ -51,9 +51,6 @@ func applySystemFstab(up MountProfileUpdate) error {
 	}
 	defer unlock()
 
-	// Read the desired and current mount profiles. Note that missing files
-	// count as empty profiles so that we can gracefully handle a mount
-	// interface connection/disconnection.
 	desired, err := up.LoadDesiredProfile()
 	if err != nil {
 		return err
@@ -65,6 +62,7 @@ func applySystemFstab(up MountProfileUpdate) error {
 		return err
 	}
 	debugShowProfile(currentBefore, "current mount profile (before applying changes)")
+
 	// Synthesize mount changes that were applied before for the purpose of the tmpfs detector.
 	as := up.Assumptions()
 	for _, entry := range currentBefore.Entries {
@@ -80,21 +78,36 @@ func applySystemFstab(up MountProfileUpdate) error {
 }
 
 func applyUserFstab(up MountProfileUpdate) error {
+	unlock, err := up.Lock()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	desired, err := up.LoadDesiredProfile()
 	if err != nil {
 		return err
 	}
 	debugShowProfile(desired, "desired mount profile")
 
-	current, err := up.LoadCurrentProfile()
+	currentBefore, err := up.LoadCurrentProfile()
 	if err != nil {
 		return err
 	}
-	debugShowProfile(current, "current mount profile")
+	debugShowProfile(currentBefore, "current mount profile (before applying changes)")
 
+	// Synthesize mount changes that were applied before for the purpose of the tmpfs detector.
 	as := up.Assumptions()
-	_, err = applyProfile(up, current, desired, as)
-	return err
+	for _, entry := range currentBefore.Entries {
+		as.AddChange(&Change{Action: Mount, Entry: entry})
+	}
+
+	currentAfter, err := applyProfile(up, currentBefore, desired, as)
+	if err != nil {
+		return err
+	}
+
+	return up.SaveCurrentProfile(currentAfter)
 }
 
 func applyProfile(up MountProfileUpdate, currentBefore, desired *osutil.MountProfile, as *Assumptions) (*osutil.MountProfile, error) {
