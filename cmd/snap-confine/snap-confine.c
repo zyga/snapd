@@ -106,11 +106,15 @@ static void sc_maybe_fixup_udev(void)
  *
  * The umask is preserved and restored to ensure consistent permissions for
  * runtime system. The value is preserved and restored perfectly.
+ *
+ * The uid/gid is remembered and restored.
 **/
 typedef struct sc_preserved_process_state {
 	mode_t orig_umask;
 	int orig_cwd_fd;
 	struct stat file_info_orig_cwd;
+	uid_t real_uid, effective_uid, saved_uid;
+	gid_t real_gid, effective_gid, saved_gid;
 } sc_preserved_process_state;
 
 /**
@@ -119,10 +123,9 @@ typedef struct sc_preserved_process_state {
  * The following process state is sanitised:
  *  - the umask is set to 0
  *  - the current working directory is set to /
+ *  - both uid and git are set to 0
  *
- * The original values are stored to be restored later. Currently only the
- * umask is altered. It is set to zero to make the ownership of created files
- * and directories more predictable.
+ * The original values are stored to be restored later.
 **/
 static void sc_preserve_and_sanitize_process_state(sc_preserved_process_state *
 						   proc_state)
@@ -146,6 +149,26 @@ static void sc_preserve_and_sanitize_process_state(sc_preserved_process_state *
 	if (chdir("/") < 0) {
 		die("cannot move to /");
 	}
+	/* Remember the real, effective and saved UID and GID. */
+	if (getresuid
+	    (&proc_state->real_uid, &proc_state->effective_uid,
+	     &proc_state->saved_uid) < 0) {
+		die("cannot query UID values");
+	}
+	debug("ruid: %d, euid: %d, suid: %d",
+	      proc_state->real_uid, proc_state->effective_uid,
+	      proc_state->saved_uid);
+	if (getresgid
+	    (&proc_state->real_gid, &proc_state->effective_gid,
+	     &proc_state->saved_gid) < 0) {
+		die("cannot query GID values");
+	}
+	debug("rgid: %d, egid: %d, sgid: %d",
+	      proc_state->real_gid, proc_state->effective_gid,
+	      proc_state->saved_gid);
+	if (setgid(0) < 0) {
+		die("cannot change GID to 0");
+	}
 }
 
 /**
@@ -154,6 +177,24 @@ static void sc_preserve_and_sanitize_process_state(sc_preserved_process_state *
 static void sc_restore_process_state(const sc_preserved_process_state *
 				     proc_state)
 {
+	/* Restore the original UID/GID.
+	 * Permanently drop if not root. */
+	if (geteuid() == 0) {
+		/* Note that we do not call setgroups() here because it is ok that the
+		 * user keeps the groups he already belongs to */
+		if (setgid(proc_state->real_gid) != 0)
+			die("setgid failed");
+		if (setuid(proc_state->real_uid) != 0)
+			die("setuid failed");
+
+		if (proc_state->real_gid != 0
+		    && (getuid() == 0 || geteuid() == 0))
+			die("permanently dropping privs did not work");
+		if (proc_state->real_uid != 0
+		    && (getgid() == 0 || getegid() == 0))
+			die("permanently dropping privs did not work");
+	}
+
 	/* Restore original umask */
 	umask(proc_state->orig_umask);
 	debug("umask restored to %#4o", proc_state->orig_umask);
@@ -325,24 +366,6 @@ int main(int argc, char **argv)
 	}
 	sc_init_invocation(&invocation, args, snap_instance_name_env);
 
-	// Who are we?
-	uid_t real_uid, effective_uid, saved_uid;
-	gid_t real_gid, effective_gid, saved_gid;
-	getresuid(&real_uid, &effective_uid, &saved_uid);
-	getresgid(&real_gid, &effective_gid, &saved_gid);
-	debug("ruid: %d, euid: %d, suid: %d",
-	      real_uid, effective_uid, saved_uid);
-	debug("rgid: %d, egid: %d, sgid: %d",
-	      real_gid, effective_gid, saved_gid);
-
-	// snap-confine runs as both setuid root and setgid root.
-	// Temporarily drop group privileges here and reraise later
-	// as needed.
-	if (effective_gid == 0 && real_gid != 0) {
-		if (setegid(real_gid) != 0) {
-			die("cannot set effective group id to %d", real_gid);
-		}
-	}
 #ifndef CAPS_OVER_SETUID
 	// this code always needs to run as root for the cgroup/udev setup,
 	// however for the tests we allow it to run as non-root
@@ -382,20 +405,20 @@ int main(int argc, char **argv)
 		} else {
 			enter_non_classic_execution_environment(&invocation,
 								&apparmor,
-								real_uid,
-								real_gid,
-								saved_gid);
+								proc_state.real_uid,
+								proc_state.real_gid,
+								proc_state.saved_gid);
 		}
 		// The rest does not so temporarily drop privs back to calling
 		// user (we'll permanently drop after loading seccomp)
-		if (setegid(real_gid) != 0)
+		if (setegid(proc_state.real_gid) != 0)
 			die("setegid failed");
-		if (seteuid(real_uid) != 0)
+		if (seteuid(proc_state.real_uid) != 0)
 			die("seteuid failed");
 
-		if (real_gid != 0 && geteuid() == 0)
+		if (proc_state.real_gid != 0 && geteuid() == 0)
 			die("dropping privs did not work");
-		if (real_uid != 0 && getegid() == 0)
+		if (proc_state.real_uid != 0 && getegid() == 0)
 			die("dropping privs did not work");
 	}
 	// Ensure that the user data path exists.
@@ -418,20 +441,6 @@ int main(int argc, char **argv)
 		setenv("SNAP_COOKIE", snap_context, 1);
 		// for compatibility, if facing older snapd.
 		setenv("SNAP_CONTEXT", snap_context, 1);
-	}
-	// Permanently drop if not root
-	if (geteuid() == 0) {
-		// Note that we do not call setgroups() here because its ok
-		// that the user keeps the groups he already belongs to
-		if (setgid(real_gid) != 0)
-			die("setgid failed");
-		if (setuid(real_uid) != 0)
-			die("setuid failed");
-
-		if (real_gid != 0 && (getuid() == 0 || geteuid() == 0))
-			die("permanently dropping privs did not work");
-		if (real_uid != 0 && (getgid() == 0 || getegid() == 0))
-			die("permanently dropping privs did not work");
 	}
 	// and exec the new executable
 	argv[0] = (char *)invocation.executable;
