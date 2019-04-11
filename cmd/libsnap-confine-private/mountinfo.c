@@ -25,8 +25,6 @@
 #include "cleanup-funcs.h"
 #include "error.h"
 
-#define SC_MOUNTINFO_DOMAIN "mountinfo"
-
 /**
  * Parse a single mountinfo entry (line).
  *
@@ -122,20 +120,33 @@ fail:
 	return NULL;
 }
 
-sc_mountinfo *sc_parse_mountinfo(const char *fname)
+sc_mountinfo *sc_parse_mountinfo_error(const char *fname, struct sc_error **errorp)
 {
+	struct sc_error *err = NULL;
 	if (fname == NULL) {
 		fname = "/proc/self/mountinfo";
 	}
 	FILE *f SC_CLEANUP(sc_cleanup_file) = NULL;
+	sc_mountinfo *info = NULL;
 	f = fopen(fname, "rt");
 	if (f == NULL) {
-		return NULL;
+		err = sc_error_init_from_errno(errno, "cannot open %s", fname);
+	} else {
+		info = sc_parse_mountinfo_stream(f, &err);
+		if (info == NULL) {
+		    err = sc_error_init_nested(SC_MOUNTINFO_DOMAIN, 0, err, "cannot parse %s", fname);
+		}
 	}
+	sc_error_forward(errorp, err);
+	return info;
+}
+
+sc_mountinfo *sc_parse_mountinfo(const char *fname)
+{
 	/* Record and ignore errors, preventing die() from occurring to maintain
 	 * behavior compatibility. */
 	struct sc_error *err SC_CLEANUP(sc_cleanup_error) = NULL;
-	return sc_parse_mountinfo_stream(f, &err);
+	return sc_parse_mountinfo_error(fname, &err);
 }
 
 static void show_buffers(const char *line, int offset,

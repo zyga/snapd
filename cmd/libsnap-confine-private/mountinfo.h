@@ -17,6 +17,13 @@
 #ifndef SNAP_CONFINE_MOUNTINFO_H
 #define SNAP_CONFINE_MOUNTINFO_H
 
+#include "error.h"
+
+/**
+ * SC_MOUNTINFO_DOMAIN is the error domain of mountinfo errors.
+ **/
+#define SC_MOUNTINFO_DOMAIN "mountinfo"
+
 /**
  * Structure describing a single entry in /proc/self/sc_mountinfo
  **/
@@ -96,11 +103,25 @@ typedef struct sc_mountinfo {
 /**
  * Parse a file in according to sc_mountinfo syntax.
  *
- * The argument can be used to parse an arbitrary file.  NULL can be used to
+ * The argument can be used to parse an arbitrary file. NULL can be used to
  * implicitly parse /proc/self/sc_mountinfo, that is the mount information
  * associated with the current process.
+ *
+ * On error NULL is returned but the error details are lost.
  **/
 sc_mountinfo *sc_parse_mountinfo(const char *fname);
+
+/**
+ * Parse a file in according to sc_mountinfo syntax.
+ *
+ * The argument can be used to parse an arbitrary file. NULL can be used to
+ * implicitly parse /proc/self/sc_mountinfo, that is the mount information
+ * associated with the current process.
+ *
+ * On error NULL is returned and error is forwarded to errorp. If errorp is
+ * NULL then the program dies with the encountered error message.
+ **/
+sc_mountinfo *sc_parse_mountinfo_error(const char *fname, struct sc_error **errorp);
 
 /**
  * Free a sc_mountinfo structure.
