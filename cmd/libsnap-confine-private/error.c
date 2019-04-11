@@ -19,6 +19,7 @@
 // To get vasprintf
 #define _GNU_SOURCE
 
+#include "cleanup-funcs.h"
 #include "utils.h"
 
 #include <errno.h>
@@ -78,6 +79,22 @@ sc_error *sc_error_init_api_misuse(const char *msgfmt, ...)
 	va_end(ap);
 	return err;
 }
+
+sc_error *sc_error_init_nested(const char *domain, int code, sc_error *nested, const char *msgfmt, ...)
+{
+	char *new_msg SC_CLEANUP(sc_cleanup_string) = NULL;
+	va_list ap;
+	va_start(ap, msgfmt);
+	if (vasprintf(&new_msg, msgfmt, ap) == -1) {
+		die("cannot format error message");
+	}
+	va_end(ap);
+	sc_error *err = sc_error_init(domain, code, "%s: %s", new_msg, nested->msg);
+	/* The nested error is consumed. */
+	sc_error_free(nested);
+	return err;
+}
+
 
 const char *sc_error_domain(sc_error * err)
 {

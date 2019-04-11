@@ -122,6 +122,25 @@ __attribute__((warn_unused_result,
 sc_error *sc_error_init_from_errno(int errno_copy, const char *msgfmt, ...);
 
 /**
+ * Initialize an error by caused by another error.
+ *
+ * The nested error is deallocated. The return value is a new error combining
+ * both the new message as well as the original message.
+ *
+ * The function is intended to be used to add context to a lower-level error
+ * message, allowing for convenient one-line use. For example:
+ *
+ *      err = sc_error_init_nested(domain, code, err, "high-level message");
+ *
+ * Assuming that the nested error message is "low-level message", the resulting
+ * error will say "high-level message: low-level message".
+ **/
+__attribute__((warn_unused_result,
+	       format(printf, 4, 5) SC_APPEND_RETURNS_NONNULL))
+struct sc_error *sc_error_init_nested(const char *domain, int code,
+        struct sc_error *nested, const char *msgfmt, ...);
+
+/**
  * Get the error domain out of an error object.
  *
  * The error domain acts as a namespace for error codes.
