@@ -18,6 +18,14 @@
 #include "mountinfo.h"
 #include "mountinfo.c"
 
+static sc_mountinfo_entry *sc_parse_mountinfo_entry(const char *line)
+{
+	/* Record and ignore errors, preventing die() from occurring to maintain
+	 * behavior compatibility. */
+	struct sc_error *err SC_CLEANUP(sc_cleanup_error) = NULL;
+	return sc_parse_mountinfo_entry_error(line, &err);
+}
+
 #include <glib.h>
 
 static void test_parse_mountinfo_entry__sysfs(void)

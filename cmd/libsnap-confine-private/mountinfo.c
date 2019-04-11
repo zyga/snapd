@@ -23,6 +23,9 @@
 #include <string.h>
 
 #include "cleanup-funcs.h"
+#include "error.h"
+
+#define SC_MOUNTINFO_DOMAIN "mountinfo"
 
 /**
  * Parse a single mountinfo entry (line).
@@ -44,7 +47,7 @@
  * (10) mount source:  filesystem specific information or "none"
  * (11) super options:  per super block options
  **/
-static sc_mountinfo_entry *sc_parse_mountinfo_entry(const char *line)
+static sc_mountinfo_entry *sc_parse_mountinfo_entry_error(const char *line, struct sc_error **errorp)
     __attribute__((nonnull(1)));
 
 /**
@@ -69,28 +72,30 @@ sc_mountinfo_entry *sc_next_mountinfo_entry(sc_mountinfo_entry * entry)
 	return entry->next;
 }
 
-static sc_mountinfo *sc_parse_mountinfo_stream(FILE *f)
+static sc_mountinfo *sc_parse_mountinfo_stream(FILE *f, struct sc_error **errorp)
 {
+	struct sc_error *err = NULL;
 	sc_mountinfo *info = calloc(1, sizeof *info);
 	if (info == NULL) {
-		return NULL;
+		err = sc_error_init_from_errno(errno, "cannot allocate mountinfo object");
+		goto fail;
 	}
 	char *line SC_CLEANUP(sc_cleanup_string) = NULL;
 	size_t line_size = 0;
 	sc_mountinfo_entry *entry, *last = NULL;
-	for (;;) {
+	for (int lineno=1;;++lineno) {
 		errno = 0;
 		if (getline(&line, &line_size, f) == -1) {
 			if (errno != 0) {
-				sc_free_mountinfo(info);
-				return NULL;
+				err = sc_error_init_from_errno(errno, "cannot read next mountinfo line");
+				goto fail;
 			}
 			break;
 		};
-		entry = sc_parse_mountinfo_entry(line);
+		entry = sc_parse_mountinfo_entry_error(line, &err);
 		if (entry == NULL) {
-			sc_free_mountinfo(info);
-			return NULL;
+			err = sc_error_init_nested(SC_MOUNTINFO_DOMAIN, 0, err, "cannot parse entry on line %d", lineno);
+			goto fail;
 		}
 		if (last != NULL) {
 			last->next = entry;
@@ -99,7 +104,12 @@ static sc_mountinfo *sc_parse_mountinfo_stream(FILE *f)
 		}
 		last = entry;
 	}
+	sc_error_forward(errorp, err);
 	return info;
+fail:
+	sc_free_mountinfo(info);
+	sc_error_forward(errorp, err);
+	return NULL;
 }
 
 sc_mountinfo *sc_parse_mountinfo(const char *fname)
@@ -112,7 +122,10 @@ sc_mountinfo *sc_parse_mountinfo(const char *fname)
 	if (f == NULL) {
 		return NULL;
 	}
-	return sc_parse_mountinfo_stream(f);
+	/* Record and ignore errors, preventing die() from occurring to maintain
+	 * behavior compatibility. */
+	struct sc_error *err SC_CLEANUP(sc_cleanup_error) = NULL;
+	return sc_parse_mountinfo_stream(f, &err);
 }
 
 static void show_buffers(const char *line, int offset,
@@ -230,8 +243,9 @@ static char *parse_next_string_field(sc_mountinfo_entry * entry,
 	return output;
 }
 
-static sc_mountinfo_entry *sc_parse_mountinfo_entry(const char *line)
+static sc_mountinfo_entry *sc_parse_mountinfo_entry_error(const char *line, struct sc_error **errorp)
 {
+	struct sc_error *err = NULL;
 	// NOTE: the sc_mountinfo structure is allocated along with enough extra
 	// storage to hold the whole line we are parsing. This is used as backing
 	// store for all text fields.
@@ -256,7 +270,8 @@ static sc_mountinfo_entry *sc_parse_mountinfo_entry(const char *line)
 	// and this allows for visual analysis of what is going on.
 	sc_mountinfo_entry *entry = calloc(1, sizeof *entry + strlen(line) + 1);
 	if (entry == NULL) {
-		return NULL;
+		err = sc_error_init_from_errno(errno, "cannot allocate mountinfo entry object");
+		goto fail;
 	}
 #ifdef MOUNTINFO_DEBUG
 	// Poison the buffer with '\1' bytes that are printed as '#' characters
@@ -269,28 +284,38 @@ static sc_mountinfo_entry *sc_parse_mountinfo_entry(const char *line)
 			  &entry->mount_id, &entry->parent_id,
 			  &entry->dev_major, &entry->dev_minor,
 			  &initial_offset);
-	if (nscanned != 4)
+	if (nscanned != 4) {
+		err = sc_error_init(SC_MOUNTINFO_DOMAIN, 0, "cannot parse mount_id, parent_id, dev_major and dev_minor");
 		goto fail;
+	}
 	offset += initial_offset;
 
 	show_buffers(line, offset, entry);
 
 	if ((entry->root =
-	     parse_next_string_field(entry, line, &offset)) == NULL)
+	     parse_next_string_field(entry, line, &offset)) == NULL) {
+		err = sc_error_init(SC_MOUNTINFO_DOMAIN, 0, "cannot parse root path");
 		goto fail;
+	}
 	if ((entry->mount_dir =
-	     parse_next_string_field(entry, line, &offset)) == NULL)
+	     parse_next_string_field(entry, line, &offset)) == NULL) {
+		err = sc_error_init(SC_MOUNTINFO_DOMAIN, 0, "cannot parse mount directory");
 		goto fail;
+	}
 	if ((entry->mount_opts =
-	     parse_next_string_field(entry, line, &offset)) == NULL)
+	     parse_next_string_field(entry, line, &offset)) == NULL) {
+		err = sc_error_init(SC_MOUNTINFO_DOMAIN, 0, "cannot parse mount options");
 		goto fail;
+	}
 	entry->optional_fields = &entry->line_buf[0] + offset;
 	// NOTE: This ensures that optional_fields is never NULL. If this changes,
 	// must adjust all callers of parse_mountinfo_entry() accordingly.
 	for (int field_num = 0;; ++field_num) {
 		char *opt_field = parse_next_string_field(entry, line, &offset);
-		if (opt_field == NULL)
+		if (opt_field == NULL) {
+			err = sc_error_init(SC_MOUNTINFO_DOMAIN, 0, "cannot parse optional field");
 			goto fail;
+		}
 		if (strcmp(opt_field, "-") == 0) {
 			opt_field[0] = 0;
 			break;
@@ -300,17 +325,24 @@ static sc_mountinfo_entry *sc_parse_mountinfo_entry(const char *line)
 		}
 	}
 	if ((entry->fs_type =
-	     parse_next_string_field(entry, line, &offset)) == NULL)
+	     parse_next_string_field(entry, line, &offset)) == NULL) {
+		err = sc_error_init(SC_MOUNTINFO_DOMAIN, 0, "cannot parse filesystem type");
 		goto fail;
+	}
 	if ((entry->mount_source =
-	     parse_next_string_field(entry, line, &offset)) == NULL)
+	     parse_next_string_field(entry, line, &offset)) == NULL) {
+		err = sc_error_init(SC_MOUNTINFO_DOMAIN, 0, "cannot parse mount source");
 		goto fail;
+	}
 	if ((entry->super_opts =
-	     parse_next_string_field(entry, line, &offset)) == NULL)
+	     parse_next_string_field(entry, line, &offset)) == NULL) {
+		err = sc_error_init(SC_MOUNTINFO_DOMAIN, 0, "cannot parse super-block mount options");
 		goto fail;
+	}
 	return entry;
  fail:
 	free(entry);
+	sc_error_forward(errorp, err);
 	return NULL;
 }
 
