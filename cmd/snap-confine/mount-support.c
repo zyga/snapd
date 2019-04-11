@@ -644,10 +644,10 @@ static bool is_mounted_with_shared_option(const char *dir)
 static bool is_mounted_with_shared_option(const char *dir)
 {
 	sc_mountinfo *sm SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
-	sm = sc_parse_mountinfo(NULL);
-	if (sm == NULL) {
-		die("cannot parse /proc/self/mountinfo");
-	}
+	/* NOTE that due to the semantic of error forwarding the return value is
+	 * never NULL, we either parse mountinfo correctly or die with an error
+	 * message. */
+	sm = sc_parse_mountinfo_error(NULL, NULL);
 	sc_mountinfo_entry *entry = sc_first_mountinfo_entry(sm);
 	while (entry != NULL) {
 		const char *mount_dir = entry->mount_dir;

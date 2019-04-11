@@ -127,10 +127,10 @@ void sc_initialize_mount_ns(void)
 	/* Read and analyze the mount table. We need to see whether /run/snapd/ns
 	 * is a mount point with private event propagation. */
 	sc_mountinfo *info SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
-	info = sc_parse_mountinfo(NULL);
-	if (info == NULL) {
-		die("cannot parse /proc/self/mountinfo");
-	}
+	/* NOTE that due to the semantic of error forwarding the return value is
+	 * never NULL, we either parse mountinfo correctly or die with an error
+	 * message. */
+	info = sc_parse_mountinfo_error(NULL, NULL);
 
 	bool is_mnt = false;
 	bool is_private = false;
@@ -233,7 +233,10 @@ static dev_t find_base_snap_device(const char *base_snap_name,
 			 sizeof base_squashfs_path, "%s/%s/%s",
 			 SNAP_MOUNT_DIR, base_snap_name, base_snap_rev);
 	sc_mountinfo *mi SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
-	mi = sc_parse_mountinfo(NULL);
+	/* NOTE that due to the semantic of error forwarding the return value is
+	 * never NULL, we either parse mountinfo correctly or die with an error
+	 * message. */
+	mi = sc_parse_mountinfo_error(NULL, NULL);
 	if (mi == NULL) {
 		die("cannot parse mountinfo of the current process");
 	}
@@ -268,10 +271,10 @@ static bool should_discard_current_ns(dev_t base_snap_dev)
 	sc_mountinfo_entry *mie;
 	sc_mountinfo *mi SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
 
-	mi = sc_parse_mountinfo(NULL);
-	if (mi == NULL) {
-		die("cannot parse mountinfo of the current process");
-	}
+	/* NOTE that due to the semantic of error forwarding the return value is
+	 * never NULL, we either parse mountinfo correctly or die with an error
+	 * message. */
+	mi = sc_parse_mountinfo_error(NULL, NULL);
 	for (mie = sc_first_mountinfo_entry(mi); mie != NULL;
 	     mie = sc_next_mountinfo_entry(mie)) {
 		if (!sc_streq(mie->mount_dir, "/")) {

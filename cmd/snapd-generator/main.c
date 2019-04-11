@@ -22,6 +22,7 @@
 #include "config.h"
 
 #include "../libsnap-confine-private/cleanup-funcs.h"
+#include "../libsnap-confine-private/error.h"
 #include "../libsnap-confine-private/mountinfo.h"
 #include "../libsnap-confine-private/string-utils.h"
 
@@ -52,11 +53,10 @@ int main(int argc, char **argv)
 
 	// Load /proc/self/mountinfo so that we can inspect the root filesystem.
 	sc_mountinfo *mounts SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
-	mounts = sc_parse_mountinfo(NULL);
-	if (!mounts) {
-		fprintf(stderr, "cannot open or parse /proc/self/mountinfo\n");
-		return 1;
-	}
+	// NOTE that due to the semantic of error forwarding the return value is
+	// never NULL, we either parse mountinfo correctly or die with an error
+	// message.
+	mounts = sc_parse_mountinfo_error(NULL, NULL);
 
 	sc_mountinfo_entry *root = find_root_mountinfo(mounts);
 	if (!root) {
