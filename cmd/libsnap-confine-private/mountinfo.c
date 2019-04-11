@@ -69,19 +69,10 @@ sc_mountinfo_entry *sc_next_mountinfo_entry(sc_mountinfo_entry * entry)
 	return entry->next;
 }
 
-sc_mountinfo *sc_parse_mountinfo(const char *fname)
+static sc_mountinfo *sc_parse_mountinfo_stream(FILE *f)
 {
 	sc_mountinfo *info = calloc(1, sizeof *info);
 	if (info == NULL) {
-		return NULL;
-	}
-	if (fname == NULL) {
-		fname = "/proc/self/mountinfo";
-	}
-	FILE *f SC_CLEANUP(sc_cleanup_file) = NULL;
-	f = fopen(fname, "rt");
-	if (f == NULL) {
-		free(info);
 		return NULL;
 	}
 	char *line SC_CLEANUP(sc_cleanup_string) = NULL;
@@ -109,6 +100,19 @@ sc_mountinfo *sc_parse_mountinfo(const char *fname)
 		last = entry;
 	}
 	return info;
+}
+
+sc_mountinfo *sc_parse_mountinfo(const char *fname)
+{
+	if (fname == NULL) {
+		fname = "/proc/self/mountinfo";
+	}
+	FILE *f SC_CLEANUP(sc_cleanup_file) = NULL;
+	f = fopen(fname, "rt");
+	if (f == NULL) {
+		return NULL;
+	}
+	return sc_parse_mountinfo_stream(f);
 }
 
 static void show_buffers(const char *line, int offset,
