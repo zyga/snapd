@@ -85,13 +85,23 @@ static sc_mountinfo *sc_parse_mountinfo_stream(FILE *f, struct sc_error **errorp
 	sc_mountinfo_entry *entry, *last = NULL;
 	for (int lineno=1;;++lineno) {
 		errno = 0;
-		if (getline(&line, &line_size, f) == -1) {
+		ssize_t nread = getline(&line, &line_size, f);
+		if (nread == -1) {
 			if (errno != 0) {
 				err = sc_error_init_from_errno(errno, "cannot read next mountinfo line");
 				goto fail;
 			}
 			break;
-		};
+		}
+		/* NOTE: getline may have left the trailing newline but we don't handle
+		 * it in the parser. */
+		if (nread > 0 && line[nread-1] == '\n') {
+			line[nread-1] = '\0';
+			nread--;
+		}
+		if (nread == 0) {
+			continue;
+		}
 		entry = sc_parse_mountinfo_entry_error(line, &err);
 		if (entry == NULL) {
 			err = sc_error_init_nested(SC_MOUNTINFO_DOMAIN, 0, err, "cannot parse entry on line %d", lineno);

@@ -264,6 +264,46 @@ static void test_parse_mountinfo_entry__unescaped_whitespace(void)
 	g_assert_null(entry->next);
 }
 
+static void test_parse_mountinfo__trailing_nl(void)
+{
+	char buf[] = (
+			"2 1 0:54 / /tmp rw - tmpfs tmpfs rw\n"
+			"3 1 0:54 / /dev rw - tmpfs tmpfs rw\n");
+	FILE *f SC_CLEANUP(sc_cleanup_file) = NULL;
+	f = fmemopen(buf, sizeof buf - 1, "rt");
+	g_assert_nonnull(f);
+
+	struct sc_error *err;
+
+	sc_mountinfo *mi SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
+	mi = sc_parse_mountinfo_stream(f, &err);
+	g_assert_null(err);
+	sc_die_on_error(err);
+	g_assert_nonnull(mi);
+
+	sc_mountinfo_entry *entry;
+	entry = sc_first_mountinfo_entry(mi);
+	g_assert_nonnull(entry);
+	g_assert_cmpint(entry->mount_id, ==, 2);
+	g_assert_cmpint(entry->parent_id, ==, 1);
+	g_assert_cmpint(entry->dev_major, ==, 0);
+	g_assert_cmpint(entry->dev_minor, ==, 54);
+	g_assert_cmpstr(entry->mount_dir, ==, "/tmp");
+	g_assert_cmpstr(entry->super_opts, ==, "rw");
+
+	entry = sc_next_mountinfo_entry(entry);
+	g_assert_nonnull(entry);
+	g_assert_cmpint(entry->mount_id, ==, 3);
+	g_assert_cmpint(entry->parent_id, ==, 1);
+	g_assert_cmpint(entry->dev_major, ==, 0);
+	g_assert_cmpint(entry->dev_minor, ==, 54);
+	g_assert_cmpstr(entry->mount_dir, ==, "/dev");
+	g_assert_cmpstr(entry->super_opts, ==, "rw");
+
+	entry = sc_next_mountinfo_entry(entry);
+	g_assert_null(entry);
+}
+
 static void __attribute__((constructor)) init(void)
 {
 	g_test_add_func("/mountinfo/parse_mountinfo_entry/sysfs",
@@ -290,4 +330,6 @@ static void __attribute__((constructor)) init(void)
 	     test_parse_mountinfo_entry__broken_octal_escaping);
 	g_test_add_func("/mountinfo/parse_mountinfo_entry/unescaped_whitespace",
 			test_parse_mountinfo_entry__unescaped_whitespace);
+	g_test_add_func("/mountinfo/parse_mountinfo_entry/trailing_nl",
+			test_parse_mountinfo__trailing_nl);
 }
