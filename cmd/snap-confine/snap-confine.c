@@ -166,6 +166,8 @@ static void sc_preserve_and_sanitize_process_state(sc_preserved_process_state *
 	debug("rgid: %d, egid: %d, sgid: %d",
 	      proc_state->real_gid, proc_state->effective_gid,
 	      proc_state->saved_gid);
+    /* Switch to root group. This is needed because we inherit the group of the
+     * calling user. */
 	if (setgid(0) < 0) {
 		die("cannot change GID to 0");
 	}
@@ -177,9 +179,10 @@ static void sc_preserve_and_sanitize_process_state(sc_preserved_process_state *
 static void sc_restore_process_state(const sc_preserved_process_state *
 				     proc_state)
 {
+    debug("geteuid() == %d", geteuid());
 	/* Restore the original UID/GID.
 	 * Permanently drop if not root. */
-	if (geteuid() == 0) {
+	if (geteuid() == 0 || true) {
 		/* Note that we do not call setgroups() here because it is ok that the
 		 * user keeps the groups he already belongs to */
 		if (setgid(proc_state->real_gid) != 0)
@@ -193,6 +196,7 @@ static void sc_restore_process_state(const sc_preserved_process_state *
 		if (proc_state->real_uid != 0
 		    && (getgid() == 0 || getegid() == 0))
 			die("permanently dropping privs did not work");
+        debug("uid/gid restored to %d/%d", proc_state->real_uid, proc_state->real_gid);
 	}
 
 	/* Restore original umask */
@@ -327,6 +331,34 @@ static void sc_cleanup_preserved_process_state(sc_preserved_process_state *
 	sc_cleanup_close(&proc_state->orig_cwd_fd);
 }
 
+static void sc_lower_permissions(const sc_preserved_process * proc_state)
+{
+	if (setegid(proc_state->real_gid) != 0) {
+		die("setegid failed");
+	}
+	if (seteuid(proc_state->real_uid) != 0) {
+		die("seteuid failed");
+	}
+	if (proc_state->real_gid != 0 && geteuid() == 0) {
+		die("dropping privs did not work");
+	}
+	if (proc_state->real_uid != 0 && getegid() == 0) {
+		die("dropping privs did not work");
+	}
+}
+
+static void sc_raise_permissions(const sc_preserved_process * proc_state)
+{
+	if (geteuid() != 0) {
+		if (seteuid(0) != 0) {
+			die("cannot seteuid(0)");
+		}
+		if (geteuid() != 0) {
+			die("geteuid disagrees with prior seteuid");
+		}
+	}
+}
+
 static void enter_classic_execution_environment(void);
 static void enter_non_classic_execution_environment(sc_invocation * inv,
 						    struct sc_apparmor *aa,
@@ -398,29 +430,18 @@ int main(int argc, char **argv)
 		    " but should be. Refusing to continue to avoid"
 		    " permission escalation attacks");
 	}
-	// TODO: check for similar situation and linux capabilities.
-	if (geteuid() == 0) {
-		if (invocation.classic_confinement) {
-			enter_classic_execution_environment();
-		} else {
-			enter_non_classic_execution_environment(&invocation,
-								&apparmor,
-								proc_state.real_uid,
-								proc_state.real_gid,
-								proc_state.saved_gid);
-		}
-		// The rest does not so temporarily drop privs back to calling
-		// user (we'll permanently drop after loading seccomp)
-		if (setegid(proc_state.real_gid) != 0)
-			die("setegid failed");
-		if (seteuid(proc_state.real_uid) != 0)
-			die("seteuid failed");
 
-		if (proc_state.real_gid != 0 && geteuid() == 0)
-			die("dropping privs did not work");
-		if (proc_state.real_uid != 0 && getegid() == 0)
-			die("dropping privs did not work");
-	}
+    if (invocation.classic_confinement) {
+        enter_classic_execution_environment();
+    } else {
+        enter_non_classic_execution_environment(&invocation,
+                            &apparmor,
+                            proc_state.real_uid,
+                            proc_state.real_gid,
+                            proc_state.saved_gid);
+    }
+
+    sc_lower_permissions(&proc_state);
 	// Ensure that the user data path exists.
 	setup_user_data();
 #if 0

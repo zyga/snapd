@@ -108,6 +108,7 @@ void sc_apply_seccomp_filter(struct sock_fprog *prog) {
         }
     }
 
+#if 0
     /* Drop privileges again. */
     debug("dropping privileges after loading seccomp profile");
     if (geteuid() == 0) {
@@ -119,4 +120,5 @@ void sc_apply_seccomp_filter(struct sock_fprog *prog) {
             die("dropping privs after seccomp_load did not work");
         }
     }
+#endif
 }
