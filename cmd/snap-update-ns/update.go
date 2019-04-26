@@ -30,7 +30,9 @@ import (
 // system assumptions with which the mount namespace will be modified.
 type MountProfileUpdateContext interface {
 	// Lock obtains locks appropriate for the update.
-	Lock() (unlock func(), err error)
+	Lock() error
+	// Unlock releases the lock obtained by Lock.
+	Unlock()
 	// Assumptions computes filesystem assumptions under which the update shall operate.
 	Assumptions() *Assumptions
 	// LoadDesiredProfile loads the mount profile that should be constructed.
@@ -42,11 +44,11 @@ type MountProfileUpdateContext interface {
 }
 
 func executeMountProfileUpdate(upCtx MountProfileUpdateContext) error {
-	unlock, err := upCtx.Lock()
+	err := upCtx.Lock()
 	if err != nil {
 		return err
 	}
-	defer unlock()
+	defer upCtx.Unlock()
 
 	desired, err := upCtx.LoadDesiredProfile()
 	if err != nil {

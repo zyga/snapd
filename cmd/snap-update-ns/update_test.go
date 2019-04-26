@@ -318,8 +318,11 @@ func (upCtx *testProfileUpdateContext) MockRelatedFunctions() (restore func()) {
 	}
 }
 
-func (upCtx *testProfileUpdateContext) Lock() (unlock func(), err error) {
-	return func() {}, nil
+func (upCtx *testProfileUpdateContext) Lock() error {
+	return nil
+}
+
+func (upCtx *testProfileUpdateContext) Unlock() {
 }
 
 func (upCtx *testProfileUpdateContext) Assumptions() *update.Assumptions {

@@ -42,10 +42,9 @@ func (s *systemSuite) TestLock(c *C) {
 	defer dirs.SetRootDir("/")
 
 	upCtx := update.NewSystemProfileUpdateContext("foo", false)
-	unlock, err := upCtx.Lock()
+	err := upCtx.Lock()
 	c.Assert(err, IsNil)
-	c.Check(unlock, NotNil)
-	unlock()
+	upCtx.Unlock()
 }
 
 func (s *systemSuite) TestAssumptions(c *C) {

@@ -38,6 +38,8 @@ type CommonProfileUpdateContext struct {
 
 	currentProfilePath string
 	desiredProfilePath string
+
+	lock *osutil.FileLock
 }
 
 // InstanceName returns the snap instance name being updated.
@@ -46,14 +48,17 @@ func (upCtx *CommonProfileUpdateContext) InstanceName() string {
 }
 
 // Lock acquires locks / freezes needed to synchronize mount namespace changes.
-func (upCtx *CommonProfileUpdateContext) Lock() (func(), error) {
+func (upCtx *CommonProfileUpdateContext) Lock() error {
+	if upCtx.lock != nil {
+		return nil
+	}
 	instanceName := upCtx.instanceName
 
 	// Lock the mount namespace so that any concurrently attempted invocations
 	// of snap-confine are synchronized and will see consistent state.
 	lock, err := snaplock.OpenLock(instanceName)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open lock file for mount namespace of snap %q: %s", instanceName, err)
+		return fmt.Errorf("cannot open lock file for mount namespace of snap %q: %s", instanceName, err)
 	}
 
 	logger.Debugf("locking mount namespace of snap %q", instanceName)
@@ -64,11 +69,11 @@ func (upCtx *CommonProfileUpdateContext) Lock() (func(), error) {
 		if err := lock.TryLock(); err != osutil.ErrAlreadyLocked {
 			// If we managed to grab the lock we should drop it.
 			lock.Close()
-			return nil, fmt.Errorf("mount namespace of snap %q is not locked but --from-snap-confine was used", instanceName)
+			return fmt.Errorf("mount namespace of snap %q is not locked but --from-snap-confine was used", instanceName)
 		}
 	} else {
 		if err := lock.Lock(); err != nil {
-			return nil, fmt.Errorf("cannot lock mount namespace of snap %q: %s", instanceName, err)
+			return fmt.Errorf("cannot lock mount namespace of snap %q: %s", instanceName, err)
 		}
 	}
 
@@ -81,16 +86,24 @@ func (upCtx *CommonProfileUpdateContext) Lock() (func(), error) {
 	if err := freezeSnapProcesses(instanceName); err != nil {
 		// If we cannot freeze the processes we should drop the lock.
 		lock.Close()
-		return nil, err
+		return err
 	}
 
-	unlock := func() {
-		logger.Debugf("unlocking mount namespace of snap %q", instanceName)
-		lock.Close()
-		logger.Debugf("thawing processes of snap %q", instanceName)
-		thawSnapProcesses(instanceName)
+	upCtx.lock = lock
+	return nil
+}
+
+// Unlock unfreezes processes and closes the snap lock.
+func (upCtx *CommonProfileUpdateContext) Unlock() {
+	if upCtx.lock == nil {
+		return
 	}
-	return unlock, nil
+	instanceName := upCtx.instanceName
+	logger.Debugf("unlocking mount namespace of snap %q", instanceName)
+	upCtx.lock.Close()
+	logger.Debugf("thawing processes of snap %q", instanceName)
+	thawSnapProcesses(instanceName)
+	upCtx.lock = nil
 }
 
 func (upCtx *CommonProfileUpdateContext) Assumptions() *Assumptions {

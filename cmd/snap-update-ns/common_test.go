@@ -69,12 +69,12 @@ func (s *commonSuite) TestLock(c *C) {
 	// When fromSnapConfine is false we acquire our own lock.
 	s.upCtx.SetFromSnapConfine(false)
 	c.Check(s.upCtx.FromSnapConfine(), Equals, false)
-	unlock, err := s.upCtx.Lock()
+	err = s.upCtx.Lock()
 	c.Assert(err, IsNil)
 	// The lock is acquired now. We should not be able to get another lock.
 	c.Check(testLock.TryLock(), Equals, osutil.ErrAlreadyLocked)
 	// We can release the original lock now and see our test lock working.
-	unlock()
+	s.upCtx.Unlock()
 	c.Assert(testLock.TryLock(), IsNil)
 
 	// When fromSnapConfine is true we test existing lock but don't grab one.
@@ -82,16 +82,15 @@ func (s *commonSuite) TestLock(c *C) {
 	c.Check(s.upCtx.FromSnapConfine(), Equals, true)
 	err = testLock.Lock()
 	c.Assert(err, IsNil)
-	unlock, err = s.upCtx.Lock()
+	err = s.upCtx.Lock()
 	c.Assert(err, IsNil)
-	unlock()
+	s.upCtx.Unlock()
 
 	// When the test lock is unlocked the common update helper reports an error
 	// since it was expecting the lock to be held. Oh, and the lock is not leaked.
 	testLock.Unlock()
-	unlock, err = s.upCtx.Lock()
+	err = s.upCtx.Lock()
 	c.Check(err, ErrorMatches, `mount namespace of snap "foo" is not locked but --from-snap-confine was used`)
-	c.Check(unlock, IsNil)
 	c.Assert(testLock.TryLock(), IsNil)
 
 	// When freezing fails the lock acquired internally is not leaked.
@@ -99,9 +98,8 @@ func (s *commonSuite) TestLock(c *C) {
 	s.upCtx.SetFromSnapConfine(false)
 	c.Check(s.upCtx.FromSnapConfine(), Equals, false)
 	testLock.Unlock()
-	unlock, err = s.upCtx.Lock()
+	err = s.upCtx.Lock()
 	c.Check(err, Equals, errTesting)
-	c.Check(unlock, IsNil)
 	c.Check(testLock.TryLock(), IsNil)
 }
 

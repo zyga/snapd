@@ -54,10 +54,15 @@ func (upCtx *UserProfileUpdateContext) UID() int {
 }
 
 // Lock acquires locks / freezes needed to synchronize mount namespace changes.
-func (upCtx *UserProfileUpdateContext) Lock() (unlock func(), err error) {
+func (upCtx *UserProfileUpdateContext) Lock() error {
 	// TODO: when persistent user mount namespaces are enabled, grab a lock
 	// protecting the snap and freeze snap processes here.
-	return func() {}, nil
+	return nil
+}
+
+// Unlock releases the lock obtained by Lock.
+func (upCtx *UserProfileUpdateContext) Unlock() {
+	// TODO: when Lock does something, undo it.
 }
 
 // Assumptions returns information about file system mutability rules.

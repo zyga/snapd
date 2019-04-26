@@ -45,10 +45,9 @@ func (s *userSuite) TestLock(c *C) {
 	upCtx := update.NewUserProfileUpdateContext("foo", false, 1234)
 
 	// Locking is a no-op.
-	unlock, err := upCtx.Lock()
+	err := upCtx.Lock()
 	c.Assert(err, IsNil)
-	c.Check(unlock, NotNil)
-	unlock()
+	upCtx.Unlock()
 }
 
 func (s *userSuite) TestAssumptions(c *C) {
