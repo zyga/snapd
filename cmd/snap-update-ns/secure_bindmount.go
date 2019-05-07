@@ -21,7 +21,10 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"syscall"
+
+	"github.com/snapcore/snapd/logger"
 )
 
 // BindMount performs a bind mount between two absolute paths containing no
@@ -66,11 +69,22 @@ func BindMount(sourceDir, targetDir string, flags uint) error {
 	// targetFd) causes the mount to happen with the newly renamed path, but
 	// this rename is controlled by DAC so while the user could race the mount
 	// source or target, this rename can't be used to gain privileged access to
-	// files. For systems with AppArmor enabled, this raced rename would be
+	// files. eor systems with AppArmor enabled, this raced rename would be
 	// denied by the per-snap snap-update-ns AppArmor profle.
 	sourceFdPath := fmt.Sprintf("/proc/self/fd/%d", sourceFd)
 	targetFdPath := fmt.Sprintf("/proc/self/fd/%d", targetFd)
+
+	sourceRealPath, err := os.Readlink(sourceFdPath)
+	if err != nil {
+		return err
+	}
+	targetRealPath, err := os.Readlink(targetFdPath)
+	if err != nil {
+		return err
+	}
+
 	bindFlags := syscall.MS_BIND | (flags & syscall.MS_REC)
+	logger.Debugf("mount %q (really %q) %q (really %q) MS_BIND", sourceFdPath, sourceRealPath, targetFdPath, targetRealPath)
 	if err := sysMount(sourceFdPath, targetFdPath, "", uintptr(bindFlags), ""); err != nil {
 		return err
 	}
@@ -87,7 +101,13 @@ func BindMount(sourceDir, targetDir string, flags uint) error {
 		}
 		defer sysClose(mountFd)
 		mountFdPath := fmt.Sprintf("/proc/self/fd/%d", mountFd)
+		mountRealPath, err := os.Readlink(mountFdPath)
+		if err != nil {
+			sysUnmount(mountFdPath, syscall.MNT_DETACH|umountNoFollow)
+			return err
+		}
 		remountFlags := syscall.MS_REMOUNT | syscall.MS_BIND | syscall.MS_RDONLY
+		logger.Debugf("mount %q (really %q) MS_REMOUNT|MS_BIND|MS_RDONLY", mountFdPath, mountRealPath)
 		if err := sysMount("none", mountFdPath, "", uintptr(remountFlags), ""); err != nil {
 			sysUnmount(mountFdPath, syscall.MNT_DETACH|umountNoFollow)
 			return err

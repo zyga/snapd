@@ -64,6 +64,7 @@ const openglConnectedPlugAppArmor = `
 /etc/vdpau_wrapper.cfg r,
 @{PROC}/driver/nvidia/params r,
 @{PROC}/modules r,
+/sys/module/nvidia/version r,
 /dev/nvidia* rw,
 unix (send, receive) type=dgram peer=(addr="@nvidia[0-9a-f]*"),
 

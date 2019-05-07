@@ -43,6 +43,8 @@ const (
 	PerUserMountNamespace
 	// RefreshAppAwareness controls refresh being aware of running applications.
 	RefreshAppAwareness
+	// NoLegacyNvidiaHack disables host driver sharing driven by snap-confine.
+	NoLegacyNvidiaHack
 	// lastFeature is the final known feature, it is only used for testing.
 	lastFeature
 )
@@ -65,6 +67,7 @@ var featureNames = map[SnapdFeature]string{
 	SnapdSnap:             "snapd-snap",
 	PerUserMountNamespace: "per-user-mount-namespace",
 	RefreshAppAwareness:   "refresh-app-awareness",
+	NoLegacyNvidiaHack:    "no-legacy-nvidia-hack",
 }
 
 // featuresEnabledWhenUnset contains a set of features that are enabled when not explicitly configured.
@@ -76,6 +79,7 @@ var featuresEnabledWhenUnset = map[SnapdFeature]bool{
 var featuresExported = map[SnapdFeature]bool{
 	PerUserMountNamespace: true,
 	RefreshAppAwareness:   true,
+	NoLegacyNvidiaHack:    true,
 }
 
 // String returns the name of a snapd feature.

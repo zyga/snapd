@@ -50,6 +50,11 @@ var defaultTemplate = `
   #include <abstractions/consoles>
   #include <abstractions/openssl>
 
+  # XXX: for debugging only
+  @{PROC}/@{pid}/mountinfo r,
+  /bin/findmnt ixr,
+  # XXX: end of debugging addtitions
+
   # While in later versions of the base abstraction, include this explicitly
   # for series 16 and cross-distro
   /etc/ld.so.preload r,

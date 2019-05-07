@@ -82,6 +82,8 @@ func mimicRequired(err error) (needsMimic bool, path string) {
 }
 
 func (c *Change) createPath(path string, pokeHoles bool, as *Assumptions) ([]*Change, error) {
+	logger.Debugf("create path %s (poke holes: %s, kind: %s)", path, pokeHoles, c.Entry.XSnapdKind())
+
 	// If we've been asked to create a missing path, and the mount
 	// entry uses the ignore-missing option, return an error.
 	if c.Entry.XSnapdIgnoreMissing() {
@@ -166,6 +168,7 @@ func (c *Change) ensureTarget(as *Assumptions) ([]*Change, error) {
 			}
 		}
 	} else if os.IsNotExist(err) {
+		logger.Debugf("target %q does not exist! need to create it", path)
 		changes, err = c.createPath(path, true, as)
 	} else {
 		// If we cannot inspect the element let's just bail out.
@@ -203,6 +206,7 @@ func (c *Change) ensureSource(as *Assumptions) ([]*Change, error) {
 			}
 		}
 	} else if os.IsNotExist(err) {
+		logger.Debugf("source %q does not exist! need to create it", path)
 		// NOTE: This createPath is using pokeHoles, to make read-only places
 		// writable, but only for layouts and not for other (typically content
 		// sharing) mount entries.
@@ -291,8 +295,10 @@ func (c *Change) lowLevelPerform(as *Assumptions) error {
 			flags, unparsed := osutil.MountOptsToCommonFlags(c.Entry.Options)
 			// Use Secure.BindMount for bind mounts
 			if flags&syscall.MS_BIND == syscall.MS_BIND {
+				logger.Debugf("doing bind mount %q -> %q", c.Entry.Name, c.Entry.Dir)
 				err = BindMount(c.Entry.Name, c.Entry.Dir, uint(flags))
 			} else {
+				logger.Debugf("doing mount -t %q %q %q -o %s", c.Entry.Type, c.Entry.Name, c.Entry.Dir, c.Entry.Options)
 				err = sysMount(c.Entry.Name, c.Entry.Dir, c.Entry.Type, uintptr(flags), strings.Join(unparsed, ","))
 			}
 			logger.Debugf("mount %q %q %q %d %q (error: %v)", c.Entry.Name, c.Entry.Dir, c.Entry.Type, uintptr(flags), strings.Join(unparsed, ","), err)

@@ -21,6 +21,7 @@ package mount
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -38,13 +39,19 @@ func mountNsPath(snapName string) string {
 // Run an internal tool on a given snap namespace, if one exists.
 func runNamespaceTool(toolName, snapName string) ([]byte, error) {
 	mntFile := mountNsPath(snapName)
+	fmt.Printf("looking for %q\n", mntFile)
 	if osutil.FileExists(mntFile) {
 		toolPath, err := cmd.InternalToolPath(toolName)
+		fmt.Printf("using tool %s\n", toolPath)
 		if err != nil {
 			return nil, err
 		}
 		cmd := exec.Command(toolPath, snapName)
-		output, err := cmd.CombinedOutput()
+		cmd.Env = append(cmd.Env, os.Environ()...)
+		cmd.Env = append(cmd.Env, "SNAPD_DEBUG=1")
+		cmd.Stderr = os.Stderr
+		output, err := cmd.Output()
+		fmt.Printf("err is %s\n", err)
 		return output, err
 	}
 	return nil, nil

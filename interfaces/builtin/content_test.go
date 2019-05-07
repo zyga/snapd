@@ -88,7 +88,7 @@ slots:
 `
 	info := snaptest.MockInfo(c, mockSnapYaml, nil)
 	slot := info.Slots["content-slot"]
-	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), ErrorMatches, "read or write path must be set")
+	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), ErrorMatches, "read, read-file, or write path must be set")
 }
 
 func (s *ContentSuite) TestSanitizeSlotEmptyPaths(c *C) {
@@ -103,7 +103,7 @@ slots:
 `
 	info := snaptest.MockInfo(c, mockSnapYaml, nil)
 	slot := info.Slots["content-slot"]
-	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), ErrorMatches, "read or write path must be set")
+	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), ErrorMatches, "read, read-file, or write path must be set")
 }
 
 func (s *ContentSuite) TestSanitizeSlotHasRelativePath(c *C) {
@@ -220,7 +220,7 @@ apps:
 `
 	info := snaptest.MockInfo(c, mockSnapYaml, nil)
 	slot := info.Slots["content"]
-	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), ErrorMatches, "read or write path must be set")
+	c.Assert(interfaces.BeforePrepareSlot(s.iface, slot), ErrorMatches, "read, read-file, or write path must be set")
 }
 
 func (s *ContentSuite) TestResolveSpecialVariable(c *C) {

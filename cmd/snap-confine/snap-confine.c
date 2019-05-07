@@ -542,12 +542,13 @@ static void enter_non_classic_execution_environment(sc_invocation * inv,
 	   join. We need to construct a new mount namespace ourselves.
 	   To capture it we will need a helper process so make one. */
 	sc_fork_helper(group, aa);
+	debug("attempting to join preserved per-snap mount namespace");
 	int retval = sc_join_preserved_ns(group, aa, inv, snap_discard_ns_fd);
 	if (retval == ESRCH) {
 		/* Create and populate the mount namespace. This performs all
 		   of the bootstrapping mounts, pivots into the new root filesystem and
 		   applies the per-snap mount profile using snap-update-ns. */
-		debug("unsharing the mount namespace (per-snap)");
+		debug("unsharing new mount namespace (per-snap)");
 		if (unshare(CLONE_NEWNS) < 0) {
 			die("cannot unshare the mount namespace");
 		}
@@ -563,13 +564,14 @@ static void enter_non_classic_execution_environment(sc_invocation * inv,
 	sc_maybe_fixup_permissions();
 	sc_maybe_fixup_udev();
 
+#if 1
 	/* User mount profiles do not apply to non-root users. */
 	if (real_uid != 0) {
-		debug("joining preserved per-user mount namespace");
+		debug("attempting to join preserved per-user mount namespace");
 		retval =
 		    sc_join_preserved_per_user_ns(group, inv->snap_instance);
 		if (retval == ESRCH) {
-			debug("unsharing the mount namespace (per-user)");
+			debug("unsharing new mount namespace (per-user)");
 			if (unshare(CLONE_NEWNS) < 0) {
 				die("cannot unshare the mount namespace");
 			}
@@ -590,6 +592,7 @@ static void enter_non_classic_execution_environment(sc_invocation * inv,
 			}
 		}
 	}
+#endif
 	// Associate each snap process with a dedicated snap freezer cgroup and
 	// snap pids cgroup. All snap processes belonging to one snap share the
 	// freezer cgroup. All snap processes belonging to one app or one hook

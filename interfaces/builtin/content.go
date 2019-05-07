@@ -78,13 +78,16 @@ func (iface *contentInterface) BeforePrepareSlot(slot *snap.SlotInfo) error {
 		slot.Attrs["content"] = slot.Name
 	}
 
-	// Error if "read" or "write" are present alongside "source".
+	// Error if "read", "read-file" or "write" are present alongside "source".
 	// TODO: use slot.Lookup() once PR 4510 lands.
 	var unused map[string]interface{}
 	if err := slot.Attr("source", &unused); err == nil {
 		var unused []interface{}
 		if err := slot.Attr("read", &unused); err == nil {
 			return fmt.Errorf(`move the "read" attribute into the "source" section`)
+		}
+		if err := slot.Attr("read-file", &unused); err == nil {
+			return fmt.Errorf(`move the "read-file" attribute into the "source" section`)
 		}
 		if err := slot.Attr("write", &unused); err == nil {
 			return fmt.Errorf(`move the "write" attribute into the "source" section`)
@@ -93,13 +96,16 @@ func (iface *contentInterface) BeforePrepareSlot(slot *snap.SlotInfo) error {
 
 	// check that we have either a read or write path
 	rpath := iface.path(slot, "read")
+	rfpath := iface.path(slot, "read-file")
 	wpath := iface.path(slot, "write")
-	if len(rpath) == 0 && len(wpath) == 0 {
-		return fmt.Errorf("read or write path must be set")
+	if len(rpath) == 0 && len(rfpath) == 0 && len(wpath) == 0 {
+		return fmt.Errorf("read, read-file, or write path must be set")
 	}
 
 	// go over both paths
-	paths := rpath
+	paths := make([]string, 0, len(rpath)+len(rfpath)+len(wpath))
+	paths = append(paths, rpath...)
+	paths = append(paths, rfpath...)
 	paths = append(paths, wpath...)
 	for _, p := range paths {
 		if !cleanSubPath(p) {
@@ -132,7 +138,7 @@ func (iface *contentInterface) BeforePreparePlug(plug *snap.PlugInfo) error {
 // path is an internal helper that extract the "read" and "write" attribute
 // of the slot
 func (iface *contentInterface) path(attrs interfaces.Attrer, name string) []string {
-	if name != "read" && name != "write" {
+	if name != "read" && name != "read-file" && name != "write" {
 		panic("internal error, path can only be used with read/write")
 	}
 
@@ -140,13 +146,13 @@ func (iface *contentInterface) path(attrs interfaces.Attrer, name string) []stri
 	var source map[string]interface{}
 
 	if err := attrs.Attr("source", &source); err == nil {
-		// Access either "source.read" or "source.write" attribute.
+		// Access either "source.read", "source.read-file", or "source.write" attribute.
 		var ok bool
 		if paths, ok = source[name].([]interface{}); !ok {
 			return nil
 		}
 	} else {
-		// Access either "read" or "write" attribute directly (legacy).
+		// Access either "read", "read-file", or "write" attribute directly (legacy).
 		if err := attrs.Attr(name, &paths); err != nil {
 			return nil
 		}
@@ -264,6 +270,29 @@ func (iface *contentInterface) AppArmorConnectedPlug(spec *apparmor.Specificatio
 		}
 	}
 
+	if paths := iface.path(slot, "read-file"); len(paths) > 0 {
+		fmt.Fprintf(contentSnippet, `
+# In addition to the bind mount, add any AppArmor rules so that
+# snaps may directly access the slot implementation's files
+# read-only.
+`)
+		for i, r := range paths {
+			fmt.Fprintf(contentSnippet, "%s mrkix,\n",
+				resolveSpecialVariable(r, slot.Snap()))
+
+			source, target := sourceTarget(plug, slot, r)
+			var buf bytes.Buffer
+			fmt.Fprintf(&buf, "  # Read-only content sharing %s -> %s (r#%d)\n", plug.Ref(), slot.Ref(), i)
+			fmt.Fprintf(&buf, "  mount options=(bind) %s -> %s,\n", source, target)
+			fmt.Fprintf(&buf, "  remount options=(bind, ro) %s,\n", target)
+			fmt.Fprintf(&buf, "  umount %s,\n", target)
+			// Look at the TODO comment above.
+			apparmor.WritableProfile(&buf, source, 1)
+			apparmor.WritableProfile(&buf, target, 1)
+			spec.AddUpdateNS(buf.String())
+		}
+	}
+
 	spec.AddSnippet(contentSnippet.String())
 	return nil
 }
@@ -299,6 +328,12 @@ func (iface *contentInterface) AutoConnect(plug *snap.PlugInfo, slot *snap.SlotI
 func (iface *contentInterface) MountConnectedPlug(spec *mount.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {
 	for _, r := range iface.path(slot, "read") {
 		err := spec.AddMountEntry(mountEntry(plug, slot, r, "ro"))
+		if err != nil {
+			return err
+		}
+	}
+	for _, r := range iface.path(slot, "read-file") {
+		err := spec.AddMountEntry(mountEntry(plug, slot, r, "ro", "x-snapd.kind=file"))
 		if err != nil {
 			return err
 		}

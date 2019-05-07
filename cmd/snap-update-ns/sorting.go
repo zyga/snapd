@@ -44,6 +44,9 @@ func (c byOriginAndMagicDir) Less(i, j int) bool {
 		// layouts or content interface
 		return true
 	}
+	if iOrigin == "layout" && iOrigin != jOrigin {
+		return true
+	}
 
 	iDir := c[i].Dir
 	jDir := c[j].Dir

@@ -40,6 +40,7 @@
 #include "../libsnap-confine-private/apparmor-support.h"
 #include "../libsnap-confine-private/classic.h"
 #include "../libsnap-confine-private/cleanup-funcs.h"
+#include "../libsnap-confine-private/feature.h"
 #include "../libsnap-confine-private/mount-opt.h"
 #include "../libsnap-confine-private/mountinfo.h"
 #include "../libsnap-confine-private/snap.h"
@@ -117,7 +118,9 @@ static void setup_private_mount(const char *snap_name)
 		    base_dir);
 	}
 	sc_do_mount(tmp_dir, "/tmp", NULL, MS_BIND, NULL);
-	sc_do_mount("none", "/tmp", NULL, MS_PRIVATE, NULL);
+#if 1
+        sc_do_mount("none", "/tmp", NULL, MS_PRIVATE, NULL);
+#endif
 }
 
 // TODO: fold this into bootstrap
@@ -219,7 +222,7 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config)
 	debug("scratch directory for constructing namespace: %s", scratch_dir);
 	// Make the root filesystem recursively shared. This way propagation events
 	// will be shared with main mount namespace.
-	sc_do_mount("none", "/", NULL, MS_REC | MS_SHARED, NULL);
+	sc_do_mount("none", "/", NULL, MS_SHARED | MS_REC, NULL);
 	// Bind mount the temporary scratch directory for root filesystem over
 	// itself so that it is a mount point. This is done so that it can become
 	// unbindable as explained below.
@@ -239,13 +242,13 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config)
 	// filesystem of a core system (aka all-snap) or the core snap on a classic
 	// system. In the former case we need recursive bind mounts to accurately
 	// replicate the state of the root filesystem into the scratch directory.
-	sc_do_mount(config->rootfs_dir, scratch_dir, NULL, MS_REC | MS_BIND,
+	sc_do_mount(config->rootfs_dir, scratch_dir, NULL, MS_BIND | MS_REC,
 		    NULL);
 	// Make the scratch directory recursively private. Nothing done there will
 	// be shared with any peer group, This effectively detaches us from the
 	// original namespace and coupled with pivot_root below serves as the
 	// foundation of the mount sandbox.
-	sc_do_mount("none", scratch_dir, NULL, MS_REC | MS_SLAVE, NULL);
+	sc_do_mount("none", scratch_dir, NULL, MS_SLAVE | MS_REC, NULL);
 	// Bind mount certain directories from the host filesystem to the scratch
 	// directory. By default mount events will propagate in both into and out
 	// of the peer group. This way the running application can alter any global
@@ -257,31 +260,31 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config)
 		    errno != EEXIST) {
 			die("cannot create %s", mnt->path);
 		}
-		sc_must_snprintf(dst, sizeof dst, "%s/%s", scratch_dir,
+		sc_must_snprintf(dst, sizeof dst, "%s%s", scratch_dir,
 				 mnt->path);
 		if (mnt->is_optional) {
 			bool ok = sc_do_optional_mount(mnt->path, dst, NULL,
-						       MS_REC | MS_BIND, NULL);
+						       MS_BIND | MS_REC, NULL);
 			if (!ok) {
 				// If we cannot mount it, just continue.
 				continue;
 			}
 		} else {
-			sc_do_mount(mnt->path, dst, NULL, MS_REC | MS_BIND,
+			sc_do_mount(mnt->path, dst, NULL, MS_BIND | MS_REC,
 				    NULL);
 		}
 		if (!mnt->is_bidirectional) {
 			// Mount events will only propagate inwards to the namespace. This
 			// way the running application cannot alter any global state apart
 			// from that of its own snap.
-			sc_do_mount("none", dst, NULL, MS_REC | MS_SLAVE, NULL);
+			sc_do_mount("none", dst, NULL, MS_SLAVE | MS_REC, NULL);
 		}
 		if (mnt->altpath == NULL) {
 			continue;
 		}
 		// An alternate path of mnt->path is provided at another location.
 		// It should behave exactly the same as the original.
-		sc_must_snprintf(dst, sizeof dst, "%s/%s", scratch_dir,
+		sc_must_snprintf(dst, sizeof dst, "%s%s", scratch_dir,
 				 mnt->altpath);
 		struct stat stat_buf;
 		if (lstat(dst, &stat_buf) < 0) {
@@ -290,9 +293,9 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config)
 		if ((stat_buf.st_mode & S_IFMT) == S_IFLNK) {
 			die("cannot bind mount alternate path over a symlink: %s", dst);
 		}
-		sc_do_mount(mnt->path, dst, NULL, MS_REC | MS_BIND, NULL);
+		sc_do_mount(mnt->path, dst, NULL, MS_BIND | MS_REC, NULL);
 		if (!mnt->is_bidirectional) {
-			sc_do_mount("none", dst, NULL, MS_REC | MS_SLAVE, NULL);
+			sc_do_mount("none", dst, NULL, MS_SLAVE | MS_REC, NULL);
 		}
 	}
 	if (config->normal_mode) {
@@ -374,9 +377,11 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config)
 	// directory is always /snap. On the host it is a build-time configuration
 	// option stored in SNAP_MOUNT_DIR.
 	sc_must_snprintf(dst, sizeof dst, "%s/snap", scratch_dir);
-	sc_do_mount(SNAP_MOUNT_DIR, dst, NULL, MS_BIND | MS_REC | MS_SLAVE,
+	sc_do_mount(SNAP_MOUNT_DIR, dst, NULL, MS_BIND | MS_REC,
 		    NULL);
-	sc_do_mount("none", dst, NULL, MS_REC | MS_SLAVE, NULL);
+#if 1
+	sc_do_mount("none", dst, NULL, MS_SLAVE | MS_REC, NULL);
+#endif
 	// Create the hostfs directory if one is missing. This directory is a part
 	// of packaging now so perhaps this code can be removed later.
 	if (access(SC_HOSTFS_DIR, F_OK) != 0) {
@@ -404,15 +409,20 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config)
 	// mount events don't propagate to any peer group. In practice pivot root
 	// has a number of undocumented requirements and one of them is that the
 	// "put_old" directory (the second argument) cannot be shared in any way.
-	sc_must_snprintf(dst, sizeof dst, "%s/%s", scratch_dir, SC_HOSTFS_DIR);
+	sc_must_snprintf(dst, sizeof dst, "%s%s", scratch_dir, SC_HOSTFS_DIR);
 	sc_do_mount(dst, dst, NULL, MS_BIND, NULL);
+#if 1
 	sc_do_mount("none", dst, NULL, MS_PRIVATE, NULL);
+#endif
 	// On classic mount the nvidia driver. Ideally this would be done in an
 	// uniform way after pivot_root but this is good enough and requires less
 	// code changes the nvidia code assumes it has access to the existing
 	// pre-pivot filesystem.
 	if (config->distro == SC_DISTRO_CLASSIC) {
-		sc_mount_nvidia_driver(scratch_dir);
+		if (!sc_feature_enabled
+			    (SC_FEATURE_NO_LEGACY_NVIDIA_HACK)) {
+			sc_mount_nvidia_driver(scratch_dir);
+		}
 	}
 	// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 	//                    pivot_root
@@ -472,6 +482,25 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config)
 	// mount table and software inspecting the mount table may become confused.
 	sc_must_snprintf(src, sizeof src, "%s/proc", SC_HOSTFS_DIR);
 	sc_do_umount(src, UMOUNT_NOFOLLOW | MNT_DETACH);
+
+        sc_do_umount(SC_HOSTFS_DIR, UMOUNT_NOFOLLOW | MNT_DETACH);
+
+        if (0) {
+            sc_mountinfo *sm SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
+            sm = sc_parse_mountinfo(NULL);
+            if (sm == NULL) {
+                die("cannot parse /proc/self/mountinfo");
+            }
+            sc_mountinfo_entry *entry = sc_first_mountinfo_entry(sm);
+            while (entry != NULL) {
+                const char *mount_dir = entry->mount_dir;
+                if (strstr(mount_dir, SC_HOSTFS_DIR) == mount_dir) {
+                    debug("detaching %s", SC_HOSTFS_DIR);
+                    sc_do_umount(mount_dir, UMOUNT_NOFOLLOW | MNT_DETACH);
+                }
+                entry = sc_next_mountinfo_entry(entry);
+            }
+        }
 }
 
 /**
@@ -633,6 +662,7 @@ void sc_ensure_shared_snap_mount(void)
 {
 	if (!is_mounted_with_shared_option("/")
 	    && !is_mounted_with_shared_option(SNAP_MOUNT_DIR)) {
+		debug("doing that thing we hoped not to do and shit\n");
 		// TODO: We could be more aggressive and refuse to function but since
 		// we have no data on actual environments that happen to limp along in
 		// this configuration let's not do that yet.  This code should be
@@ -645,32 +675,21 @@ void sc_ensure_shared_snap_mount(void)
 	}
 }
 
-static void sc_make_slave_mount_ns(void)
-{
-	if (unshare(CLONE_NEWNS) < 0) {
-		die("can not unshare mount namespace");
-	}
-	// In our new mount namespace, recursively change all mounts
-	// to slave mode, so we see changes from the parent namespace
-	// but don't propagate our own changes.
-	sc_do_mount("none", "/", NULL, MS_REC | MS_SLAVE, NULL);
-}
-
 void sc_setup_user_mounts(struct sc_apparmor *apparmor, int snap_update_ns_fd,
 			  const char *snap_name)
 {
-	debug("%s: %s", __FUNCTION__, snap_name);
+	// In our new mount namespace, recursively change all mounts
+	// to slave mode, so we see changes from the parent namespace
+	// but don't propagate our own changes.
+	sc_do_mount("none", "/", NULL, MS_SLAVE | MS_REC, NULL);
 
 	char profile_path[PATH_MAX];
 	struct stat st;
 
 	sc_must_snprintf(profile_path, sizeof(profile_path),
 			 "/var/lib/snapd/mount/snap.%s.user-fstab", snap_name);
-	if (stat(profile_path, &st) != 0) {
-		// It is ok for the user fstab to not exist.
-		return;
+        // It is ok for the user fstab to not exist.
+	if (stat(profile_path, &st) == 0) {
+	    sc_call_snap_update_ns_as_user(snap_update_ns_fd, snap_name, apparmor);
 	}
-
-	sc_make_slave_mount_ns();
-	sc_call_snap_update_ns_as_user(snap_update_ns_fd, snap_name, apparmor);
 }
