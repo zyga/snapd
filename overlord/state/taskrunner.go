@@ -291,7 +291,7 @@ func (r *TaskRunner) clean(t *Task) {
 		delete(r.tombs, t.ID())
 
 		if tomb.Err() != nil {
-			logger.Debugf("Cleaning task %s: %s", t.ID(), tomb.Err())
+			logger.Noticef("Cleaning task %s: %s", t.ID(), tomb.Err())
 		} else {
 			t.SetClean()
 		}

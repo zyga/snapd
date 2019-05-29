@@ -46,6 +46,7 @@ import (
 	"github.com/snapcore/snapd/client"
 	"github.com/snapcore/snapd/dirs"
 	"github.com/snapcore/snapd/interfaces"
+	"github.com/snapcore/snapd/logger"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/snapcore/snapd/overlord"
 	"github.com/snapcore/snapd/overlord/assertstate"
@@ -3509,6 +3510,11 @@ version: 2.0`
 }
 
 func (ms *mgrsSuite) TestHappyDeviceRegistrationWithPrepareDeviceHook(c *C) {
+	os.Setenv("SNAPD_DEBUG", "1")
+	defer os.Unsetenv("SNAPD_DEBUG")
+	logBuffer, restore := logger.MockLogger()
+	defer restore()
+
 	brandAcct := assertstest.NewAccount(ms.storeSigning, "my-brand", map[string]interface{}{
 		"account-id":   "my-brand",
 		"verification": "verified",
@@ -3580,6 +3586,19 @@ func (ms *mgrsSuite) TestHappyDeviceRegistrationWithPrepareDeviceHook(c *C) {
 	st.Unlock()
 	err = ms.o.Settle(settleTimeout)
 	st.Lock()
+	if err != nil {
+		fmt.Printf("settle failed with: %s\n", err)
+		fmt.Printf("changes:\n")
+		for _, chg := range st.Changes() {
+			fmt.Printf("\tchange %s (%s): %s => %s (is-clean: %v, is-ready: %v)\n", chg.ID(), chg.Kind(), chg.Summary(), chg.Status(), chg.IsClean(), chg.IsReady())
+		}
+		fmt.Printf("tasks:\n")
+		for _, tsk := range st.Tasks() {
+			fmt.Printf("\ttask %s (%s) %s => %s (is-clean: %v)\n", tsk.ID(), tsk.Kind(), tsk.Summary(), tsk.Status(), tsk.IsClean())
+		}
+		fmt.Printf("debug log:\n")
+		fmt.Printf("%s\n", logBuffer.String())
+	}
 	c.Assert(err, IsNil)
 
 	var becomeOperational *state.Change
