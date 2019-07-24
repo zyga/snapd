@@ -513,6 +513,14 @@ prepare_suite_each() {
     # shellcheck source=tests/lib/reset.sh
     "$TESTSLIB"/reset.sh --reuse-core
 
+    # Set a baseline (once) and compare the state of the system to it. We do it
+    # in prepare, oddly, because this is where we restore the state around each
+    # test. Prepare restores which is non-obvious but hard to change due to
+    # fragile tests. We also compare in restore_suite, since this is where you
+    # will restore the state after execution of a single test.
+    testbed-tool set-baseline --once
+    testbed-tool compare --basic
+
     # If core18 was not installed at this stage then drop a marker that it
     # should be removed at the end of the test, if present. This is a bit
     # crufty and ideally we'd have a method of removing unused bases
@@ -582,6 +590,13 @@ restore_suite_each() {
 
 restore_suite() {
     # shellcheck source=tests/lib/reset.sh
+    # Reset in a way test case restore would run and compare the state of the
+    # testbed after suite restore.  See the comment in prepare_suite_each() for
+    # more details.
+    "$TESTSLIB"/reset.sh --reuse-core
+    testbed-tool compare --basic
+
+    # Reset again, this time in a way the suite restore would run.
     "$TESTSLIB"/reset.sh --store
     if is_classic_system; then
         # shellcheck source=tests/lib/pkgdb.sh
