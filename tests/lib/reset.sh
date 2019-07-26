@@ -130,7 +130,10 @@ reset_all_snap() {
                             remove_bases="$remove_bases $snap"
                         fi
                     else
-                        snap remove "$snap"
+                        if not snap remove "$snap"; then
+                            echo "cannot remove snap $snap"
+                            exit 1
+                        fi
                     fi
                 fi
                 ;;
