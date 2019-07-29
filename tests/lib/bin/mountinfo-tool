@@ -749,7 +749,8 @@ Known attributes, applicable for both filtering and display.
         raise SystemExit(
             "--one requires exactly one match, found {}".format(len(entries))
         )
-
+    if len(entries) == 0:
+        raise SystemExit(1)
 
 class MountInfoEntryTests(unittest.TestCase):
 
