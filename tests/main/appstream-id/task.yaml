@@ -12,7 +12,7 @@ restore: |
 
 debug: |
     if [ -e response ]; then
-        grep -n '' response
+        cat response
     fi
 
 execute: |
