@@ -14,6 +14,7 @@ restore: |
       mv test-snapd-complexion.bash-completer.orig test-snapd-complexion.bash-completer
       snap remove test-snapd-complexion
   )
+  umount /run/user/$(id -u test)
 
 execute: |
   d="$PWD"
