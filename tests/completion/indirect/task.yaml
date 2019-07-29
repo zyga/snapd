@@ -16,7 +16,9 @@ restore: |
       mv test-snapd-complexion.bash-completer.orig test-snapd-complexion.bash-completer
       snap remove test-snapd-complexion
   )
-  umount /run/user/$(id -u test)
+  if mountinfo-tool /run/user/$(id -u test); then
+    umount /run/user/$(id -u test)
+  fi
 
 execute: |
   d="$PWD"
