@@ -564,7 +564,9 @@ restore_suite_each() {
     # The core18 snap may have been automatically installed by the test.
     # If it was not present before the test then it should be removed.
     if [ -e /run/spread/please-remove-core18 ]; then
-        snap remove core18
+        if [ "$(systemctl is-active snapd.service)" = active ]; then
+            snap remove core18
+        fi
         rm -f /run/spread/please-remove-core18
     fi
 
