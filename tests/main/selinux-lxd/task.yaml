@@ -7,6 +7,8 @@ description: |
 # Systems with SELinux enabled out of the box.
 systems: [fedora-*, centos-*]
 
+manual: true
+
 prepare: |
     getenforce > enforcing.mode
     # Enable enforcing mode, our policy is already marked as permissive, so we
