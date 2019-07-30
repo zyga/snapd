@@ -1,0 +1,210 @@
+#!/usr/bin/env any-python
+from __future__ import print_function, absolute_import, unicode_literals
+
+from argparse import Action, ArgumentParser, FileType, RawTextHelpFormatter, SUPPRESS
+import errno
+import json
+import os
+import re
+import subprocess
+import sys
+import unittest
+
+# PY2 is true when we're running under Python 2.x It is used for appropriate
+# return value selection of __str__ and __repr_ methods, which must both
+# return str, not unicode (in Python 2) and str (in Python 3). In both cases
+# the return type annotation is exactly the same, but due to unicode_literals
+# being in effect, and the fact we often use a format string (which is an
+# unicode string in Python 2), we must encode the it to byte string when
+# running under Python 2.
+PY2 = sys.version_info[0] == 2
+
+# Define MYPY as False and use it as a conditional for typing import. Despite
+# this declaration mypy will really treat MYPY as True when type-checking.
+# This is required so that we can import typing on Python 2.x without the
+# typing module installed. For more details see:
+# https://mypy.readthedocs.io/en/latest/common_issues.html#import-cycles
+MYPY = False
+if MYPY:
+    from typing import Any, Dict, List, Text, Tuple, Match, Optional, Union, Sequence
+    from argparse import Namespace
+
+
+class _UnitTestAction(Action):
+    def __init__(
+        self,
+        option_strings,
+        dest=SUPPRESS,
+        default=SUPPRESS,
+        help="run program's unit test suite and exit",
+    ):
+        # type: (Text, Text, Text, Text) -> None
+        super(_UnitTestAction, self).__init__(
+            option_strings=option_strings,
+            dest=dest,
+            default=default,
+            nargs="...",
+            help=help,
+        )
+
+    def __call__(self, parser, ns, values, option_string=None):
+        # type: (ArgumentParser, Namespace, Union[str, Sequence[Any], None], Optional[Text]) -> None
+        # We allow the caller to provide the test to invoke by giving
+        # --run-unit-tests a set of arguments.
+        argv = [sys.argv[0]]
+        if isinstance(values, list):
+            argv += values
+        unittest.main(argv=argv)
+        parser.exit()
+
+
+class CleanupStack(object):
+    def __init__(self, frames=None):
+        # type: (Optional[List[List[List[Text]]]]) -> None
+        if frames is None:
+            frames = []
+        self.frames = frames
+
+    @classmethod
+    def load(cls, fname):
+        # type: (Text) -> CleanupStack
+        with open(fname, "r") as stream:
+            frames = json.load(stream)
+        return cls(frames)
+
+    def save(self, fname):
+        # type: (Text) -> None
+        with open(fname, "w") as stream:
+            json.dump(self.frames, stream)
+
+
+def _make_parser():
+    # type: () -> ArgumentParser
+    parser = ArgumentParser(
+        description="""
+The cleanup tool allows tests to stack cleanup commands to execute at a later
+stage. Cleanup commands are composed into frames, which can be pushed or
+popped. Popping a frame executes all of the cleanup commands contained
+therein. Pushing a frame changes where the cleanup commands are written to.
+""",
+        formatter_class=RawTextHelpFormatter,
+    )
+    parser.register("action", "unit-test", _UnitTestAction)
+    parser.add_argument("-v", "--version", action="version", version="1.0")
+    parser.add_argument("--run-unit-tests", action="unit-test")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--push-frame",
+        action="store_const",
+        const="push-frame",
+        dest="action",
+        help="Push a new empty cleanup frame",
+    )
+    group.add_argument(
+        "--pop-frame",
+        action="store_const",
+        const="pop-frame",
+        dest="action",
+        help="Pop a cleanup frame and execute commands stored therein",
+    )
+    group.add_argument(
+        "--show",
+        action="store_const",
+        const="show",
+        dest="action",
+        help="Show all the stored cleanup commands and frames",
+    )
+    parser.add_argument("command", nargs="...", help="cleanup shell command")
+    parser.add_argument(
+        "-s",
+        metavar="FILE",
+        help="use alternate state file",
+        action="store",
+        dest="state_file",
+        default="/run/spread/cleanup-tool.json",
+    )
+    return parser
+
+
+def cmd_show(cs):
+    # type: (CleanupStack) -> None
+    if len(cs.frames) == 0:
+        print("-> new commands are added here")
+        return
+    for depth, frame in enumerate(reversed(cs.frames)):
+        if len(cs.frames) > 1:
+            print("cleanup frame at depth {}".format(depth))
+        if depth == 0:
+            print("-> new commands are added here")
+        elif len(frame) == 0:
+            print(" # cleanup frame is empty")
+        for cmd in reversed(frame):
+            print(" - {}".format(" ".join(cmd)))
+
+
+def cmd_push_frame(cs):
+    # type: (CleanupStack) -> None
+    cs.frames.append([])
+
+
+def cmd_pop_frame(cs):
+    # type: (CleanupStack) -> None
+    try:
+        frame = cs.frames[-1]
+    except IndexError:
+        raise SystemExit("cleanup-tool: command stack is empty")
+
+    failed = 0
+    for idx, cmd in reversed(list(enumerate(frame))):
+        print("cleanup-tool: executing command: {}".format(" ".join(cmd)))
+        try:
+            subprocess.check_call(cmd)
+        except subprocess.CalledProcessError as exc:
+            print(
+                "cleanup-tool: failed to execute command: {}".format(" ".join(cmd)),
+                file=sys.stderr,
+            )
+            failed += 1
+    cs.frames.pop()
+    if failed > 0 and len(frame) != failed:
+        raise SystemExit("cleanup-tool: some commands failed to execute")
+
+
+def cmd_append_cmd(cs, cmd):
+    # type: (CleanupStack, List[Text]) -> None
+    try:
+        frame = cs.frames[-1]
+    except IndexError:
+        frame = []
+        cs.frames.append(frame)
+    finally:
+        frame.append(cmd)
+
+
+def main():
+    # type: () -> None
+    parser = _make_parser()
+    opts = parser.parse_args()
+    state_dir = os.path.dirname(opts.state_file)
+    state_file = opts.state_file
+    if not os.path.isdir(state_dir):
+        os.makedirs(os.path.dirname(state_file))
+    if os.path.isfile(state_file):
+        cs = CleanupStack.load(state_file)
+    else:
+        cs = CleanupStack()
+    try:
+        if opts.action == "show" or (opts.action is None and len(opts.command) == 0):
+            cmd_show(cs)
+        elif opts.action == "push-frame":
+            cmd_push_frame(cs)
+        elif opts.action == "pop-frame":
+            cmd_pop_frame(cs)
+        elif len(opts.command) > 0:
+            cmd_append_cmd(cs, opts.command)
+    finally:
+        cs.save(state_file)
+
+
+if __name__ == "__main__":
+    main()
