@@ -58,9 +58,29 @@ class _UnitTestAction(Action):
         parser.exit()
 
 
+class CleanupCommand(object):
+    def __init__(self, argv):
+        # type: (List[Text]) -> None
+        self.argv = argv
+        # TODO: working directory and other things as appropriate
+
+    def run(self):
+        # type: () -> None
+        subprocess.check_call(self.argv)
+
+
+class CleanupFrame(object):
+    def __init__(self, name, cmds=None):
+        # type: (Text, Optional[List[CleanupCommand]])
+        self.name = name
+        if cmds is None:
+            cmds = []
+        self.cmds = cmds
+
+
 class CleanupStack(object):
     def __init__(self, frames=None):
-        # type: (Optional[List[List[List[Text]]]]) -> None
+        # type: (Optional[List[CleanupFrame]]) -> None
         if frames is None:
             frames = []
         self.frames = frames
@@ -69,7 +89,11 @@ class CleanupStack(object):
     def load(cls, fname):
         # type: (Text) -> CleanupStack
         with open(fname, "r") as stream:
-            frames = json.load(stream)
+            raw_frames = json.load(stream)
+        for raw_frame in frames:
+            for raw_cmd in raw_frame:
+                CleanupCommand(raw_cmd)
+
         return cls(frames)
 
     def save(self, fname):
