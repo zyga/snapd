@@ -70,9 +70,8 @@ class CleanupCommand(object):
 
 
 class CleanupFrame(object):
-    def __init__(self, name, cmds=None):
-        # type: (Text, Optional[List[CleanupCommand]])
-        self.name = name
+    def __init__(self, cmds=None):
+        # type: (Optional[List[CleanupCommand]]) -> None
         if cmds is None:
             cmds = []
         self.cmds = cmds
@@ -89,21 +88,42 @@ class CleanupStack(object):
     def load(cls, fname):
         # type: (Text) -> CleanupStack
         with open(fname, "r") as stream:
-            raw_frames = json.load(stream)
-        for raw_frame in frames:
-            for raw_cmd in raw_frame:
-                CleanupCommand(raw_cmd)
-
-        return cls(frames)
+            self = json.load(stream, object_hook=cls._json_object_hook)
+        print("load -> ", self)
+        return self
 
     def save(self, fname):
         # type: (Text) -> None
         with open(fname, "w") as stream:
-            json.dump(self.frames, stream)
+            json.dump(self, stream, default=self._json_default)
+
+    @staticmethod
+    def _json_object_hook(json_obj):
+        # type: (Dict[Any, Any]) -> Any
+        print("object hook saw", json_obj)
+        if "argv" in json_obj:
+            return CleanupCommand(json_obj["argv"])
+        elif "name" in json_obj:
+            return CleanupFrame(json_obj["name"])
+        elif "frames" in json_obj:
+            return CleanupStack()
+        return json_obj
+
+    @staticmethod
+    def _json_default(obj):
+        # type: (Any) -> Dict[Text, Any]
+        print("default saw", obj)
+        if isinstance(obj, CleanupStack):
+            return {"frames": obj.frames}
+        elif isinstance(obj, CleanupFrame):
+            return {"cmds": obj.cmds}
+        elif isinstance(obj, CleanupCommand):
+            return {"argv": obj.argv}
+        raise ValueError("asked to serialize unexpected object {!r}".format(obj))
 
 
-def _make_parser():
-    # type: () -> ArgumentParser
+def _make_parser(default_state_file):
+    # type: (Text) -> ArgumentParser
     parser = ArgumentParser(
         description="""
 The cleanup tool allows tests to stack cleanup commands to execute at a later
@@ -138,14 +158,16 @@ therein. Pushing a frame changes where the cleanup commands are written to.
         dest="action",
         help="Show all the stored cleanup commands and frames",
     )
-    parser.add_argument("command", nargs="...", help="cleanup shell command")
+    parser.add_argument(
+        dest="argv", METAVAR="command", nargs="...", help="cleanup shell command"
+    )
     parser.add_argument(
         "-s",
         metavar="FILE",
         help="use alternate state file",
         action="store",
         dest="state_file",
-        default="/run/spread/cleanup-tool.json",
+        default=default_state_file,
     )
     return parser
 
@@ -160,15 +182,15 @@ def cmd_show(cs):
             print("cleanup frame at depth {}".format(depth))
         if depth == 0:
             print("-> new commands are added here")
-        elif len(frame) == 0:
+        elif len(frame.cmds) == 0:
             print(" # cleanup frame is empty")
-        for cmd in reversed(frame):
-            print(" - {}".format(" ".join(cmd)))
+        for cmd in reversed(frame.cmds):
+            print(" - {}".format(" ".join(cmd.argv)))
 
 
 def cmd_push_frame(cs):
     # type: (CleanupStack) -> None
-    cs.frames.append([])
+    cs.frames.append(CleanupFrame())
 
 
 def cmd_pop_frame(cs):
@@ -179,36 +201,53 @@ def cmd_pop_frame(cs):
         raise SystemExit("cleanup-tool: command stack is empty")
 
     failed = 0
-    for idx, cmd in reversed(list(enumerate(frame))):
-        print("cleanup-tool: executing command: {}".format(" ".join(cmd)))
+    for idx, cmd in reversed(list(enumerate(frame.cmds))):
+        print("cleanup-tool: executing command: {}".format(" ".join(cmd.argv)))
         try:
-            subprocess.check_call(cmd)
+            subprocess.check_call(cmd.argv)
         except subprocess.CalledProcessError as exc:
             print(
-                "cleanup-tool: failed to execute command: {}".format(" ".join(cmd)),
+                "cleanup-tool: failed to execute command: {}".format(
+                    " ".join(cmd.argv)
+                ),
                 file=sys.stderr,
             )
             failed += 1
     cs.frames.pop()
-    if failed > 0 and len(frame) != failed:
+    if failed > 0 and len(frame.cmds) != failed:
         raise SystemExit("cleanup-tool: some commands failed to execute")
 
 
-def cmd_append_cmd(cs, cmd):
+def cmd_append_cmd(cs, argv):
     # type: (CleanupStack, List[Text]) -> None
     try:
         frame = cs.frames[-1]
     except IndexError:
-        frame = []
+        frame = CleanupFrame()
         cs.frames.append(frame)
     finally:
-        frame.append(cmd)
+        frame.cmds.append(CleanupCommand(argv))
+
+
+def _get_default_config_path(uid, xrd):
+    # type: (int, Optional[Text]) -> Text
+    if xrd is not None:
+        return "{}/cleanup-tool.json".format(xrd)
+    elif uid == 0:
+        return "/run/spread/cleanup-tool.json"
+    raise ValueError("cleanup-tool: XDG_RUNTIME_DIR is required to operate")
 
 
 def main():
     # type: () -> None
-    parser = _make_parser()
+    try:
+        defl = _get_default_config_path(os.getuid(), os.getenv("XDG_RUNTIME_DIR"))
+    except ValueError as exc:
+        raise SystemExit(exc)
+    else:
+        parser = _make_parser(defl)
     opts = parser.parse_args()
+
     state_dir = os.path.dirname(opts.state_file)
     state_file = opts.state_file
     if not os.path.isdir(state_dir):
@@ -225,7 +264,7 @@ def main():
         elif opts.action == "pop-frame":
             cmd_pop_frame(cs)
         elif len(opts.command) > 0:
-            cmd_append_cmd(cs, opts.command)
+            cmd_append_cmd(cs, opts.argv)
     finally:
         cs.save(state_file)
 
