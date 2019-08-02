@@ -102,10 +102,10 @@ class CleanupStack(object):
         # type: (Dict[Any, Any]) -> Any
         if "argv" in json_obj:
             return CleanupCommand(json_obj["argv"])
-        elif "name" in json_obj:
-            return CleanupFrame(json_obj["name"])
+        elif "cmds" in json_obj:
+            return CleanupFrame(json_obj["cmds"])
         elif "frames" in json_obj:
-            return CleanupStack()
+            return CleanupStack(json_obj["frames"])
         return json_obj
 
     @staticmethod
@@ -191,6 +191,18 @@ def cmd_push_frame(cs):
     cs.frames.append(CleanupFrame())
 
 
+def cmd_push_cmd(cs, argv):
+    # type: (CleanupStack, List[Text]) -> None
+    cmd = CleanupCommand(argv)
+    try:
+        frame = cs.frames[-1]
+    except IndexError:
+        frame = CleanupFrame()
+        cs.frames.append(frame)
+    finally:
+        frame.cmds.append(cmd)
+
+
 def cmd_pop_frame(cs):
     # type: (CleanupStack) -> None
     try:
@@ -214,17 +226,6 @@ def cmd_pop_frame(cs):
     cs.frames.pop()
     if failed > 0 and len(frame.cmds) != failed:
         raise SystemExit("cleanup-tool: some commands failed to execute")
-
-
-def cmd_append_cmd(cs, argv):
-    # type: (CleanupStack, List[Text]) -> None
-    try:
-        frame = cs.frames[-1]
-    except IndexError:
-        frame = CleanupFrame()
-        cs.frames.append(frame)
-    finally:
-        frame.cmds.append(CleanupCommand(argv))
 
 
 def _get_default_config_path(uid, xrd):
@@ -262,7 +263,9 @@ def main():
         elif opts.action == "pop-frame":
             cmd_pop_frame(cs)
         elif len(opts.argv) > 0:
-            cmd_append_cmd(cs, opts.argv)
+            cmd_push_cmd(cs, opts.argv)
+        else:
+            raise ValueError("what?")
     finally:
         cs.save(state_file)
 
