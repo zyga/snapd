@@ -88,19 +88,18 @@ class CleanupStack(object):
     def load(cls, fname):
         # type: (Text) -> CleanupStack
         with open(fname, "r") as stream:
-            self = json.load(stream, object_hook=cls._json_object_hook)
-        print("load -> ", self)
-        return self
+            return json.load(stream, object_hook=cls._json_object_hook)
 
     def save(self, fname):
         # type: (Text) -> None
         with open(fname, "w") as stream:
-            json.dump(self, stream, default=self._json_default)
+            json.dump(
+                self, stream, default=self._json_default, sort_keys=True, indent=4
+            )
 
     @staticmethod
     def _json_object_hook(json_obj):
         # type: (Dict[Any, Any]) -> Any
-        print("object hook saw", json_obj)
         if "argv" in json_obj:
             return CleanupCommand(json_obj["argv"])
         elif "name" in json_obj:
@@ -112,7 +111,6 @@ class CleanupStack(object):
     @staticmethod
     def _json_default(obj):
         # type: (Any) -> Dict[Text, Any]
-        print("default saw", obj)
         if isinstance(obj, CleanupStack):
             return {"frames": obj.frames}
         elif isinstance(obj, CleanupFrame):
@@ -159,7 +157,7 @@ therein. Pushing a frame changes where the cleanup commands are written to.
         help="Show all the stored cleanup commands and frames",
     )
     parser.add_argument(
-        dest="argv", METAVAR="command", nargs="...", help="cleanup shell command"
+        dest="argv", metavar="command", nargs="...", help="cleanup shell command"
     )
     parser.add_argument(
         "-s",
@@ -257,13 +255,13 @@ def main():
     else:
         cs = CleanupStack()
     try:
-        if opts.action == "show" or (opts.action is None and len(opts.command) == 0):
+        if opts.action == "show" or (opts.action is None and len(opts.argv) == 0):
             cmd_show(cs)
         elif opts.action == "push-frame":
             cmd_push_frame(cs)
         elif opts.action == "pop-frame":
             cmd_pop_frame(cs)
-        elif len(opts.command) > 0:
+        elif len(opts.argv) > 0:
             cmd_append_cmd(cs, opts.argv)
     finally:
         cs.save(state_file)
