@@ -61,7 +61,10 @@ const bluetoothControlConnectedPlugSecComp = `
 bind
 `
 
-var bluetoothControlConnectedPlugUDev = []string{`SUBSYSTEM=="bluetooth"`}
+var bluetoothControlConnectedPlugUDev = []string{
+    `SUBSYSTEM=="bluetooth"`,
+    `SUBSTSTEM=="BT_chardev"`,
+  }
 
 func init() {
 	registerIface(&commonInterface{
