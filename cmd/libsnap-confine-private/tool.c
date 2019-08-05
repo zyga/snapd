@@ -148,6 +148,27 @@ void sc_call_snap_discard_ns(int snap_discard_ns_fd, const char *snap_name)
 	sc_call_snapd_tool(snap_discard_ns_fd, "snap-discard-ns", argv, envp);
 }
 
+int sc_open_snap_update_cg(void)
+{
+	return sc_open_snapd_tool("snap-update-cg");
+}
+
+void sc_call_snap_update_cg(int snap_update_cg_fd, const char *cgroup_name, const char *security_tag)
+{
+	char *cgroup_name_copy SC_CLEANUP(sc_cleanup_string) = NULL;
+	cgroup_name_copy = sc_strdup(cgroup_name);
+
+	char *security_tag_copy SC_CLEANUP(sc_cleanup_string) = NULL;
+	security_tag_copy = sc_strdup(security_tag);
+
+	char *argv[] =
+	    { "snap-update-cg", cgroup_path_copy, security_tag_copy, NULL };
+	/* SNAPD_DEBUG=x is replaced by sc_call_snapd_tool_with_apparmor with
+	 * either SNAPD_DEBUG=0 or SNAPD_DEBUG=1, see that function for details. */
+	char *envp[] = { "SNAPD_DEBUG=x", NULL };
+	sc_call_snapd_tool(snap_update_cg_fd, "snap-update-cg", argv, envp);
+}
+
 static int sc_open_snapd_tool(const char *tool_name)
 {
 	// +1 is for the case where the link is exactly PATH_MAX long but we also

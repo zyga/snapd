@@ -20,6 +20,7 @@ subdirs = \
 		  snap-confine \
 		  snap-discard-ns \
 		  snap-gdb-shim \
+		  snap-update-device-cgroup \
 		  snap-update-ns \
 		  snapd-env-generator \
 		  snapd-generator \
@@ -68,7 +69,16 @@ new_format = \
 	 snap-confine/selinux-support.h \
 	 snap-confine/snap-confine-invocation.c \
 	 snap-confine/snap-confine-invocation.h \
-	 snap-discard-ns/snap-discard-ns.c
+	 snap-discard-ns/snap-discard-ns.c \
+	 snap-update-device-cgroup/cgroup-v1.c \
+	 snap-update-device-cgroup/cgroup-v1.h \
+	 snap-update-device-cgroup/main.c \
+	 snap-update-device-cgroup/prog-args.c \
+	 snap-update-device-cgroup/prog-args.h \
+	 snap-update-device-cgroup/tag.c \
+	 snap-update-device-cgroup/tag.h \
+	 snap-update-device-cgroup/udev.c \
+	 snap-update-device-cgroup/udev.h
 
 # NOTE: clang-format is using project-wide .clang-format file.
 .PHONY: fmt
@@ -378,6 +388,29 @@ else
 # Ensure that snap-confine is u+s,g+s (setuid and setgid)
 	chmod 6755 $(DESTDIR)$(libexecdir)/snap-confine
 endif
+
+##
+## snap-update-cg
+##
+
+libexec_PROGRAMS += snap-update-cg/snap-update-cg
+
+snap_update_cg_snap_update_cg_SOURCES = \
+	snap-update-device-cgroup/cgroup-v1.c \
+	snap-update-device-cgroup/cgroup-v1.h \
+	snap-update-device-cgroup/main.c \
+	snap-update-device-cgroup/prog-args.c \
+	snap-update-device-cgroup/prog-args.h \
+	snap-update-device-cgroup/tag.c \
+	snap-update-device-cgroup/tag.h \
+	snap-update-device-cgroup/udev.c \
+	snap-update-device-cgroup/udev.h
+
+snap_update_cg_snap_update_cg_CFLAGS = $(CHECK_CFLAGS) $(AM_CFLAGS)
+snap_update_cg_snap_update_cg_LDFLAGS = $(AM_LDFLAGS)
+snap_update_cg_snap_update_cg_LDADD = libsnap-confine-private.a
+snap_update_cg_snap_update_cg_CFLAGS += $(LIBUDEV_CFLAGS)
+snap_update_cg_snap_update_cg_LDADD += $(LIBUDEV_LIBS)
 
 ##
 ## snap-mgmt

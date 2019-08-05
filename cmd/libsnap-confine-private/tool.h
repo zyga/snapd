@@ -45,8 +45,18 @@ void sc_call_snap_update_ns_as_user(int snap_update_ns_fd,
 int sc_open_snap_discard_ns(void);
 
 /**
- * sc_call_snap_discard_ns calls the snap-discard-ns from snap confine.
+ * sc_call_snap_discard_ns calls the snap-discard-ns from snap-confine.
 **/
 void sc_call_snap_discard_ns(int snap_discard_ns_fd, const char *snap_name);
+
+/**
+ * sc_open_snap_update_cg returns a file descriptor for the snap-update-cgroup tool.
+**/
+int sc_open_snap_update_cg(void);
+
+/**
+ * sc_call_snap_update_cg calls the snap-update-cg from snap-confine.
+**/
+void sc_call_snap_update_cg(int snap_update_cg_fd, const char *cgroup_name, const char *security_tag);
 
 #endif

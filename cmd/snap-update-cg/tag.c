@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Canonical Ltd
+ * Copyright (C) 2019 Canonical Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 3 as
@@ -15,9 +15,18 @@
  *
  */
 
-#ifndef SNAP_CONFINE_UDEV_SUPPORT_H
-#define SNAP_CONFINE_UDEV_SUPPORT_H
+#include "config.h"
 
-void sc_setup_device_cgroup(const char *security_tag);
+#include "tag.h"
 
-#endif
+#include <string.h>
+
+#include "../libsnap-confine-private/string-utils.h"
+
+char *snap_security_tag_to_udev_tag(const char *security_tag) {
+    char *udev_tag = sc_strdup(security_tag);
+    for (char *c = strchr(udev_tag, '.'); c != NULL; c = strchr(c, '.')) {
+        *c = '_';
+    }
+    return udev_tag;
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Canonical Ltd
+ * Copyright (C) 2019 Canonical Ltd
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 3 as
@@ -15,9 +15,6 @@
  *
  */
 
-#ifndef SNAP_CONFINE_UDEV_SUPPORT_H
-#define SNAP_CONFINE_UDEV_SUPPORT_H
+#pragma once
 
-void sc_setup_device_cgroup(const char *security_tag);
-
-#endif
+char *snap_security_tag_to_udev_tag(const char *security_tag);

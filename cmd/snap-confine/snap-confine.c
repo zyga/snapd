@@ -560,6 +560,8 @@ static void enter_non_classic_execution_environment(sc_invocation * inv,
 	// path as where we (snap-confine) were called.
 	int snap_update_ns_fd SC_CLEANUP(sc_cleanup_close) = -1;
 	snap_update_ns_fd = sc_open_snap_update_ns();
+	int snap_update_cg_fd SC_CLEANUP(sc_cleanup_close) = -1;
+	snap_update_cg_fd = sc_open_snap_update_cg();
 	int snap_discard_ns_fd SC_CLEANUP(sc_cleanup_close) = -1;
 	snap_discard_ns_fd = sc_open_snap_discard_ns();
 
@@ -572,11 +574,8 @@ static void enter_non_classic_execution_environment(sc_invocation * inv,
 	// Init and check rootfs_dir, apply any fallback behaviors.
 	sc_check_rootfs_dir(inv);
 
-	/** Populate and join the device control group. */
-	struct snappy_udev udev_s;
-	if (snappy_udev_init(inv->security_tag, &udev_s) == 0)
-		setup_devices_cgroup(inv->security_tag, &udev_s);
-	snappy_udev_cleanup(&udev_s);
+	/** Conditionally create, populate and join the device cgroup. */
+	sc_setup_device_cgroup(inv->security_tag);
 
 	/**
 	 * is_normal_mode controls if we should pivot into the base snap.
