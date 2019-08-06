@@ -26,7 +26,7 @@ PY2 = sys.version_info[0] == 2
 # https://mypy.readthedocs.io/en/latest/common_issues.html#import-cycles
 MYPY = False
 if MYPY:
-    from typing import Any, Dict, List, Text, Tuple, Match, Optional, Union, Sequence
+    from typing import Any, Dict, List, Text, Tuple, Match, Optional, Union, Sequence, Type
     from argparse import Namespace
 
 
@@ -68,6 +68,15 @@ class CleanupCommand(object):
         # type: () -> None
         subprocess.check_call(self.argv)
 
+    def marshall_json(self):
+        # type () -> Dict[Text, Any]
+        return {"argv": self.argv}
+
+    @classmethod
+    def unmarshall_json(cls, json_obj):
+        # type: (Dict[Any, Any]) -> CleanupCommand
+        return cls(json_obj["argv"])
+
 
 class CleanupFrame(object):
     def __init__(self, cmds=None):
@@ -75,6 +84,15 @@ class CleanupFrame(object):
         if cmds is None:
             cmds = []
         self.cmds = cmds
+
+    def marshall_json(self):
+        # type () -> Dict[Text, Any]
+        return {"cmds": self.cmds}
+
+    @classmethod
+    def unmarshall_json(cls, json_obj):
+        # type: (Dict[Any, Any]) -> CleanupFrame
+        return cls(json_obj["cmds"])
 
 
 class CleanupStack(object):
@@ -84,40 +102,49 @@ class CleanupStack(object):
             frames = []
         self.frames = frames
 
+    def marshall_json(self):
+        # type () -> Dict[Text, Any]
+        return {"frames": self.frames}
+
+    @classmethod
+    def unmarshall_json(cls, json_obj):
+        # type: (Dict[Any, Any]) -> CleanupStack
+        return cls(json_obj["frames"])
+
+
+class CleanupTool(object):
+
     @classmethod
     def load(cls, fname):
         # type: (Text) -> CleanupStack
         with open(fname, "r") as stream:
-            return json.load(stream, object_hook=cls._json_object_hook)
+            return json.load(stream, object_hook=cls._json_unmarshall_hook)
 
     def save(self, fname):
         # type: (Text) -> None
         with open(fname, "w") as stream:
             json.dump(
-                self, stream, default=self._json_default, sort_keys=True, indent=4
+                self, stream, default=self._json_mashall_hook, sort_keys=True, indent=4
             )
 
-    @staticmethod
-    def _json_object_hook(json_obj):
+    _unmarshall_hints = {
+        "argv": CleanupCommand,
+        "cmds": CleanupFrame,
+        "frames": CleanupStack,
+    }  # type: Dict[Text, Type]
+
+    @classmethod
+    def _json_unmarshall_hook(cls, json_obj):
         # type: (Dict[Any, Any]) -> Any
-        if "argv" in json_obj:
-            return CleanupCommand(json_obj["argv"])
-        elif "cmds" in json_obj:
-            return CleanupFrame(json_obj["cmds"])
-        elif "frames" in json_obj:
-            return CleanupStack(json_obj["frames"])
+        for attr, klass in cls._unmarshall_hints.items():
+            if attr in json_obj:
+                return klass.unmarshall_json(json_obj)
         return json_obj
 
     @staticmethod
-    def _json_default(obj):
+    def _json_mashall_hook(obj):
         # type: (Any) -> Dict[Text, Any]
-        if isinstance(obj, CleanupStack):
-            return {"frames": obj.frames}
-        elif isinstance(obj, CleanupFrame):
-            return {"cmds": obj.cmds}
-        elif isinstance(obj, CleanupCommand):
-            return {"argv": obj.argv}
-        raise ValueError("asked to serialize unexpected object {!r}".format(obj))
+        return obj.marshall_json()
 
 
 def _make_parser(default_state_file):
@@ -255,6 +282,9 @@ def main():
         cs = CleanupStack.load(state_file)
     else:
         cs = CleanupStack()
+
+    print("cleanup-tool: state file {}".format(state_file))
+
     try:
         if opts.action == "show" or (opts.action is None and len(opts.argv) == 0):
             cmd_show(cs)
