@@ -1,4 +1,4 @@
-#!/usr/bin/env any-python
+#!/usr/bin/env python 
 from __future__ import print_function, absolute_import, unicode_literals
 
 from argparse import Action, ArgumentParser, FileType, RawTextHelpFormatter, SUPPRESS
@@ -146,113 +146,112 @@ class CleanupTool(object):
         # type: (Any) -> Dict[Text, Any]
         return obj.marshall_json()
 
-
-def _make_parser(default_state_file):
-    # type: (Text) -> ArgumentParser
-    parser = ArgumentParser(
-        description="""
-The cleanup tool allows tests to stack cleanup commands to execute at a later
-stage. Cleanup commands are composed into frames, which can be pushed or
-popped. Popping a frame executes all of the cleanup commands contained
-therein. Pushing a frame changes where the cleanup commands are written to.
-""",
-        formatter_class=RawTextHelpFormatter,
-    )
-    parser.register("action", "unit-test", _UnitTestAction)
-    parser.add_argument("-v", "--version", action="version", version="1.0")
-    parser.add_argument("--run-unit-tests", action="unit-test")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "--push-frame",
-        action="store_const",
-        const="push-frame",
-        dest="action",
-        help="Push a new empty cleanup frame",
-    )
-    group.add_argument(
-        "--pop-frame",
-        action="store_const",
-        const="pop-frame",
-        dest="action",
-        help="Pop a cleanup frame and execute commands stored therein",
-    )
-    group.add_argument(
-        "--show",
-        action="store_const",
-        const="show",
-        dest="action",
-        help="Show all the stored cleanup commands and frames",
-    )
-    parser.add_argument(
-        dest="argv", metavar="command", nargs="...", help="cleanup shell command"
-    )
-    parser.add_argument(
-        "-s",
-        metavar="FILE",
-        help="use alternate state file",
-        action="store",
-        dest="state_file",
-        default=default_state_file,
-    )
-    return parser
-
-
-def cmd_show(cs):
-    # type: (CleanupStack) -> None
-    if len(cs.frames) == 0:
-        print("-> new commands are added here")
-        return
-    for depth, frame in enumerate(reversed(cs.frames)):
-        if len(cs.frames) > 1:
-            print("cleanup frame at depth {}".format(depth))
-        if depth == 0:
+    def cmd_show(cs):
+        # type: (CleanupStack) -> None
+        if len(cs.frames) == 0:
             print("-> new commands are added here")
-        elif len(frame.cmds) == 0:
-            print(" # cleanup frame is empty")
-        for cmd in reversed(frame.cmds):
-            print(" - {}".format(" ".join(cmd.argv)))
+            return
+        for depth, frame in enumerate(reversed(cs.frames)):
+            if len(cs.frames) > 1:
+                print("cleanup frame at depth {}".format(depth))
+            if depth == 0:
+                print("-> new commands are added here")
+            elif len(frame.cmds) == 0:
+                print(" # cleanup frame is empty")
+            for cmd in reversed(frame.cmds):
+                print(" - {}".format(" ".join(cmd.argv)))
 
 
-def cmd_push_frame(cs):
-    # type: (CleanupStack) -> None
-    cs.frames.append(CleanupFrame())
+    def cmd_push_frame(cs):
+        # type: (CleanupStack) -> None
+        cs.frames.append(CleanupFrame())
 
 
-def cmd_push_cmd(cs, argv):
-    # type: (CleanupStack, List[Text]) -> None
-    cmd = CleanupCommand(argv)
-    try:
-        frame = cs.frames[-1]
-    except IndexError:
-        frame = CleanupFrame()
-        cs.frames.append(frame)
-    finally:
-        frame.cmds.append(cmd)
-
-
-def cmd_pop_frame(cs):
-    # type: (CleanupStack) -> None
-    try:
-        frame = cs.frames[-1]
-    except IndexError:
-        raise SystemExit("cleanup-tool: command stack is empty")
-
-    failed = 0
-    for idx, cmd in reversed(list(enumerate(frame.cmds))):
-        print("cleanup-tool: executing command: {}".format(" ".join(cmd.argv)))
+    def cmd_push_cmd(cs, argv):
+        # type: (CleanupStack, List[Text]) -> None
+        cmd = CleanupCommand(argv)
         try:
-            subprocess.check_call(cmd.argv)
-        except subprocess.CalledProcessError as exc:
-            print(
-                "cleanup-tool: failed to execute command: {}".format(
-                    " ".join(cmd.argv)
-                ),
-                file=sys.stderr,
-            )
-            failed += 1
-    cs.frames.pop()
-    if failed > 0 and len(frame.cmds) != failed:
-        raise SystemExit("cleanup-tool: some commands failed to execute")
+            frame = cs.frames[-1]
+        except IndexError:
+            frame = CleanupFrame()
+            cs.frames.append(frame)
+        finally:
+            frame.cmds.append(cmd)
+
+
+    def cmd_pop_frame(cs):
+        # type: (CleanupStack) -> None
+        try:
+            frame = cs.frames[-1]
+        except IndexError:
+            raise SystemExit("cleanup-tool: command stack is empty")
+
+        failed = 0
+        for idx, cmd in reversed(list(enumerate(frame.cmds))):
+            print("cleanup-tool: executing command: {}".format(" ".join(cmd.argv)))
+            try:
+                subprocess.check_call(cmd.argv)
+            except subprocess.CalledProcessError as exc:
+                print(
+                    "cleanup-tool: failed to execute command: {}".format(
+                        " ".join(cmd.argv)
+                    ),
+                    file=sys.stderr,
+                )
+                failed += 1
+        cs.frames.pop()
+        if failed > 0 and len(frame.cmds) != failed:
+            raise SystemExit("cleanup-tool: some commands failed to execute")
+
+    @classmethod
+    def _make_parser(cls, default_state_file):
+        # type: (Text) -> ArgumentParser
+        parser = ArgumentParser(
+            description="""
+    The cleanup tool allows tests to stack cleanup commands to execute at a later
+    stage. Cleanup commands are composed into frames, which can be pushed or
+    popped. Popping a frame executes all of the cleanup commands contained
+    therein. Pushing a frame changes where the cleanup commands are written to.
+    """,
+            formatter_class=RawTextHelpFormatter,
+        )
+        parser.register("action", "unit-test", _UnitTestAction)
+        parser.add_argument("-v", "--version", action="version", version="1.0")
+        parser.add_argument("--run-unit-tests", action="unit-test")
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument(
+            "--push-frame",
+            action="store_const",
+            const="push-frame",
+            dest="action",
+            help="Push a new empty cleanup frame",
+        )
+        group.add_argument(
+            "--pop-frame",
+            action="store_const",
+            const="pop-frame",
+            dest="action",
+            help="Pop a cleanup frame and execute commands stored therein",
+        )
+        group.add_argument(
+            "--show",
+            action="store_const",
+            const="show",
+            dest="action",
+            help="Show all the stored cleanup commands and frames",
+        )
+        parser.add_argument(
+            dest="argv", metavar="command", nargs="...", help="cleanup shell command"
+        )
+        parser.add_argument(
+            "-s",
+            metavar="FILE",
+            help="use alternate state file",
+            action="store",
+            dest="state_file",
+            default=default_state_file,
+        )
+        return parser
 
 
 def _get_default_config_path(uid, xrd):
@@ -282,9 +281,6 @@ def main():
         cs = CleanupStack.load(state_file)
     else:
         cs = CleanupStack()
-
-    print("cleanup-tool: state file {}".format(state_file))
-
     try:
         if opts.action == "show" or (opts.action is None and len(opts.argv) == 0):
             cmd_show(cs)
