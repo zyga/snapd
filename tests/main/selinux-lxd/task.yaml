@@ -7,6 +7,12 @@ description: |
 # Systems with SELinux enabled out of the box.
 systems: [fedora-*, centos-*]
 
+# This is manual until https://github.com/snapcore/spread/pull/85 lands and
+# unblocks the use of REBOOT. LXD modifies cgroups and doesn't undo this upon
+# removal. The advice from lxd developers is to reboot to restore pristine
+# state.
+manual: true
+
 prepare: |
     getenforce > enforcing.mode
     # Enable enforcing mode, our policy is already marked as permissive, so we

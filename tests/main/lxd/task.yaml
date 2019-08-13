@@ -5,6 +5,12 @@ summary: Ensure that lxd works
 # No ubuntu 18.10 imaga available so far
 systems: [ubuntu-16*, ubuntu-18.04*, ubuntu-2*, ubuntu-core-*]
 
+# This is manual until https://github.com/snapcore/spread/pull/85 lands and
+# unblocks the use of REBOOT. LXD modifies cgroups and doesn't undo this upon
+# removal. The advice from lxd developers is to reboot to restore pristine
+# state.
+manual: true
+
 # autopkgtest run only a subset of tests that deals with the integration
 # with the distro
 backends: [-autopkgtest]

@@ -1,5 +1,10 @@
 summary: Regression test for https://bugs.launchpad.net/snapd/+bug/1815869
 systems: [ubuntu-16.04-64]
+# This is manual until https://github.com/snapcore/spread/pull/85 lands and
+# unblocks the use of REBOOT. LXD modifies cgroups and doesn't undo this upon
+# removal. The advice from lxd developers is to reboot to restore pristine
+# state.
+manual: true
 prepare: |
     # Ensure that we don't have LXD installed as a deb
     apt autoremove -y lxd || :
