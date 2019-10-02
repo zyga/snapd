@@ -202,9 +202,9 @@ func parsePids(reader io.Reader) ([]int, error) {
 
 // pidsOfSecurityTag returns a list of PIDs belonging to a given security tag.
 //
-// The list is obtained from a pids cgroup.
+// The list is obtained from a name=snapd cgroup hierarchy.
 func pidsOfSecurityTag(securityTag string) ([]int, error) {
-	fname := filepath.Join(dirs.PidsCgroupDir, securityTag, "cgroup.procs")
+	fname := filepath.Join(dirs.SnapdCgroupDir, securityTag, "cgroup.procs")
 	file, err := os.Open(fname)
 	if os.IsNotExist(err) {
 		return nil, nil

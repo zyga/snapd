@@ -62,9 +62,9 @@ hooks:
   configure:
 `
 	s.info = snaptest.MockInfo(c, yamlText, nil)
-	s.daemonPath = filepath.Join(dirs.PidsCgroupDir, s.info.Apps["daemon"].SecurityTag())
-	s.appPath = filepath.Join(dirs.PidsCgroupDir, s.info.Apps["app"].SecurityTag())
-	s.hookPath = filepath.Join(dirs.PidsCgroupDir, s.info.Hooks["configure"].SecurityTag())
+	s.daemonPath = filepath.Join(dirs.SnapdCgroupDir, s.info.Apps["daemon"].SecurityTag())
+	s.appPath = filepath.Join(dirs.SnapdCgroupDir, s.info.Apps["app"].SecurityTag())
+	s.hookPath = filepath.Join(dirs.SnapdCgroupDir, s.info.Hooks["configure"].SecurityTag())
 }
 
 func (s *refreshSuite) TearDownTest(c *C) {
