@@ -405,11 +405,13 @@ fi
 %{_libexecdir}/snapd/snap-update-ns
 %{_libexecdir}/snapd/snapctl
 %{_libexecdir}/snapd/snapd
+%{_libexecdir}/snapd/snapd-release-agent
 %{_libexecdir}/snapd/snapd.run-from-snap
 %{_mandir}/man8/snap-confine.8*
 %{_mandir}/man8/snap-discard-ns.8*
 %{_mandir}/man8/snap.8*
 %{_mandir}/man8/snapd-env-generator.8*
+%{_mandir}/man8/snapd-release-agent.8*
 %{_sbindir}/rcsnapd
 %{_sbindir}/rcsnapd.seeded
 %{_sysconfdir}/xdg/autostart/snap-userd-autostart.desktop

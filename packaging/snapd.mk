@@ -57,7 +57,7 @@ go_binaries = snap snapctl snap-seccomp snap-update-ns snap-exec snapd
 .PHONY: all
 all: $(go_binaries) 
 
-snap snap-seccomp:
+snap snap-seccomp snapd-release-agent:
 	go build -buildmode=pie $(import_path)/cmd/$@
 
 # Those three need to be built as static binaries. They run on the inside of a
@@ -85,8 +85,8 @@ $(addprefix $(DESTDIR),$(libexecdir)/snapd $(bindir) $(mandir)/man8 /$(sharedsta
 install:: snap | $(DESTDIR)$(bindir)
 	install -m 755 $^ $|
 
-# Install snapctl snapd, snap-{exec,update-ns,seccomp} into /usr/lib/snapd/
-install:: snapctl snapd snap-exec snap-update-ns snap-seccomp | $(DESTDIR)$(libexecdir)/snapd
+# Install snapctl snapd, snap-{exec,update-ns,seccomp}, snapd-release-agent into /usr/lib/snapd/
+install:: snapctl snapd snap-exec snap-update-ns snap-seccomp snapd-release-agent | $(DESTDIR)$(libexecdir)/snapd
 	install -m 755 $^ $|
 
 # Ensure /usr/bin/snapctl is a symlink to /usr/lib/snapd/snapctl

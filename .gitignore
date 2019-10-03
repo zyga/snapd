@@ -31,6 +31,7 @@ cmd/snap-update-ns/snap-update-ns
 cmd/snap-update-ns/unit-tests
 cmd/snapd-env-generator/snapd-env-generator
 cmd/snapd-generator/snapd-generator
+cmd/snapd-release-agent/snapd-release-agent
 cmd/system-shutdown/system-shutdown
 cmd/system-shutdown/unit-tests
 

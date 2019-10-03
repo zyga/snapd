@@ -470,6 +470,7 @@ sed -e "s:github.com/snapcore/bolt:github.com/boltdb/bolt:g" -i advisor/*.go err
 # set tags.
 %gobuild -o bin/snapd $GOFLAGS %{import_path}/cmd/snapd
 %gobuild -o bin/snap $GOFLAGS %{import_path}/cmd/snap
+%gobuild -o bin/snapd-release-agent $GOFLAGS %{import_path}/cmd/snapd-release-agent
 %gobuild -o bin/snap-failure $GOFLAGS %{import_path}/cmd/snap-failure
 
 # To ensure things work correctly with base snaps,
@@ -562,6 +563,7 @@ install -p -m 0755 bin/snap-failure %{buildroot}%{_libexecdir}/snapd
 install -p -m 0755 bin/snapd %{buildroot}%{_libexecdir}/snapd
 install -p -m 0755 bin/snap-update-ns %{buildroot}%{_libexecdir}/snapd
 install -p -m 0755 bin/snap-seccomp %{buildroot}%{_libexecdir}/snapd
+install -p -m 0755 bin/snapd-release-agent %{buildroot}%{_libexecdir}/snapd
 # Ensure /usr/bin/snapctl is a symlink to /usr/libexec/snapd/snapctl
 install -p -m 0755 bin/snapctl %{buildroot}%{_libexecdir}/snapd/snapctl
 ln -sf %{_libexecdir}/snapd/snapctl %{buildroot}%{_bindir}/snapctl
@@ -770,9 +772,11 @@ popd
 %{_libexecdir}/snapd/snap-gdb-shim
 %{_libexecdir}/snapd/snap-seccomp
 %{_libexecdir}/snapd/snap-update-ns
+%{_libexecdir}/snapd/snapd-release-agent
 %{_libexecdir}/snapd/system-shutdown
 %{_mandir}/man8/snap-confine.8*
 %{_mandir}/man8/snap-discard-ns.8*
+%{_mandir}/man8/snapd-release-agent.8*
 %{_systemdgeneratordir}/snapd-generator
 %attr(0111,root,root) %{_sharedstatedir}/snapd/void
 
