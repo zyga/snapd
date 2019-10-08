@@ -37,6 +37,8 @@
 static const char *cgroup_dir = "/sys/fs/cgroup";
 static const char *snapd_run_dir = "/run/snapd";
 static const char *snapd_run_cgroup_dir = "/run/snapd/cgroup";
+static const char *snapd_run_cgroup_release_agent = "/run/snapd/cgroup/release_agent";
+static const char *snapd_run_cgroup_notify_on_release = "/run/snapd/cgroup/notify_on_release";
 
 void sc_cgroup_create_and_join(const char *parent, const char *name, pid_t pid) {
     int parent_fd SC_CLEANUP(sc_cleanup_close) = -1;
@@ -125,6 +127,19 @@ static void ensure_dir(const char *dir, mode_t mode) {
     }
 }
 
+static void write_to_existing_file(const char *fname, const char *text) {
+    int fd SC_CLEANUP(sc_cleanup_close) = -1;
+    fd = open(fname, O_WRONLY | O_NOFOLLOW | O_CLOEXEC);
+    if (fd < 0) {
+        die("cannot open %s", fname);
+    }
+    size_t buf_size = strlen(text);
+    ssize_t n = write(fd, text, buf_size);
+    if (n < 0 || (size_t)n != buf_size) {
+        die("cannot write %zd bytes to %s", buf_size, fname);
+    }
+}
+
 void sc_cgroup_mount_snapd_hierarchy(void) {
     /* The path /run/snapd should be a directory with mode 0655 owned by
      * root.root. If one is absent it is created. If one is there it is
@@ -147,6 +162,13 @@ void sc_cgroup_mount_snapd_hierarchy(void) {
         if (mount("cgroup", snapd_run_cgroup_dir, "cgroup", mount_flags, mount_opts) < 0) {
             die("cannot mount snapd cgroup v1 hierarchy");
         }
+    } else {
+        /* Configure the cgroup so that the release agent is used. */
+        /* FIXME: check if the release agent can take command line arguments
+         * and if so use "snap release-agent" or something similar, to get
+         * re-executing support. */
+        write_to_existing_file(snapd_run_cgroup_release_agent, "/usr/lib/snapd/snapd-release-agent");
+        write_to_existing_file(snapd_run_cgroup_notify_on_release, "1");
     }
 }
 
