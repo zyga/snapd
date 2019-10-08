@@ -80,6 +80,10 @@
     /run/snapd/cgroup/snap.*/ w,
     /run/snapd/cgroup/snap.*/cgroup.procs w,
 
+    # monitor files
+    /run/snapd/monitor/ w,
+    /run/snapd/monitor/* w,
+
     # querying udev
     /etc/udev/udev.conf r,
     /sys/**/uevent r,

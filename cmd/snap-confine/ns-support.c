@@ -901,4 +901,36 @@ void sc_store_ns_info(const sc_invocation * inv)
 		die("cannot flush %s", info_path);
 	}
 	debug("saved mount namespace meta-data to %s", info_path);
+
+	// TODO: move this to a proper place
+	if (mkdir("/run/snapd/monitor", 0755) < 0) {
+		if (errno != EEXIST) {
+			die("cannot create /run/snapd/monitor");
+		}
+	}
+	sc_must_snprintf(info_path, sizeof info_path,
+			 "/run/snapd/monitor/%s", inv->security_tag);
+	fd = -1;
+	fd = open(info_path,
+		  O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | O_NOFOLLOW, 0644);
+	if (fd < 0) {
+		die("cannot open %s", info_path);
+	}
+	if (fchown(fd, 0, 0) < 0) {
+		die("cannot chown %s to root.root", info_path);
+	}
+	// The stream now owns the file descriptor.
+	stream = fdopen(fd, "w");
+	if (stream == NULL) {
+		die("cannot get stream from file descriptor");
+	}
+	fprintf(stream, "snap-confine-features=monitor-files ns-info-files\n");
+	if (ferror(stream) != 0) {
+		die("I/O error when writing to %s", info_path);
+	}
+	if (fflush(stream) == EOF) {
+		die("cannot flush %s", info_path);
+	}
+	debug("saved monitor file to %s", info_path);
+
 }
