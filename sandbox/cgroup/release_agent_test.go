@@ -17,40 +17,36 @@
  *
  */
 
-package main_test
+package cgroup_test
 
 import (
-	"testing"
-
 	. "gopkg.in/check.v1"
 
-	agent "github.com/snapcore/snapd/cmd/snapd-release-agent"
+	"github.com/snapcore/snapd/sandbox/cgroup"
 )
 
-func Test(t *testing.T) { TestingT(t) }
+type agentSuite struct{}
 
-type mainSuite struct{}
+var _ = Suite(&agentSuite{})
 
-var _ = Suite(&mainSuite{})
-
-func (s *mainSuite) TestSplitCgroupPath(c *C) {
-	_, _, err := agent.SplitCgroupPath("foo")
+func (s *agentSuite) TestSplitCgroupPath(c *C) {
+	_, _, err := cgroup.SplitCgroupPath("foo")
 	c.Check(err, ErrorMatches, "cgroup path is not absolute")
-	_, _, err = agent.SplitCgroupPath("/foo")
+	_, _, err = cgroup.SplitCgroupPath("/foo")
 	c.Check(err, ErrorMatches, "cgroup path unrelated to snaps")
-	_, _, err = agent.SplitCgroupPath("/snap.foo.bar/stuff")
+	_, _, err = cgroup.SplitCgroupPath("/snap.foo.bar/stuff")
 	c.Check(err, ErrorMatches, "cgroup path describes sub-hierarchy")
-	_, _, err = agent.SplitCgroupPath("/snap.pkg")
+	_, _, err = cgroup.SplitCgroupPath("/snap.pkg")
 	c.Check(err, ErrorMatches, "cgroup path is not a snap security tag")
-	_, _, err = agent.SplitCgroupPath("/snap.pkg.hook.configure.wat")
+	_, _, err = cgroup.SplitCgroupPath("/snap.pkg.hook.configure.wat")
 	c.Check(err, ErrorMatches, "cgroup path is not a snap security tag")
 
-	snapName, snapSecurityTag, err := agent.SplitCgroupPath("/snap.pkg.app")
+	snapName, snapSecurityTag, err := cgroup.SplitCgroupPath("/snap.pkg.app")
 	c.Check(err, IsNil)
 	c.Check(snapName, Equals, "pkg")
 	c.Check(snapSecurityTag, Equals, "snap.pkg.app")
 
-	snapName, snapSecurityTag, err = agent.SplitCgroupPath("/snap.pkg.hooks.configure")
+	snapName, snapSecurityTag, err = cgroup.SplitCgroupPath("/snap.pkg.hooks.configure")
 	c.Check(err, IsNil)
 	c.Check(snapName, Equals, "pkg")
 	c.Check(snapSecurityTag, Equals, "snap.pkg.hooks.configure")

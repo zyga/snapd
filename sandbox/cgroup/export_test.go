@@ -21,6 +21,7 @@ package cgroup
 var (
 	Cgroup2SuperMagic  = cgroup2SuperMagic
 	ProbeCgroupVersion = probeCgroupVersion
+	SplitCgroupPath    = splitCgroupPath
 )
 
 func MockFsTypeForPath(mock func(string) (int64, error)) (restore func()) {

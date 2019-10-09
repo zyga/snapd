@@ -17,13 +17,12 @@
  *
  */
 
-package main
+package cgroup
 
 import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"log/syslog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -193,8 +192,8 @@ func unloadAppArmorProfiles(logger *log.Logger, snapName string) error {
 	return nil
 }
 
-// releaseAgent implements snapd-release-agent flow.
-func releaseAgent(logger *log.Logger, cgroupPath string) error {
+// ReleaseAgent implements snapd-release-agent flow.
+func ReleaseAgent(logger *log.Logger, cgroupPath string) error {
 	logger.Printf("snapd-release-agent invoked for %q", cgroupPath)
 	snapName, snapSecurityTag, err := splitCgroupPath(cgroupPath)
 	if err != nil {
@@ -233,21 +232,4 @@ func releaseAgent(logger *log.Logger, cgroupPath string) error {
 	}
 
 	return nil
-}
-
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Printf("Usage: snapd-release-agent PATH\n")
-		os.Exit(64)
-	}
-
-	logger, err := syslog.NewLogger(syslog.LOG_DAEMON, 0)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "cannot connect to syslog: %s", err)
-		os.Exit(1)
-	}
-	if err := releaseAgent(logger, os.Args[1]); err != nil {
-		logger.Fatal(err)
-		os.Exit(1)
-	}
 }

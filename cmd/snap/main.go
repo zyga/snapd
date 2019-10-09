@@ -436,6 +436,22 @@ func main() {
 		os.Exit(46)
 	}
 
+	// 3. symlink with a base name of snapd-release-agent
+	if filepath.Base(os.Args[0]) == "snapd-release-agent" {
+		if len(os.Args) != 2 {
+			fmt.Fprintf(Stderr, i18n.G("internal error, snapd-release-agent requires exactly one argument\n"))
+			os.Exit(1)
+		}
+		cmd := &cmdSnapdReleaseAgent{}
+		cmd.Positionals.Path = os.Args[1]
+		err := cmd.Execute(nil)
+		if err != nil {
+			fmt.Fprintf(Stderr, i18n.G("internal error, please report: running %q failed: %v\n"), "snapd-release-agent", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	defer func() {
 		if v := recover(); v != nil {
 			if e, ok := v.(*exitStatus); ok {

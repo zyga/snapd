@@ -164,9 +164,7 @@ void sc_cgroup_mount_snapd_hierarchy(void) {
         }
     } else {
         /* Configure the cgroup so that the release agent is used. */
-        /* FIXME: check if the release agent can take command line arguments
-         * and if so use "snap release-agent" or something similar, to get
-         * re-executing support. */
+        /* FIXME: This needs to have @libexecdir@ baked in. */
         write_to_existing_file(snapd_run_cgroup_release_agent, "/usr/lib/snapd/snapd-release-agent");
         write_to_existing_file(snapd_run_cgroup_notify_on_release, "1");
     }
