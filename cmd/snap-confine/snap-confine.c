@@ -290,7 +290,7 @@ static void sc_cleanup_preserved_process_state(sc_preserved_process_state *
 	sc_cleanup_close(&proc_state->orig_cwd_fd);
 }
 
-static void enter_classic_execution_environment(void);
+static void enter_classic_execution_environment(sc_invocation * inv);
 static void enter_non_classic_execution_environment(sc_invocation * inv,
 						    struct sc_apparmor *aa,
 						    uid_t real_uid,
@@ -386,7 +386,7 @@ int main(int argc, char **argv)
 		    " permission escalation attacks");
 	}
 	if (invocation.classic_confinement) {
-		enter_classic_execution_environment();
+		enter_classic_execution_environment(&invocation);
 	} else {
 		enter_non_classic_execution_environment(&invocation,
 							&apparmor,
@@ -508,7 +508,7 @@ int main(int argc, char **argv)
 	return 1;
 }
 
-static void enter_classic_execution_environment(void)
+static void enter_classic_execution_environment(sc_invocation * inv)
 {
 	/* 'classic confinement' is designed to run without the sandbox inside the
 	 * shared namespace. Specifically:
@@ -516,8 +516,43 @@ static void enter_classic_execution_environment(void)
 	 * - snap-confine skips using device cgroups
 	 * - snapd sets up a lenient AppArmor profile for snap-confine to use
 	 * - snapd sets up a lenient seccomp profile for snap-confine to use
+	 *
+	 * There are some exceptions since this was originally written.
+	 * Specifically when refresh-app-awareness feature is enabled we now
+	 * perform the following extra steps:
+	 *
+	 * - re-associate back to the mount namespace of the init process
+	 * - mount the name=snapd cgroup at /run/snapd/cgroup
+	 * - join the hierarchy there associated with the snap security tag
+	 *
+	 * This change has meaningful impact for anyone who attempted to use snaps
+	 * inside custom mount namespace setups as the applications will no longer
+	 * execute in that mount namespace. Instead they will execute in the mount
+	 * namespace of the init process.
+	 *
+	 * While it is possible to avoid this, e.g. by forking a helper to perform
+	 * all of those transitions while keeping the main process in the mount
+	 * namespace it had inherited this is not attempted at this time. We
+	 * believe that this is fundamentally incompatible with the upcoming work
+	 * of the use of mount namespaces for classically confined applications.
+	 *
+	 * This may be re-evaluated as the feature nears public release.
 	 */
 	debug("skipping sandbox setup, classic confinement in use");
+	if (sc_feature_enabled(SC_FEATURE_REFRESH_APP_AWARENESS)) {
+		sc_reassociate_with_pid1_mount_ns();
+		/* Holding the global lock ensure that the name=snapd
+		 * cgroup is mounted and configured. */
+		int global_lock_fd = sc_lock_global();
+		debug("mounting cgroup hierarchy for snapd");
+		sc_cgroup_mount_snapd_hierarchy();
+		sc_unlock(global_lock_fd);
+
+		/* Holding the per-snap lock join the name=snapd cgroup. */
+		int snap_lock_fd = sc_lock_snap(inv->snap_instance);
+		sc_cgroup_snapd_hierarchy_join(inv->security_tag, getpid());
+		sc_unlock(snap_lock_fd);
+	}
 }
 
 static void enter_non_classic_execution_environment(sc_invocation * inv,
@@ -676,7 +711,6 @@ static void enter_non_classic_execution_environment(sc_invocation * inv,
 	if (!sc_cgroup_is_v2()) {
 		sc_cgroup_freezer_join(inv->snap_instance, getpid());
 	}
-	// TODO: This should be done uniformly for classic and non-classic snaps.
 	if (sc_feature_enabled(SC_FEATURE_REFRESH_APP_AWARENESS)) {
 		sc_cgroup_snapd_hierarchy_join(inv->security_tag, getpid());
 	}
