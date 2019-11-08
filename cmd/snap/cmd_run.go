@@ -62,6 +62,18 @@ var (
 	selinuxRestoreContext    = selinux.RestoreContext
 )
 
+var explainf = func(f string, args ...interface{}) {}
+var explainDo = func(f func()) {}
+
+func enableExplainMode() {
+	explainf = func(f string, args ...interface{}) {
+		f = strings.Replace(f, "\t", "  ", -1) + "\n"
+		fmt.Fprintf(Stdout, f, args...)
+	}
+	explainDo = func(f func()) { f() }
+	os.Setenv("SNAP_EXPLAIN", "1")
+}
+
 type cmdRun struct {
 	clientMixin
 	Command  string `long:"command" hidden:"yes"`
@@ -80,6 +92,9 @@ type cmdRun struct {
 	// the parser
 	ParserRan int    `long:"parser-ran" default:"1" hidden:"yes"`
 	Timer     string `long:"timer" hidden:"yes"`
+
+	// Explain toggles explanatory output.
+	Explain bool `long:"explain"`
 }
 
 func init() {
@@ -109,6 +124,8 @@ and environment.
 			// TRANSLATORS: This should not start with a lowercase letter.
 			"trace-exec": i18n.G("Display exec calls timing data"),
 			"parser-ran": "",
+			// TRANSLATORS: This should not start with a lowercase letter.
+			"explain": i18n.G("Explain the process of starting applications"),
 		}, nil)
 }
 
@@ -138,6 +155,7 @@ func maybeWaitForSecurityProfileRegeneration(cli *client.Client) error {
 	// and started.
 	//
 	// connect timeout for client is 5s on each try, so 12*5s = 60s
+	explainf("system key mismatch, waiting for snapd to update security profiles...")
 	timeout := 12
 	if timeoutEnv := os.Getenv("SNAPD_DEBUG_SYSTEM_KEY_RETRY"); timeoutEnv != "" {
 		if i, err := strconv.Atoi(timeoutEnv); err == nil {
@@ -160,6 +178,15 @@ func (x *cmdRun) Execute(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf(i18n.G("need the application to run as argument"))
 	}
+	if x.Explain || osutil.GetenvBool("SNAP_EXPLAIN") {
+		enableExplainMode()
+	}
+	explainf("The extra output from snap run --explain is not suitable for parsing.")
+	explainf("")
+	explainf("[snap run]")
+	explainf("")
+	explainf("Invoked as %q", os.Args[0])
+
 	snapApp := args[0]
 	args = args[1:]
 
@@ -298,6 +325,7 @@ func createOrUpdateUserDataSymlink(info *snap.Info, usr *user.User) error {
 			}
 		}
 
+		explainf("Creating symbolic link %q -> %q", wantedSymlinkValue, currentActiveSymlink)
 		err = os.Symlink(wantedSymlinkValue, currentActiveSymlink)
 		// Error other than symlink already exists will abort and be propagated
 		if err == nil || !os.IsExist(err) {
@@ -338,7 +366,9 @@ func createUserDataDirs(info *snap.Info) error {
 		snapUserDir := snap.UserSnapDir(usr.HomeDir, info.SnapName())
 		createDirs = append(createDirs, snapUserDir)
 	}
+	explainf("Creating user data directories")
 	for _, d := range createDirs {
+		explainf("\t- %s", d)
 		if err := os.MkdirAll(d, 0755); err != nil {
 			// TRANSLATORS: %q is the directory whose creation failed, %v the error message
 			return fmt.Errorf(i18n.G("cannot create %q: %v"), d, err)
@@ -411,6 +441,19 @@ func (x *cmdRun) snapRunApp(snapApp string, args []string) error {
 	if err != nil {
 		return err
 	}
+	explainf("Inferred application details:")
+	explainf("\tsnap name: %s", snapName)
+	explainf("\tapp name: %s", appName)
+	explainf("\tconfinement: %s", info.Confinement)
+	// TODO: add core16 -> core handling here
+	if info.Base == "" {
+		explainf("\tbase: core (implicit)")
+	} else {
+		explainf("\tbase: %s", info.Base)
+	}
+	explainf("Will exec through the following tools:")
+	explainf("\t- snap-confine (execution environment and sandboxing)")
+	explainf("\t- snap-exec (command chain and environment variables)")
 
 	app := info.Apps[appName]
 	if app == nil {
@@ -421,6 +464,7 @@ func (x *cmdRun) snapRunApp(snapApp string, args []string) error {
 }
 
 func (x *cmdRun) snapRunHook(snapName string) error {
+	// TODO: add snap run --explain handling
 	revision, err := snap.ParseRevision(x.Revision)
 	if err != nil {
 		return err
@@ -440,6 +484,7 @@ func (x *cmdRun) snapRunHook(snapName string) error {
 }
 
 func (x *cmdRun) snapRunTimer(snapApp, timer string, args []string) error {
+	// TODO: add snap run --explain handling
 	schedule, err := timeutil.ParseSchedule(timer)
 	if err != nil {
 		return fmt.Errorf("invalid timer format: %v", err)
@@ -688,6 +733,7 @@ func activateXdgDocumentPortal(info *snap.Info, snapApp, hook string) error {
 	portal := conn.Object("org.freedesktop.portal.Documents",
 		"/org/freedesktop/portal/documents")
 	var mountPoint []byte
+	explainf("Activating xdg-document-portal...")
 	if err := portal.Call("org.freedesktop.portal.Documents.GetMountPoint", 0).Store(&mountPoint); err != nil {
 		// It is not considered an error if
 		// xdg-document-portal is not available on the system.
@@ -880,15 +926,18 @@ func (x *cmdRun) runSnapConfine(info *snap.Info, securityTag, snapApp, hook stri
 		return fmt.Errorf(i18n.G("missing snap-confine: try updating your core/snapd package"))
 	}
 
+	// TODO: add snap run --explain handling.
 	if err := createUserDataDirs(info); err != nil {
 		logger.Noticef("WARNING: cannot create user data directory: %s", err)
 	}
 
+	// TODO: add snap run --explain handling.
 	xauthPath, err := migrateXauthority(info)
 	if err != nil {
 		logger.Noticef("WARNING: cannot copy user Xauthority file: %s", err)
 	}
 
+	// TODO: add snap run --explain handling.
 	if err := activateXdgDocumentPortal(info, snapApp, hook); err != nil {
 		logger.Noticef("WARNING: cannot start document portal: %s", err)
 	}
@@ -951,6 +1000,24 @@ func (x *cmdRun) runSnapConfine(info *snap.Info, securityTag, snapApp, hook stri
 	} else if x.useStrace() {
 		return x.runCmdUnderStrace(cmd, env)
 	} else {
+		explainf("Executing snap-confine %s", cmd[0])
+		if len(cmd) > 1 {
+			explainf("\twith arguments: %s", strings.Join(cmd[1:], " "))
+		}
+		explainDo(func() {
+			header := false
+			for _, envItem := range env {
+				keyValue := strings.SplitN(envItem, "=", 2)
+				key, value := keyValue[0], keyValue[1]
+				if os.Getenv(key) != value {
+					if !header {
+						explainf("\twith altered environment")
+						header = true
+					}
+					explainf("\t\t%s: %s", key, value)
+				}
+			}
+		})
 		return syscallExec(cmd[0], cmd, env)
 	}
 }

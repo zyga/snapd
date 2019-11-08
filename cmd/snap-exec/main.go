@@ -49,7 +49,23 @@ func init() {
 	snap.SanitizePlugsSlots = func(snapInfo *snap.Info) {}
 }
 
+var explainf = func(f string, args ...interface{}) {}
+var explainDo = func(f func()) {}
+
+func enableExplainMode() {
+	explainf = func(f string, args ...interface{}) {
+		f = strings.Replace(f, "\t", "  ", -1) + "\n"
+		fmt.Fprintf(os.Stdout, f, args...)
+	}
+	explainDo = func(f func()) { f() }
+	os.Setenv("SNAP_EXPLAIN", "1")
+}
+
 func main() {
+	if osutil.GetenvBool("SNAP_EXPLAIN") {
+		enableExplainMode()
+	}
+	explainf("\n[snap exec]\n")
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "cannot snap-exec: %s\n", err)
 		os.Exit(1)
@@ -226,6 +242,31 @@ func execApp(snapApp, revision, command string, args []string) error {
 	fullCmd = append(fullCmd, args...)
 
 	fullCmd = append(absoluteCommandChain(app.Snap, app.CommandChain), fullCmd...)
+
+	if len(app.CommandChain) > 0 {
+		explainf("Will transition through command chain:")
+		for _, chainCmd := range app.CommandChain {
+			explainf("\t- %s", chainCmd)
+		}
+	}
+	explainf("Executing command: %s", fullCmd[0])
+	if len(fullCmd) > 1 {
+		explainf("\twith arguments: %s", strings.Join(fullCmd[1:], " "))
+	}
+	explainDo(func() {
+		header := false
+		for _, envItem := range env {
+			keyValue := strings.SplitN(envItem, "=", 2)
+			key, value := keyValue[0], keyValue[1]
+			if os.Getenv(key) != value {
+				if !header {
+					explainf("\twith altered environment")
+					header = true
+				}
+				explainf("\t\t%s: %s", key, value)
+			}
+		}
+	})
 
 	if err := syscallExec(fullCmd[0], fullCmd, env); err != nil {
 		return fmt.Errorf("cannot exec %q: %s", fullCmd[0], err)
