@@ -85,7 +85,7 @@ fmt:: $(filter-out $(addprefix %,$(new_format)),$(foreach dir,$(subdirs),$(wildc
 # The hack target helps developers work on snap-confine on their live system by
 # installing a fresh copy of snap confine and the appropriate apparmor profile.
 .PHONY: hack
-hack: snap-confine/snap-confine-debug snap-confine/snap-confine.apparmor snap-update-ns/snap-update-ns snap-seccomp/snap-seccomp snap-discard-ns/snap-discard-ns snap/snap snapd/snapd
+hack: snap-confine/snap-confine-debug snap-confine/snap-confine.apparmor snap-update-ns/snap-update-ns snap-seccomp/snap-seccomp snap-discard-ns/snap-discard-ns snap/snap snapd/snapd snap-exec/snap-exec
 	sudo install -D -m 6755 snap-confine/snap-confine-debug $(DESTDIR)$(libexecdir)/snap-confine
 	if [ -d /etc/apparmor.d ]; then sudo install -m 644 snap-confine/snap-confine.apparmor $(DESTDIR)/etc/apparmor.d/$(patsubst .%,%,$(subst /,.,$(libexecdir))).snap-confine.real; fi
 	sudo install -d -m 755 $(DESTDIR)/var/lib/snapd/apparmor/snap-confine/
@@ -94,6 +94,7 @@ hack: snap-confine/snap-confine-debug snap-confine/snap-confine.apparmor snap-up
 	sudo install -m 755 snap-seccomp/snap-seccomp $(DESTDIR)$(libexecdir)/snap-seccomp
 	sudo install -m 755 snap/snap $(DESTDIR)$(bindir)/snap
 	sudo install -m 755 snapd/snapd $(DESTDIR)$(libexecdir)/snapd
+	sudo install -m 755 snap-exec/snap-exec $(DESTDIR)$(libexecdir)/snap-exec
 	if [ "$$(command -v apparmor_parser)" != "" ]; then sudo apparmor_parser -r snap-confine/snap-confine.apparmor; fi
 	if [ "$$(command -v restorecon)" != "" ]; then sudo restorecon -R -v $(DESTDIR)$(libexecdir)/; fi
 
@@ -104,6 +105,8 @@ snap-seccomp/snap-seccomp: snap-seccomp/*.go
 	cd snap-seccomp && GOPATH=$(or $(GOPATH),$(realpath $(srcdir)/../../../../..)) go build -v
 snap/snap: snap/*go
 	cd snap && GOPATH=$(or $(GOPATH),$(realpath $(srcdir)/../../../../..)) go build -v
+snap-exec/snap-exec: snap-exec/*go
+	cd snap-exec && GOPATH=$(or $(GOPATH),$(realpath $(srcdir)/../../../../..)) go build -v
 snapd/snapd: snapd/*.go
 	cd snapd && GOPATH=$(or $(GOPATH),$(realpath $(srcdir)/../../../../..)) go build -v
 
