@@ -119,6 +119,7 @@ func (c *Change) createPath(path string, pokeHoles bool, as *Assumptions) ([]*Ch
 	if needsMimic, mimicPath := mimicRequired(err); needsMimic && pokeHoles {
 		// If the error can be recovered by using a writable mimic
 		// then construct one and try again.
+		logger.Debugf("need to create writable mimic needed to create path %q (original error: %v)", path, err)
 		changes, err = createWritableMimic(mimicPath, path, as)
 		if err != nil {
 			err = fmt.Errorf("cannot create writable mimic over %q: %s", mimicPath, err)
@@ -306,13 +307,23 @@ func (c *Change) lowLevelPerform(as *Assumptions) error {
 				flagsForMount = uintptr(maskedFlagsNotPropagationNotRecursive)
 				err = sysMount(c.Entry.Name, c.Entry.Dir, c.Entry.Type, uintptr(flagsForMount), strings.Join(unparsed, ","))
 			}
-			logger.Debugf("mount %q %q %q %d %q (error: %v)", c.Entry.Name, c.Entry.Dir, c.Entry.Type, flagsForMount, strings.Join(unparsed, ","), err)
+			mountOpts, unknownFlags := osutil.MountFlagsToOpts(int(flagsForMount))
+			if unknownFlags != 0 {
+				mountOpts = append(mountOpts, fmt.Sprintf("%#x", unknownFlags))
+			}
+			logger.Debugf("mount name:%q dir:%q type:%q opts:%s unparsed:%q (error: %v)",
+				c.Entry.Name, c.Entry.Dir, c.Entry.Type, strings.Join(mountOpts, "|"), strings.Join(unparsed, ","), err)
 			if err == nil && maskedFlagsPropagation != 0 {
 				// now change mount propagation (shared/rshared, private/rprivate,
 				// slave/rslave, unbindable/runbindable).
 				flagsForMount := uintptr(maskedFlagsPropagation | maskedFlagsRecursive)
+				mountOpts, unknownFlags := osutil.MountFlagsToOpts(int(flagsForMount))
+				if unknownFlags != 0 {
+					mountOpts = append(mountOpts, fmt.Sprintf("%#x", unknownFlags))
+				}
 				err = sysMount("none", c.Entry.Dir, "", flagsForMount, "")
-				logger.Debugf("mount %q %q %q %d %q (error: %v)", "none", c.Entry.Dir, "", flagsForMount, "", err)
+				logger.Debugf("mount name:%q dir:%q type:%q opts:%s unparsed:%q (error: %v)",
+					"none", c.Entry.Dir, "", strings.Join(mountOpts, "|"), strings.Join(unparsed, ","), err)
 			}
 			if err == nil {
 				as.AddChange(c)
@@ -343,13 +354,17 @@ func (c *Change) lowLevelPerform(as *Assumptions) error {
 			// Perform the raw unmount operation.
 			if err == nil {
 				err = sysUnmount(c.Entry.Dir, flags)
+				umountOpts, unknownFlags := osutil.UnmountFlagsToOpts(flags)
+				if unknownFlags != 0 {
+					umountOpts = append(umountOpts, fmt.Sprintf("%#x", unknownFlags))
+				}
+				logger.Debugf("umount %q %s (error: %v)", c.Entry.Dir, strings.Join(umountOpts, "|"), err)
+				if err != nil {
+					return err
+				}
 			}
 			if err == nil {
 				as.AddChange(c)
-			}
-			logger.Debugf("umount %q (error: %v)", c.Entry.Dir, err)
-			if err != nil {
-				return err
 			}
 
 			// Open a path of the file we are considering the removal of.
@@ -388,6 +403,7 @@ func (c *Change) lowLevelPerform(as *Assumptions) error {
 			// no way to avoid a race here since there's no way to unlink a
 			// file solely by file descriptor.
 			err = osRemove(path)
+			logger.Debugf("remove %q (error: %v)", path, err)
 			// Unpack the low-level error that osRemove wraps into PathError.
 			if packed, ok := err.(*os.PathError); ok {
 				err = packed.Err
