@@ -238,6 +238,65 @@ func MountOptsToFlags(opts []string) (flags int, err error) {
 	return flags, nil
 }
 
+// MountFlagsToOpts returns the symbolic representation of mount flags.
+func MountFlagsToOpts(flags int) (opts []string, unknown int) {
+	if f := syscall.MS_REMOUNT; flags&f == f {
+		flags ^= f
+		opts = append(opts, "MS_REMOUNT")
+	}
+	if f := syscall.MS_BIND; flags&f == f {
+		flags ^= f
+		opts = append(opts, "MS_BIND")
+	}
+	if f := syscall.MS_REC; flags&f == f {
+		flags ^= f
+		opts = append(opts, "MS_REC")
+	}
+	if f := syscall.MS_RDONLY; flags&f == f {
+		flags ^= f
+		opts = append(opts, "MS_RDONLY")
+	}
+	if f := syscall.MS_SHARED; flags&f == f {
+		flags ^= f
+		opts = append(opts, "MS_SHARED")
+	}
+	if f := syscall.MS_SLAVE; flags&f == f {
+		flags ^= f
+		opts = append(opts, "MS_SLAVE")
+	}
+	if f := syscall.MS_PRIVATE; flags&f == f {
+		flags ^= f
+		opts = append(opts, "MS_PRIVATE")
+	}
+	if f := syscall.MS_UNBINDABLE; flags&f == f {
+		flags ^= f
+		opts = append(opts, "MS_UNBINDABLE")
+	}
+	return opts, flags
+}
+
+// UnmountFlagsToOpts returns the symbolic representation of unmount flags.
+func UnmountFlagsToOpts(flags int) (opts []string, unknown int) {
+	if f := syscall.MNT_FORCE; flags&f == f {
+		flags ^= f
+		opts = append(opts, "MNT_FORCE")
+	}
+	if f := syscall.MNT_DETACH; flags&f == f {
+		flags ^= f
+		opts = append(opts, "MNT_DETACH")
+	}
+	if f := syscall.MNT_EXPIRE; flags&f == f {
+		flags ^= f
+		opts = append(opts, "MNT_EXPIRE")
+	}
+	const UMOUNT_NOFOLLOW = 8
+	if f := UMOUNT_NOFOLLOW; flags&f == f {
+		flags ^= f
+		opts = append(opts, "UMOUNT_NOFOLLOW")
+	}
+	return opts, flags
+}
+
 // OptStr returns the value part of a key=value mount option.
 // The name of the option must not contain the trailing "=" character.
 func (e *MountEntry) OptStr(name string) (string, bool) {
