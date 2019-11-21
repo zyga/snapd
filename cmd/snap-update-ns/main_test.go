@@ -191,26 +191,10 @@ func (s *mainSuite) TestRemovingSyntheticChanges(c *C) {
 				Entry: osutil.MountEntry{
 					Name: "/snap/mysnap/42/usr/share/mysnap",
 					Dir:  "/usr/share/mysnap", Type: "none",
-					Options: []string{"bind", "ro", "x-snapd.detach"},
+					Options: []string{"bind", "ro"},
 				},
 			})
 		case 1:
-			c.Assert(chg, DeepEquals, &update.Change{
-				Action: update.Unmount,
-				Entry: osutil.MountEntry{
-					Name: "/usr/share/awk", Dir: "/usr/share/awk", Type: "none",
-					Options: []string{"bind", "ro", "x-snapd.synthetic", "x-snapd.needed-by=/usr/share/mysnap", "x-snapd.detach"},
-				},
-			})
-		case 2:
-			c.Assert(chg, DeepEquals, &update.Change{
-				Action: update.Unmount,
-				Entry: osutil.MountEntry{
-					Name: "/usr/share/adduser", Dir: "/usr/share/adduser", Type: "none",
-					Options: []string{"bind", "ro", "x-snapd.synthetic", "x-snapd.needed-by=/usr/share/mysnap", "x-snapd.detach"},
-				},
-			})
-		case 3:
 			c.Assert(chg, DeepEquals, &update.Change{
 				Action: update.Unmount,
 				Entry: osutil.MountEntry{
