@@ -415,6 +415,21 @@ func (c *Change) lowLevelPerform(as *Assumptions) error {
 			if kind == "" && (err == syscall.ENOTEMPTY || err == syscall.EEXIST) {
 				return nil
 			}
+			// FIXME: This should not be necessary. It is necessary because
+			// mimic construction code is not considering all layouts in tandem
+			// and doesn't know enough about base file system to construct
+			// mimics in the order that would prevent them from nesting.
+			//
+			// By ignoring EBUSY here and by continuing to tear down the mimic
+			// tmpfs entirely (without any reuse) we guarantee that at the end
+			// of the day the nested mimic case is entirely removed.
+			//
+			// In an ideal world we would model this better and could do
+			// without this edge case.
+			if kind == "" && err == syscall.EBUSY {
+				logger.Debugf("cannot remove busy mount point %q", path)
+				return nil
+			}
 		}
 		return err
 	case Keep:
