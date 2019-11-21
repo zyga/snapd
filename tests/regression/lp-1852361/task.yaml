@@ -1,0 +1,22 @@
+summary: regression test for https://bugs.launchpad.net/snapd/+bug/1852361
+prepare: |
+    snap pack test-snapd-layout
+    snap install --dangerous test-snapd-layout_1_all.snap
+environment:
+    SNAP_CONFINE_DEBUG: yes
+execute: |
+    invariant() {
+        test-snapd-layout.sh -c 'test -f /etc/vtpath.ini'
+        test-snapd-layout.sh -c 'test -f /usr/lib/x86_64-linux-gnu/alsa-lib/.keep'
+        test-snapd-layout.sh -c 'test -f /usr/share/pico/.keep'
+        test-snapd-layout.sh -c 'test -f /usr/share/snips/.keep'
+        test-snapd-layout.sh -c 'test -f /usr/vt/.keep'
+    }
+    invariant
+    snap install --dangerous test-snapd-layout_1_all.snap
+    invariant
+    snap install --dangerous test-snapd-layout_1_all.snap
+    invariant
+restore: |
+    snap remove test-snapd-layout
+    rm -f test-snapd-layout_1_all.snap
