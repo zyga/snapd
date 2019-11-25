@@ -6,6 +6,7 @@ environment:
     SNAP_CONFINE_DEBUG: yes
 execute: |
     invariant() {
+        test "$(test-snapd-layout.sh -c 'cat /etc/vtpath.ini')" = content
         test-snapd-layout.sh -c 'test -f /etc/vtpath.ini'
         test-snapd-layout.sh -c 'test -f /usr/lib/x86_64-linux-gnu/alsa-lib/.keep'
         test-snapd-layout.sh -c 'test -f /usr/share/pico/.keep'
