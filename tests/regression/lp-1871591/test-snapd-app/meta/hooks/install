@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "hook: $0 $*" >>$SNAP_COMMON/hook.log

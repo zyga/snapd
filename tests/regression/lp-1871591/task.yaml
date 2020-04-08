@@ -1,0 +1,10 @@
+summary: regression test for UNKNOWN 
+prepare: |
+    snap pack test-snapd-app
+    snap install --dangerous test-snapd-app_1_all.snap
+execute: |
+    test-snapd-app.sh -c true
+    snap install --dangerous test-snapd-app_1_all.snap
+    test-snapd-app.sh -c true
+debug: |
+    snap remove test-snapd-app
