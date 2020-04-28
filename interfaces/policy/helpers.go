@@ -186,34 +186,43 @@ func checkPlugConnectionAltConstraints(connc *ConnectCandidate, altConstraints [
 
 func checkSlotConnectionConstraints1(connc *ConnectCandidate, constraints *asserts.SlotConnectionConstraints) error {
 	if err := checkNameConstraints(constraints.PlugNames, connc.Plug.Interface(), "plug name", connc.Plug.Name()); err != nil {
+		fmt.Printf("check name constraints(plug...): %v\n", err)
 		return err
 	}
 	if err := checkNameConstraints(constraints.SlotNames, connc.Slot.Interface(), "slot name", connc.Slot.Name()); err != nil {
+		fmt.Printf("check name constraints(slot...): %v\n", err)
 		return err
 	}
 
 	if err := constraints.PlugAttributes.Check(connc.Plug, connc); err != nil {
+		fmt.Printf("check plug attrs: %v\n", err)
 		return err
 	}
 	if err := constraints.SlotAttributes.Check(connc.Slot, connc); err != nil {
+		fmt.Printf("check slot attrs: %v\n", err)
 		return err
 	}
 	if err := checkSnapType(connc.Plug.Snap(), constraints.PlugSnapTypes); err != nil {
+		fmt.Printf("check plug snap type: %v\n", err)
 		return err
 	}
 	if err := checkID("snap id", connc.plugSnapID(), constraints.PlugSnapIDs, nil); err != nil {
+		fmt.Printf("check plug snap id: %v\n", err)
 		return err
 	}
 	err := checkID("publisher id", connc.plugPublisherID(), constraints.PlugPublisherIDs, map[string]string{
 		"$SLOT_PUBLISHER_ID": connc.slotPublisherID(),
 	})
 	if err != nil {
+		fmt.Printf("check plug publisher id: %v\n", err)
 		return err
 	}
 	if err := checkOnClassic(constraints.OnClassic); err != nil {
+		fmt.Printf("check on-classic: %v\n", err)
 		return err
 	}
 	if err := checkDeviceScope(constraints.DeviceScope, connc.Model, connc.Store); err != nil {
+		fmt.Printf("check device scope: %v\n", err)
 		return err
 	}
 	return nil
