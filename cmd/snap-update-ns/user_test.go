@@ -52,9 +52,10 @@ func (s *userSuite) TestLock(c *C) {
 }
 
 func (s *userSuite) TestAssumptions(c *C) {
+	// TOOD: mock lookup os/user.User of user 1234
 	upCtx := update.NewUserProfileUpdateContext("foo", false, 1234)
 	as := upCtx.Assumptions()
-	c.Check(as.UnrestrictedPaths(), IsNil)
+	c.Check(as.UnrestrictedPaths(), DeepEquals, []string{"/tmp", "/snap/foo"})
 }
 
 func (s *userSuite) TestLoadDesiredProfile(c *C) {

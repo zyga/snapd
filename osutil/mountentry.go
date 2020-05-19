@@ -164,7 +164,7 @@ func (e *MountEntry) XSnapdMode() (os.FileMode, error) {
 	return 0755, nil
 }
 
-// XSnapdUID returns the user associated with x-snapd-user mount option.  If
+// XSnapdUID returns the user associated with x-snapd.uid mount option.  If
 // the mode is not specified explicitly then a default "root" use is
 // returned.
 func (e *MountEntry) XSnapdUID() (uid uint64, err error) {
@@ -181,7 +181,7 @@ func (e *MountEntry) XSnapdUID() (uid uint64, err error) {
 	return 0, nil
 }
 
-// XSnapdGID returns the user associated with x-snapd-user mount option.  If
+// XSnapdGID returns the user associated with x-snapd.gid mount option.  If
 // the mode is not specified explicitly then a default "root" use is
 // returned.
 func (e *MountEntry) XSnapdGID() (gid uint64, err error) {

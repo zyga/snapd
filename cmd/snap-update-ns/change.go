@@ -32,6 +32,7 @@ import (
 	"github.com/snapcore/snapd/logger"
 	"github.com/snapcore/snapd/osutil"
 	"github.com/snapcore/snapd/osutil/mount"
+	"github.com/snapcore/snapd/osutil/sys"
 )
 
 // Action represents a mount action (mount, remount, unmount, etc).
@@ -89,16 +90,21 @@ func (c *Change) createPath(path string, pokeHoles bool, as *Assumptions) ([]*Ch
 	if c.Entry.XSnapdIgnoreMissing() {
 		return nil, ErrIgnoredMissingMount
 	}
+	// In case we need to create something.
+	mode, err := c.Entry.XSnapdMode()
+	if err != nil {
+		return nil, err
+	}
+	uid, err := c.Entry.XSnapdUID()
+	if err != nil {
+		return nil, err
+	}
+	gid, err := c.Entry.XSnapdGID()
+	if err != nil {
+		return nil, err
+	}
 
-	var err error
 	var changes []*Change
-
-	// In case we need to create something, some constants.
-	const (
-		mode = 0755
-		uid  = 0
-		gid  = 0
-	)
 
 	// If the element doesn't exist we can attempt to create it.  We will
 	// create the parent directory and then the final element relative to it.
@@ -112,11 +118,11 @@ func (c *Change) createPath(path string, pokeHoles bool, as *Assumptions) ([]*Ch
 	rs := as.RestrictionsFor(path)
 	switch kind {
 	case "":
-		err = MkdirAll(path, mode, uid, gid, rs)
+		err = MkdirAll(path, mode, sys.UserID(uid), sys.GroupID(gid), rs)
 	case "file":
-		err = MkfileAll(path, mode, uid, gid, rs)
+		err = MkfileAll(path, mode, sys.UserID(uid), sys.GroupID(gid), rs)
 	case "symlink":
-		err = MksymlinkAll(path, mode, uid, gid, c.Entry.XSnapdSymlink(), rs)
+		err = MksymlinkAll(path, mode, sys.UserID(uid), sys.GroupID(gid), c.Entry.XSnapdSymlink(), rs)
 	}
 	if needsMimic, mimicPath := mimicRequired(err); needsMimic && pokeHoles {
 		// If the error can be recovered by using a writable mimic

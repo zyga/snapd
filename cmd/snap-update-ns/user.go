@@ -21,9 +21,14 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/user"
+	"path/filepath"
+	"strconv"
 
 	"github.com/snapcore/snapd/dirs"
 	"github.com/snapcore/snapd/osutil"
+	"github.com/snapcore/snapd/snap"
 )
 
 // UserProfileUpdateContext contains information about update to per-user mount namespace.
@@ -48,6 +53,10 @@ func NewUserProfileUpdateContext(instanceName string, fromSnapConfine bool, uid 
 	}
 }
 
+func (upCtx *UserProfileUpdateContext) lookupUser() (*user.User, error) {
+	return user.LookupId(strconv.Itoa(upCtx.uid))
+}
+
 // UID returns the user ID of the mount namespace being updated.
 func (upCtx *UserProfileUpdateContext) UID() int {
 	return upCtx.uid
@@ -65,6 +74,14 @@ func (upCtx *UserProfileUpdateContext) Assumptions() *Assumptions {
 	// TODO: configure the secure helper and inform it about directories that
 	// can be created without trespassing.
 	as := &Assumptions{}
+	instanceName := upCtx.InstanceName()
+	as.AddUnrestrictedPaths("/tmp", "/snap/"+instanceName)
+	if snapName := snap.InstanceSnap(instanceName); snapName != instanceName {
+		as.AddUnrestrictedPaths("/snap/" + snapName)
+	}
+	if user, err := upCtx.lookupUser(); err == nil {
+		as.AddUnrestrictedPaths(filepath.Join(user.HomeDir, "snap", upCtx.InstanceName()))
+	}
 	// TODO: Handle /home/*/snap/* when we do per-user mount namespaces and
 	// allow defining layout items that refer to SNAP_USER_DATA and
 	// SNAP_USER_COMMON.
@@ -81,7 +98,32 @@ func (upCtx *UserProfileUpdateContext) LoadDesiredProfile() (*osutil.MountProfil
 	// to the user name and their home directory need to be expanded then
 	// handle them here.
 	expandXdgRuntimeDir(profile, upCtx.uid)
+	if user, err := upCtx.lookupUser(); err == nil {
+		fmt.Printf("expanding user directories\n")
+		expandSnapUserDirs(profile, upCtx.InstanceName(), user.HomeDir)
+	} else {
+		fmt.Printf("cannot find user: %s\n", err)
+	}
 	return profile, nil
+}
+
+func expandSnapUserDirs(profile *osutil.MountProfile, instanceName, homeDir string) {
+	rev, err := os.Readlink(filepath.Join("/snap", instanceName, "current"))
+	if err != nil {
+		return
+	}
+	snap := filepath.Join("/snap", instanceName, rev)
+	snapUserData := filepath.Join(homeDir, "snap", instanceName, rev)
+	snapUserCommon := filepath.Join(homeDir, "snap", instanceName, "common")
+	for i := range profile.Entries {
+		profile.Entries[i].Name = expandPrefixVariable(profile.Entries[i].Name, "$SNAP", snap)
+		profile.Entries[i].Dir = expandPrefixVariable(profile.Entries[i].Dir, "$SNAP", snap)
+		profile.Entries[i].Name = expandPrefixVariable(profile.Entries[i].Name, "$SNAP_USER_DATA", snapUserData)
+		profile.Entries[i].Dir = expandPrefixVariable(profile.Entries[i].Dir, "$SNAP_USER_DATA", snapUserData)
+		profile.Entries[i].Name = expandPrefixVariable(profile.Entries[i].Name, "$SNAP_USER_COMMON", snapUserCommon)
+		profile.Entries[i].Dir = expandPrefixVariable(profile.Entries[i].Dir, "$SNAP_USER_COMMON", snapUserCommon)
+		fmt.Printf("expanded to %s\n", profile.Entries[i])
+	}
 }
 
 // SaveCurrentProfile does nothing at all.
