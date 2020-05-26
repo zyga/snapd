@@ -20,28 +20,23 @@ prepare: |
     . "$TESTSLIB/snaps.sh"
     install_local test-snapd-desktop
 
-restore: |
-    #shellcheck source=tests/lib/dirs.sh
-    . "$TESTSLIB/dirs.sh"
-    #shellcheck source=tests/lib/pkgdb.sh
-    . "$TESTSLIB/pkgdb.sh"
-    rm -f /usr/bin/xdg-open
-    rm -f "$XDG_OPEN_OUTPUT"
-    dpkg -r snapd-xdg-open
-    rm -f /usr/share/applications/defaults.list
-    rm -f /usr/share/applications/xdg-open.desktop
-
-execute: |
-    #shellcheck source=tests/lib/pkgdb.sh
-    . "$TESTSLIB/pkgdb.sh"
-    #shellcheck source=tests/lib/dirs.sh
-    . "$TESTSLIB/dirs.sh"
+    session-tool -u test --prepare
 
     # download from LP, it is not available in the archive anymore
     wget https://launchpad.net/ubuntu/+source/snapd-xdg-open/0.0.0~16.04/+build/10503735/+files/snapd-xdg-open_0.0.0~16.04_amd64.deb
+
     # snapd breaks older version of snapd-xdg-open so we cannot
     # install them together. force things to work!
     dpkg -i --force-all snapd-xdg-open_*.deb
+
+    # wait for session to be ready
+    session-tool -u test env "PATH=$PATH" retry-tool -n 5 --wait 0.5 dbus-send \
+            --session                                         \
+            --dest=io.snapcraft.SafeLauncher                  \
+            --type=method_call                                \
+            --print-reply                                     \
+            /                                                 \
+            org.freedesktop.DBus.Peer.Ping
 
     # setup some env so that g_app_info_launch_default_for_uri() works
     cat > /usr/share/applications/defaults.list <<EOF
@@ -60,34 +55,35 @@ execute: |
     Name=xdg-open
     EOF
     
-    echo "Launch user dbus session"
-    dbus-launch > dbus.env
-    #shellcheck disable=SC2046
-    export $(xargs < dbus.env)
-
-    echo "Ensure snapd-xdg-open is available"
-    ping_launcher() {
-        dbus-send --session                                        \
-            --dest=com.canonical.SafeLauncher                      \
-            --type=method_call                                     \
-            --print-reply                                          \
-            /                                                      \
-            org.freedesktop.DBus.Peer.Ping
-    }
-    while ! ping_launcher ; do
-        sleep .5
-    done
-
     # Create a small helper which will tell us if snap passes
     # the URL correctly to the right handler
     cat << 'EOF' > /usr/bin/xdg-open
     #!/bin/sh
-    echo "$@" > /tmp/xdg-open-output
+    echo "$*" > /tmp/xdg-open-output
     EOF
     chmod +x /usr/bin/xdg-open
 
+restore: |
+    session-tool -u test --restore
+
+    #shellcheck source=tests/lib/dirs.sh
+    . "$TESTSLIB/dirs.sh"
+    #shellcheck source=tests/lib/pkgdb.sh
+    . "$TESTSLIB/pkgdb.sh"
+    rm -f /usr/bin/xdg-open
+    rm -f "$XDG_OPEN_OUTPUT"
+    dpkg -r snapd-xdg-open
+    rm -f /usr/share/applications/defaults.list
+    rm -f /usr/share/applications/xdg-open.desktop
+
+execute: |
+    #shellcheck source=tests/lib/pkgdb.sh
+    . "$TESTSLIB/pkgdb.sh"
+    #shellcheck source=tests/lib/dirs.sh
+    . "$TESTSLIB/dirs.sh"
+
     xdg_open_url() {
-        test-snapd-desktop.cmd /usr/bin/dbus-send --session \
+        session-tool -u test test-snapd-desktop.cmd /usr/bin/dbus-send --session \
             --dest=com.canonical.SafeLauncher               \
             --type=method_call                              \
             --print-reply                                   \
@@ -97,16 +93,9 @@ execute: |
     }
     ensure_xdg_open_output() {
         rm -f "$XDG_OPEN_OUTPUT"
-        export DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS
         xdg_open_url "$1"
         # xdg-open is async so we need to give it a little bit of time
-        for _ in $(seq 10); do
-            if [ -e "$XDG_OPEN_OUTPUT" ]; then
-                break
-            fi
-            sleep .5
-        done
-        test -e "$XDG_OPEN_OUTPUT"
+        retry-tool -n 10 --wait 0.5 test -e "$XDG_OPEN_OUTPUT"
         test "$(cat "$XDG_OPEN_OUTPUT")" = "$1"
     }
 
