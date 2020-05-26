@@ -35,18 +35,23 @@ debug: |
     # shellcheck disable=SC2119
     get_journalctl_log
 
+prepare: |
+    #shellcheck source=tests/lib/snaps.sh
+    . "$TESTSLIB"/snaps.sh
+
+    echo "Given a snap is installed"
+    install_local "$CONSUMER_SNAP"
+
+    if session-tool has-session-systemd-and-dbus; then
+        session-tool -u test --prepare
+    fi
+
 execute: |
     #shellcheck source=tests/lib/dirs.sh
     . "$TESTSLIB"/dirs.sh
 
     # shellcheck source=tests/lib/systems.sh
     . "$TESTSLIB/systems.sh"
-    
-    #shellcheck source=tests/lib/snaps.sh
-    . "$TESTSLIB"/snaps.sh
-
-    echo "Given a snap is installed"
-    install_local "$CONSUMER_SNAP"
 
     echo "For each core-provided slot"
     for plugcmd in "$SNAP_MOUNT_DIR"/bin/"$CONSUMER_SNAP".* ; do
@@ -82,9 +87,20 @@ execute: |
         snap interfaces | MATCH "$CONNECTED_PATTERN"
 
         echo "Then $plugcmd should succeed"
-        "$plugcmd" | MATCH PASS
+        if session-tool has-session-systemd-and-dbus; then
+            session-tool -u test "$plugcmd" | MATCH PASS
+        else
+            if [ "$plugcmd" != "${CONSUMER_SNAP}.desktop" ]; then
+                test "$plugcmd" | MATCH PASS
+            else
+                echo "skipping $plugcmd on an unsupported system"
+            fi
+        fi
     done
 
 restore: |
     # Remove the snaps to avoid timeout in next test
     snap remove --purge "$CONSUMER_SNAP"
+    if session-tool has-session-systemd-and-dbus; then
+        session-tool -u test --restore
+    fi
