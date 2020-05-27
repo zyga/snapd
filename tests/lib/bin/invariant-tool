@@ -6,6 +6,7 @@ show_help() {
 	echo "Supported invariants:"
 	echo "    root-files-in-home: most of /home/* does not contain root-owned files"
 	echo "    crashed-snap-confine: /tmp/snap.rootfs_* does not exist"
+	echo "    systemd-not-stale: systemd does not need reloading"
 }
 
 if [ $# -eq 0 ]; then
@@ -63,6 +64,32 @@ check_crashed_snap_confine() {
 	fi
 }
 
+# NOTE: this invariant is somewhat expensive to check.
+check_systemd_not_stale () {
+	n="$1" # invariant name
+	(
+		for unit in $(systemctl list-units --no-legend | awk '{ print $1 }'); do
+			obj_path="$(busctl --system call -- org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager GetUnit s "$unit" | awk '{gsub("\"", "", $2); print $2 }')"
+			need_reload="$(busctl --system get-property -- org.freedesktop.systemd1 "$obj_path" org.freedesktop.systemd1.Unit NeedDaemonReload | awk '{ print $2 }')"
+			if [ "$need_reload" = true ]; then
+				echo "system unit $unit changed on disk"
+			fi
+		done
+		for unit in $(systemctl --user --global list-units --no-legend | awk '{ print $1 }'); do
+			obj_path="$(busctl --user call -- org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager GetUnit s "$unit" | awk '{gsub("\"", "", $2); print $2 }')"
+			need_reload="$(busctl --user get-property -- org.freedesktop.systemd1 "$obj_path" org.freedesktop.systemd1.Unit NeedDaemonReload | awk '{ print $2 }')"
+			if [ "$need_reload" = true ]; then
+				echo "user unit $unit changed on disk"
+			fi
+		done
+	) > "/tmp/invariant-tool.$n"
+	if [ -s "/tmp/invariant-tool.$n" ]; then
+		echo "invariant-tool: systemd needs to be reloaded" >&2
+		cat "/tmp/invariant-tool.$n" >&2
+		return 1
+	fi
+}
+
 check_invariant() {
 	case "$1" in
 		root-files-in-home)
@@ -71,6 +98,9 @@ check_invariant() {
 		crashed-snap-confine)
 			check_crashed_snap_confine "$1"
 			;;
+		systemd-not-stale)
+			check_systemd_not_stale "$1"
+			;;
 		*)
 			echo "invariant-tool: unknown invariant $1" >&2
 			exit 1
@@ -78,7 +108,7 @@ check_invariant() {
 	esac
 }
 
-ALL_INVARIANTS="root-files-in-home crashed-snap-confine"
+ALL_INVARIANTS="root-files-in-home crashed-snap-confine systemd-not-stale"
 
 case "$action" in
 	check)
