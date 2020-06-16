@@ -17,7 +17,7 @@ pid_file=
 action=
 while [ $# -gt 0 ]; do
 	case "$1" in
-		-h)
+		-h|--help)
 			shift
 			show_help
 			exit 0
