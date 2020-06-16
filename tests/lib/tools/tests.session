@@ -246,6 +246,11 @@ if [ -z "$(command -v busctl)" ]; then
     exit 1
 fi
 
+if ! getent passwd "$user"; then
+	echo "tests.session: unknown user: $user" >&2
+	exit 1
+fi
+
 # This fixes a bug in some older Debian systems where /root/.profile contains
 # unconditional invocation of mesg, which on non-tty shells prints "mesg
 # ttyname failed inappropriate ioctl for device" which pollutes output from
