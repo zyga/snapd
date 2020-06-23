@@ -1265,6 +1265,11 @@ func (iface *modemManagerInterface) UDevPermanentSlot(spec *udev.Specification, 
 	return nil
 }
 
+func (iface *modemManagerInterface) UDevConnectedSlot(spec *udev.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {
+	spec.AddSnippet("# just a bit of fake snippet")
+	return nil
+}
+
 func (iface *modemManagerInterface) AppArmorConnectedSlot(spec *apparmor.Specification, plug *interfaces.ConnectedPlug, slot *interfaces.ConnectedSlot) error {
 	old := "###PLUG_SECURITY_TAGS###"
 	new := plugAppLabelExpr(plug)

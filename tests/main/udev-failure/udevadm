@@ -1,0 +1,15 @@
+#!/bin/sh
+echo "udevadm $*" >> /tmp/udevadm.log
+case "${1-:}" in
+    control)
+        if [ ! -e /tmp/control-invoked ]; then
+            touch /tmp/control-invoked
+            exec udevadm.orig "$@"
+        fi
+        echo "mocked failure of $*"
+        exit 1
+        ;;
+    *)
+        exec udevadm.orig "$@"
+        ;;
+esac

@@ -1,0 +1,32 @@
+summary: Core refresh failure provoked by udevadm
+
+prepare: |
+    #shellcheck source=tests/lib/snaps.sh
+    . "$TESTSLIB"/snaps.sh
+
+    snap refresh --stable core
+    snap install network-manager
+
+    mv /sbin/udevadm /sbin/udevadm.orig
+    cp udevadm /sbin/udevadm
+
+restore: |
+    mv /sbin/udevadm.orig /sbin/udevadm
+
+execute: |
+    snap connections | MATCH "network-manager:network"
+
+    systemctl stop snapd.{socket,service}
+
+    # for some reason this doesn't re-trigger connects
+    jq '.data["conns"]={}' /var/lib/snapd/state.json > state.json
+    cp state.json /var/lib/snapd/state.json
+
+    systemctl start snapd.{socket,service}
+    echo "#" >> /etc/udev/rules.d/70-snap.core.rules
+
+    # this fails on udevadm
+    snap refresh --edge core
+
+    # snap connections | MATCH "network-manager:network"
+    false
