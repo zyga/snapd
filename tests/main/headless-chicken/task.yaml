@@ -1,0 +1,18 @@
+summary: what happens when snapd starts but core is not mounted
+systems: [ubuntu-16.04-64]
+prepare: |
+    snap install google-play-music-desktop-player
+    snap connections google-play-music-desktop-player > before.txt
+    systemctl stop snapd.service
+    umount /snap/core/x[0-9]* || true
+    umount /snap/core/[0-9]* || true
+execute: |
+    systemctl start snapd.service
+    snap connections google-play-music-desktop-player > after.txt
+    diff -u before.txt after.txt
+    false
+restore: |
+    snap remove --purge google-play-music-desktop-player
+    mount /snap/core/[0-9]* || true
+    mount /snap/core/[0-9]* || true
+    systemctl restart snapd.service
