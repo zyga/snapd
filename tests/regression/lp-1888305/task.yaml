@@ -1,0 +1,100 @@
+summary: refreshing snapd does not break layouts
+details: |
+    Snapd snap provides tools that are used to construct layouts.
+    When snapd is refreshed, the tools should change revision and
+    not break.
+environment:
+    # In observe mode we just look into the exiting namespace without invoking
+    # snap-confine ever again. In interact mode we run "snap run ..." which can
+    # in some cases re-construct the mount namespace. The observe mode is
+    # closer to what a long-running process would experience. The interact mode
+    # is more like many other tests that measure the mount namespace.
+    MODE/observe: observe
+    MODE/interact: interact
+prepare: |
+    tests.cleanup prepare
+
+    # Prepare a session for the test user.
+    tests.session prepare
+    tests.cleanup defer tests.session restore
+
+    # Repackage snapd from core into snapd.snap.
+    # We will be installing that snapd several times to simulate refreshes
+    # and we want the re-execution logic to pick that version as the effective
+    # provider of all the tools.
+    # shellcheck source=tests/lib/snaps.sh
+    . "$TESTSLIB/snaps.sh"
+    repack_installed_core_snap_into_snapd_snap
+    tests.cleanup defer rm -f snapd-from-core.snap
+
+    # Install the test snap. It tries to mimic the essential
+    # properties of the original application.
+    snap pack test-snapd-app
+    snap install --dangerous ./test-snapd-app_1_all.snap
+    tests.cleanup defer rm -f test-snapd-app_1_all.snap
+    tests.cleanup defer snap remove test-snapd-app
+
+    # Set some experimental flags to mimic the original environment better.
+    snap set system experimental.hotplug=true
+    tests.cleanup defer snap unset system experimental.hotplug
+    snap set system experimental.parallel-instances=true
+    tests.cleanup defer snap unset system experimental.parallel-instances
+    snap set system experimental.robust-mount-namespace-updates=true
+    tests.cleanup defer snap unset system experimental.robust-mount-namespace-updates
+
+    # Set the retention policy to keep fewer copies for snapd.
+    # This is done with the hope that eventually snapd will be
+    # garbage collected and some bad things happen.
+    snap set system refresh.retain=2
+    tests.cleanup defer snap unset system refresh.retain
+execute: |
+    # Install snapd so that snapd becomes the provider of snap tools.
+    snap install snapd-from-core.snap --dangerous
+
+    # Interact with the mount namespace. This constructs it for us.
+    tests.session -u test exec test-snapd-app.sh -c "test -d /usr/share/hamster-applet"
+    tests.session -u test exec test-snapd-app.sh -c "test -f /usr/share/hamster-applet/canary.txt"
+    # Observe the mount namespace externally. This avoids any special behavior in any of our tools.
+    nsenter -m/run/snapd/ns/test-snapd-app.mnt test -d /usr/share/hamster-applet
+    nsenter -m/run/snapd/ns/test-snapd-app.mnt test -f /usr/share/hamster-applet/canary.txt
+
+    # Refresh snapd to a new revision.
+    snap install snapd-from-core.snap --dangerous
+    case "$MODE" in
+        observe)
+            nsenter -m/run/snapd/ns/test-snapd-app.mnt test -d /usr/share/hamster-applet
+            nsenter -m/run/snapd/ns/test-snapd-app.mnt test -f /usr/share/hamster-applet/canary.txt
+            ;;
+        interact)
+            tests.session -u test exec test-snapd-app.sh -c "test -d /usr/share/hamster-applet"
+            tests.session -u test exec test-snapd-app.sh -c "test -f /usr/share/hamster-applet/canary.txt"
+            ;;
+    esac
+
+    # Refresh snapd once again.
+    snap install snapd-from-core.snap --dangerous
+    case "$MODE" in
+        observe)
+            nsenter -m/run/snapd/ns/test-snapd-app.mnt test -d /usr/share/hamster-applet
+            nsenter -m/run/snapd/ns/test-snapd-app.mnt test -f /usr/share/hamster-applet/canary.txt
+            ;;
+        interact)
+            tests.session -u test exec test-snapd-app.sh -c "test -d /usr/share/hamster-applet"
+            tests.session -u test exec test-snapd-app.sh -c "test -f /usr/share/hamster-applet/canary.txt"
+            ;;
+    esac
+
+    # Refresh snapd one more time.
+    snap install snapd-from-core.snap --dangerous
+    case "$MODE" in
+        observe)
+            nsenter -m/run/snapd/ns/test-snapd-app.mnt test -d /usr/share/hamster-applet
+            nsenter -m/run/snapd/ns/test-snapd-app.mnt test -f /usr/share/hamster-applet/canary.txt
+            ;;
+        interact)
+            tests.session -u test exec test-snapd-app.sh -c "test -d /usr/share/hamster-applet"
+            tests.session -u test exec test-snapd-app.sh -c "test -f /usr/share/hamster-applet/canary.txt"
+            ;;
+    esac
+restore: |
+    tests.cleanup restore

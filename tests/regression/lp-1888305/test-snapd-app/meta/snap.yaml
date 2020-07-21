@@ -1,0 +1,44 @@
+name: test-snapd-app
+version: 1
+summary: test snap
+architectures: [all]
+
+# XXX: snapd doesn't handle "base core" very well.
+# base: core
+confinement: strict
+
+apps:
+    sh:
+        command: bin/sh
+
+plugs:
+  gtk-2-engines:
+    interface: content
+    target: $SNAP/lib/gtk-2.0
+    default-provider: gtk2-common-themes
+  gtk-2-themes:
+    interface: content
+    target: $SNAP/data-dir/themes
+    default-provider: gtk2-common-themes
+  icon-themes:
+    interface: content
+    target: $SNAP/data-dir/icons
+    default-provider: gtk-common-themes
+  sound-themes:
+    interface: content
+    # XXX: the target should say "sounds" but this matches the original bug report.
+    target: $SNAP/data-dir/icons
+    default-provider: gtk-common-themes
+  dot-local-share-hamster-applet:
+    interface: personal-files
+    read:
+    - $HOME/.local/share/hamster-applet
+  desktop: null
+  desktop-legacy: null
+  gconf: null
+  unity7: null
+  x11: null
+
+layout:
+  /usr/share/hamster-applet:
+    bind: $SNAP/usr/share/hamster-applet
