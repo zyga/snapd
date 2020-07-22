@@ -58,6 +58,9 @@ execute: |
     nsenter -m/run/snapd/ns/test-snapd-app.mnt test -d /usr/share/hamster-applet
     nsenter -m/run/snapd/ns/test-snapd-app.mnt test -f /usr/share/hamster-applet/canary.txt
 
+    # Start a long-running process
+    tests.session -u test -p /tmp/sleep-pid exec test-snapd-app.sh -c "exec sleep 5m" &
+
     # Refresh snapd to a new revision.
     snap install snapd-from-core.snap --dangerous
     case "$MODE" in
@@ -96,5 +99,8 @@ execute: |
             tests.session -u test exec test-snapd-app.sh -c "test -f /usr/share/hamster-applet/canary.txt"
             ;;
     esac
+
+    kill "$(cat /tmp/sleep-pid)" || true
+    wait || true
 restore: |
     tests.cleanup restore
