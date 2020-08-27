@@ -31,6 +31,6 @@ func MakeSystemSnap(snapName string, defaultChannel string, modes []string) *ass
 		SnapType:       snapName, // same as snapName for core, snapd
 		Modes:          modes,
 		DefaultChannel: defaultChannel,
-		Presence:       "required",
+		Presence:       asserts.PresenceRequired,
 	}
 }

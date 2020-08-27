@@ -370,7 +370,7 @@ func (s *seed20) addModelSnap(modelSnap *asserts.ModelSnap, essential bool, filt
 	}
 
 	seedSnap.Essential = essential
-	seedSnap.Required = essential || modelSnap.Presence == "required"
+	seedSnap.Required = essential || modelSnap.Presence == asserts.PresenceRequired
 	if essential {
 		seedSnap.EssentialType = snapTypeFromModel(modelSnap)
 		s.essentialSnapsNum++
@@ -479,7 +479,7 @@ func (s *seed20) loadModelRestMeta(tm timings.Measurer) error {
 	for _, modelSnap := range model.SnapsWithoutEssential() {
 		_, err := s.addModelSnap(modelSnap, notEssential, nil, tm)
 		if err != nil {
-			if _, ok := err.(*noSnapDeclarationError); ok && modelSnap.Presence == "optional" {
+			if _, ok := err.(*noSnapDeclarationError); ok && modelSnap.Presence == asserts.PresenceOptional {
 				// skipped optional snap is ok
 				continue
 			}
