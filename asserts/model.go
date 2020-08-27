@@ -33,7 +33,6 @@ import (
 // TODO: for ModelSnap
 //  * consider moving snap.Type out of snap and using it in ModelSnap
 //    but remember assertions use "core" (never "os") for TypeOS
-//  * consider having a first-class Presence type
 
 // ModelSnap holds the details about a snap specified by a model assertion.
 type ModelSnap struct {
@@ -50,7 +49,7 @@ type ModelSnap struct {
 	// cannot be set at the same time (Core 18 models feature)
 	PinnedTrack string
 	// Presence is one of: required|optional
-	Presence string
+	Presence Presence
 }
 
 // SnapName implements naming.SnapRef.
@@ -78,7 +77,7 @@ func (ms *modelSnaps) list() (allSnaps []*ModelSnap, requiredWithEssentialSnaps 
 		}
 		numEssentialSnaps += essentialSnap
 		allSnaps = append(allSnaps, snap)
-		if snap.Presence == "required" {
+		if snap.Presence == PresenceRequired {
 			requiredWithEssentialSnaps = append(requiredWithEssentialSnaps, snap)
 		}
 	}
@@ -173,7 +172,7 @@ func checkExtendedSnaps(extendedSnaps interface{}, base string, grade ModelGrade
 			modelSnap.Modes = defaultModes
 		}
 		if modelSnap.Presence == "" {
-			modelSnap.Presence = "required"
+			modelSnap.Presence = PresenceRequired
 		}
 
 		if !essential {
@@ -262,7 +261,7 @@ func checkModelSnap(snap map[string]interface{}, grade ModelGrade) (*ModelSnap, 
 		SnapType:       typ,
 		Modes:          modes, // can be empty
 		DefaultChannel: defaultChannel,
-		Presence:       presence, // can be empty
+		Presence:       Presence(presence), // can be empty
 	}, nil
 }
 
@@ -300,7 +299,7 @@ func checkSnapWithTrack(headers map[string]interface{}, which string) (*ModelSna
 		SnapType:    which,
 		Modes:       defaultModes,
 		PinnedTrack: track,
-		Presence:    "required",
+		Presence:    PresenceRequired,
 	}, nil
 }
 
@@ -320,7 +319,7 @@ func checkRequiredSnap(name string, headerName string, snapType string) (*ModelS
 		Name:     name,
 		SnapType: snapType,
 		Modes:    defaultModes,
-		Presence: "required",
+		Presence: PresenceRequired,
 	}, nil
 }
 
