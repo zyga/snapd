@@ -591,6 +591,10 @@ prepare_project() {
         install_dependencies_gce_bucket
     fi
 
+    if [ $SPREAD_BACKEND = autopkgtest ]; then
+        sudo systemctl enable --now snapd.socket
+    fi
+
     # Build fakestore.
     fakestore_tags=
     if [ "$REMOTE_STORE" = staging ]; then
