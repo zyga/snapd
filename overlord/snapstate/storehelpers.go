@@ -219,9 +219,7 @@ var installSize = func(st *state.State, snaps []minimalInstallInfo, userID int, 
 }
 
 func setActionValidationSetsAndRequiredRevision(action *store.SnapAction, valsets []snapasserts.ValidationSetKey, requiredRevision snap.Revision) {
-	for _, vs := range valsets {
-		action.ValidationSets = append(action.ValidationSets, vs)
-	}
+	action.ValidationSets = append(action.ValidationSets, valsets...)
 	if !requiredRevision.Unset() {
 		action.Revision = requiredRevision
 		// channel cannot be present if revision is set (store would
