@@ -49,8 +49,8 @@ type Task struct {
 	clean        bool
 	progress     *progress
 	data         customData
-	waitTasks    []string
-	haltTasks    []string
+	waitTasks    []string // IDs of tasks that this task is waiting for.
+	haltTasks    []string // IDs of tasks waiting for this task.
 	lanes        []int
 	log          []string
 	change       string
