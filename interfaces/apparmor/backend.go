@@ -911,7 +911,7 @@ func (b *Backend) addContent(securityTag string, snapInfo *snap.Info, cmdName st
 				// transparent to apparmor we must alter the profile to counter that and
 				// allow access to SNAP_USER_* files.
 				tagSnippets = snippetForTag
-				if nfs, _ := osutil.IsHomeUsingNFS(); nfs {
+				if nfs, _ := osutil.IsHomeUsingNFSorCIFS(); nfs {
 					tagSnippets += apparmor_sandbox.NfsSnippet
 				}
 

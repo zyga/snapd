@@ -57,7 +57,7 @@ const (
 var (
 	runtimeNumCPU = runtime.NumCPU
 
-	osutilIsHomeUsingNFS        = osutil.IsHomeUsingNFS
+	osutilIsHomeUsingNFS        = osutil.IsHomeUsingNFSorCIFS
 	osutilIsRootWritableOverlay = osutil.IsRootWritableOverlay
 )
 

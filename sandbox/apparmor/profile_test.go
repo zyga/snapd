@@ -381,7 +381,7 @@ func (s *appArmorSuite) TestSetupSnapConfineSnippetsNoSnippets(c *C) {
 	dirs.SetRootDir(c.MkDir())
 	defer dirs.SetRootDir("")
 
-	restore := osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore := osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
@@ -414,7 +414,7 @@ func (s *appArmorSuite) TestSetupSnapConfineSnippetsHomedirs(c *C) {
 
 	restore := osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 
 	// Setup the system-params which is read by loadHomedirs in SetupSnapConfineSnippets
@@ -448,7 +448,7 @@ func (s *appArmorSuite) TestSetupSnapConfineGeneratedPolicyWithHomedirsLoadError
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = apparmor.MockLoadHomedirs(func() ([]string, error) { return nil, fmt.Errorf("failed to load") })
 	defer restore()
@@ -473,7 +473,7 @@ func (s *appArmorSuite) TestSetupSnapConfineSnippetsBPF(c *C) {
 
 	restore := osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = apparmor.MockLoadHomedirs(func() ([]string, error) { return nil, nil })
 	defer restore()
@@ -507,7 +507,7 @@ func (s *appArmorSuite) TestSetupSnapConfineGeneratedPolicyWithBPFProbeError(c *
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = apparmor.MockLoadHomedirs(func() ([]string, error) { return nil, nil })
 	defer restore()
@@ -537,7 +537,7 @@ func (s *appArmorSuite) TestSetupSnapConfineSnippetsOverlay(c *C) {
 	// Make it appear as if overlay workaround was needed.
 	restore := osutil.MockIsRootWritableOverlay(func() (string, error) { return "/upper", nil })
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = apparmor.MockLoadHomedirs(func() ([]string, error) { return nil, nil })
 	defer restore()
@@ -565,7 +565,7 @@ func (s *appArmorSuite) TestSetupSnapConfineSnippetsNFS(c *C) {
 	defer dirs.SetRootDir("")
 
 	// Make it appear as if NFS workaround was needed.
-	restore := osutil.MockIsHomeUsingNFS(func() (bool, error) { return true, nil })
+	restore := osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return true, nil })
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
@@ -599,7 +599,7 @@ func (s *appArmorSuite) TestSetupSnapConfineGeneratedPolicyError1(c *C) {
 	defer restore()
 
 	// Make it appear as if NFS detection was broken.
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, fmt.Errorf("broken") })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, fmt.Errorf("broken") })
 	defer restore()
 
 	// Make it appear as if overlay was not used.
@@ -652,7 +652,7 @@ func (s *appArmorSuite) TestSetupSnapConfineGeneratedPolicyError3(c *C) {
 	defer dirs.SetRootDir("")
 
 	// Make it appear as if NFS workaround was not needed.
-	restore := osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore := osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 
 	// Make it appear as if overlay was not used.

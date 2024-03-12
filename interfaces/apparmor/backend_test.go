@@ -1052,7 +1052,7 @@ snippet
 func (s *backendSuite) TestCombineSnippets(c *C) {
 	restore := apparmor_sandbox.MockLevel(apparmor_sandbox.Full)
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
@@ -1092,7 +1092,7 @@ func (s *backendSuite) TestCombineSnippets(c *C) {
 func (s *backendSuite) TestUnconfinedFlag(c *C) {
 	restore := apparmor_sandbox.MockLevel(apparmor_sandbox.Full)
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
@@ -1150,7 +1150,7 @@ func (s *backendSuite) TestUnconfinedFlag(c *C) {
 func (s *backendSuite) TestCombineSnippetsChangeProfile(c *C) {
 	restore := apparmor_sandbox.MockLevel(apparmor_sandbox.Full)
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
@@ -1188,7 +1188,7 @@ func (s *backendSuite) TestCombineSnippetsChangeProfile(c *C) {
 func (s *backendSuite) TestCombineSnippetsIncludeIfExists(c *C) {
 	restore := apparmor_sandbox.MockLevel(apparmor_sandbox.Full)
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
@@ -1260,7 +1260,7 @@ func (s *backendSuite) TestCombineSnippetsIncludeEtcTunables(c *C) {
 func (s *backendSuite) TestParallelInstallCombineSnippets(c *C) {
 	restore := apparmor_sandbox.MockLevel(apparmor_sandbox.Full)
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
@@ -1309,7 +1309,7 @@ profile "snap.samba_foo.smbd" flags=(attach_disconnected,mediate_deleted) {
 func (s *backendSuite) TestTemplateVarsWithHook(c *C) {
 	restore := apparmor_sandbox.MockLevel(apparmor_sandbox.Full)
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
@@ -1670,7 +1670,7 @@ func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyWithNFS2(c *C) {
 
 func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyWithNFSNoProfileFiles(c *C) {
 	// Make it appear as if NFS workaround was needed.
-	restore := osutil.MockIsHomeUsingNFS(func() (bool, error) { return true, nil })
+	restore := osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return true, nil })
 	defer restore()
 	// Make it appear as if overlay was not used.
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
@@ -1693,7 +1693,7 @@ func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyWithNFSNoProfileFiles(
 // snap-confine policy when NFS is used and snapd has not re-executed.
 func (s *backendSuite) testSetupSnapConfineGeneratedPolicyWithNFS(c *C, profileFname string) {
 	// Make it appear as if NFS workaround was needed.
-	restore := osutil.MockIsHomeUsingNFS(func() (bool, error) { return true, nil })
+	restore := osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return true, nil })
 	defer restore()
 
 	// Make it appear as if overlay was not used.
@@ -1745,7 +1745,7 @@ func (s *backendSuite) testSetupSnapConfineGeneratedPolicyWithNFS(c *C, profileF
 // snap-confine policy when NFS is used and snapd has re-executed.
 func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyWithNFSAndReExec(c *C) {
 	// Make it appear as if NFS workaround was needed.
-	restore := osutil.MockIsHomeUsingNFS(func() (bool, error) { return true, nil })
+	restore := osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return true, nil })
 	defer restore()
 
 	// Make it appear as if overlay was not used.
@@ -1790,7 +1790,7 @@ func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyWithNFSAndReExec(c *C)
 // Test behavior when os.Readlink "/proc/self/exe" fails.
 func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyError1(c *C) {
 	// Make it appear as if NFS workaround was needed.
-	restore := osutil.MockIsHomeUsingNFS(func() (bool, error) { return true, nil })
+	restore := osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return true, nil })
 	defer restore()
 
 	// Make it appear as if overlay was not used.
@@ -1823,7 +1823,7 @@ func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyError1(c *C) {
 // Test behavior when exec.Command "apparmor_parser" fails
 func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyError2(c *C) {
 	// Make it appear as if NFS workaround was needed.
-	restore := osutil.MockIsHomeUsingNFS(func() (bool, error) { return true, nil })
+	restore := osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return true, nil })
 	defer restore()
 
 	// Make it appear as if overlay was not used.
@@ -1873,7 +1873,7 @@ func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyWithOverlayNoProfileFi
 	restore := osutil.MockIsRootWritableOverlay(func() (string, error) { return "/upper", nil })
 	defer restore()
 	// No NFS workaround
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 
 	// Intercept interaction with apparmor_parser
@@ -1895,7 +1895,7 @@ func (s *backendSuite) testSetupSnapConfineGeneratedPolicyWithOverlay(c *C, prof
 	// Make it appear as if overlay workaround was needed.
 	restore := osutil.MockIsRootWritableOverlay(func() (string, error) { return "/upper", nil })
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 
 	// Intercept the /proc/self/exe symlink and point it to the distribution
@@ -1946,7 +1946,7 @@ func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyWithOverlayAndReExec(c
 	restore := osutil.MockIsRootWritableOverlay(func() (string, error) { return "/upper", nil })
 	defer restore()
 
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 
 	// Intercept interaction with apparmor_parser
@@ -1987,7 +1987,7 @@ func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyWithOverlayAndReExec(c
 func (s *backendSuite) testSetupSnapConfineGeneratedPolicyWithBPFCapability(c *C, reexec bool) {
 	restore := osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	// Pretend apparmor_parser supports bpf capability
 	apparmor_sandbox.MockFeatures(nil, nil, []string{"cap-bpf"}, nil)
@@ -2061,7 +2061,7 @@ func (s *backendSuite) TestSetupSnapConfineGeneratedPolicyWithBPFProbeError(c *C
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "", nil })
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	// Probing for apparmor_parser features failed
 	apparmor_sandbox.MockFeatures(nil, nil, nil, fmt.Errorf("mock probe error"))
@@ -2139,7 +2139,7 @@ var nfsAndOverlaySnippetsScenarios = []nfsAndOverlaySnippetsScenario{{
 func (s *backendSuite) TestNFSAndOverlaySnippets(c *C) {
 	restore := apparmor_sandbox.MockLevel(apparmor_sandbox.Full)
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return true, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return true, nil })
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "/upper", nil })
 	defer restore()
@@ -2185,7 +2185,7 @@ var casperOverlaySnippetsScenarios = []nfsAndOverlaySnippetsScenario{{
 func (s *backendSuite) TestCasperOverlaySnippets(c *C) {
 	restore := apparmor_sandbox.MockLevel(apparmor_sandbox.Full)
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 	restore = osutil.MockIsRootWritableOverlay(func() (string, error) { return "/upper", nil })
 	defer restore()
@@ -2268,7 +2268,7 @@ func (s *backendSuite) TestPtraceTraceRule(c *C) {
 	defer restoreTemplate()
 	restore := apparmor_sandbox.MockLevel(apparmor_sandbox.Full)
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 
 	needle := `deny ptrace (trace),`
@@ -2413,7 +2413,7 @@ func (s *backendSuite) TestHomeIxRule(c *C) {
 	defer restoreTemplate()
 	restore := apparmor_sandbox.MockLevel(apparmor_sandbox.Full)
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 
 	for _, tc := range []struct {
@@ -2455,7 +2455,7 @@ func (s *backendSuite) TestPycacheDenyRule(c *C) {
 	defer restoreTemplate()
 	restore := apparmor_sandbox.MockLevel(apparmor_sandbox.Full)
 	defer restore()
-	restore = osutil.MockIsHomeUsingNFS(func() (bool, error) { return false, nil })
+	restore = osutil.MockIsHomeUsingNFSorCIFS(func() (bool, error) { return false, nil })
 	defer restore()
 
 	for _, tc := range []struct {

@@ -84,7 +84,7 @@ type systemKey struct {
 const systemKeyVersion = 10
 
 var (
-	isHomeUsingNFS        = osutil.IsHomeUsingNFS
+	isHomeUsingNFS        = osutil.IsHomeUsingNFSorCIFS
 	isRootWritableOverlay = osutil.IsRootWritableOverlay
 	mockedSystemKey       *systemKey
 
