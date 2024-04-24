@@ -1,5 +1,20 @@
 summary: Ensure the snapd works without core on classic systems
 
+details: |
+    Historically the ubuntu-core system defined the core snapd as a bootable
+    rootfs that contains basic system utilities and snapd in one big snap. As
+    additional Ubuntu LTS releases were made, corresponding core snaps got
+    created causing a problem with the assumption that snapd is in the core snap
+    and only there. This was even more problematic on classic systems that did
+    not use the core snap for any of the booting functionality, and instead it
+    was merely the initial root file system for the running snap applications,
+    as it would create pressure to keep updating core with ancient libraries so
+    that snapd may be updated alongside. In consequence snapd was split to a
+    separate snap and core no longer became mandatory.
+
+    The test installs snapd from the classic package, installs a snap that
+    depends on core18 and ensures that snapd is operated from the snapd snap.
+
 # Run only on ubuntu classic because this re-execs.  We have a
 # separate test for UC18 already and on UC16 we always have a core
 # snap so we don't need to test there.
