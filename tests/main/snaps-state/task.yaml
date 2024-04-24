@@ -1,5 +1,11 @@
 summary: smoke test for the snaps-state tool
 
+details: |
+    The snapd integration test suite takes advantage of a tool called
+    snaps-state which offers functionality for managing snaps and exposes some
+    details of the state file without talking to snapd. The test looks through
+    the features of the tool to make sure it is not broken.
+
 backends: [google, qemu]
 
 prepare: |
