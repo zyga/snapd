@@ -1,0 +1,179 @@
+2:25 / / rw,relatime - tmpfs none rw,inode64
+-2:-20 /bin /bin ro,nodev,relatime master:40 - squashfs /dev/loop5 ro,errors=continue
++0:+0 /boot /boot ro,nodev,relatime master:+0 - squashfs /dev/loop5 ro,errors=continue
++2:-5 / /dev rw,nosuid master:-36 - devtmpfs devtmpfs rw,size=VARIABLE,nr_inodes=0,mode=755,inode64
++0:+1 / /dev/hugepages rw,relatime master:+1 - hugetlbfs hugetlbfs rw,pagesize=2M
++0:+1 / /dev/mqueue rw,nosuid,nodev,noexec,relatime master:+1 - mqueue mqueue rw
++0:+24 /ptmx /dev/ptmx rw,relatime - devpts devpts rw,gid=5,mode=620,ptmxmode=666
++0:-23 / /dev/pts rw,nosuid,noexec,relatime master:7 - devpts devpts rw,gid=5,mode=620,ptmxmode=000
++0:+23 / /dev/pts rw,relatime - devpts devpts rw,gid=5,mode=620,ptmxmode=666
++0:-22 / /dev/shm rw,nosuid,nodev master:8 - tmpfs tmpfs rw,inode64
+-2:-4 /etc /etc ro,relatime master:-7 - squashfs /dev/loop0 ro,errors=continue
++0:+5 /etc/apparmor /etc/apparmor ro,nodev,relatime master:+39 - squashfs /dev/loop5 ro,errors=continue
++0:+0 /etc/apparmor.d /etc/apparmor.d ro,nodev,relatime master:+0 - squashfs /dev/loop5 ro,errors=continue
++1:-3 /system-data/etc/cloud /etc/cloud rw,nosuid,relatime master:-31 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/dbus-1 /etc/dbus-1 rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/default/swapfile /etc/default/swapfile rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/environment /etc/environment rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++1:+3 /image.fstab /etc/fstab rw,nosuid,nodev master:+1 - tmpfs tmpfs rw,size=VARIABLE,nr_inodes=1,mode=755,inode64
+-1:-3 /system-data/root/test-etc/group /etc/group ro,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/root/test-etc/gshadow /etc/gshadow ro,relatime master:+0 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/hosts /etc/hosts rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/iproute2 /etc/iproute2 rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/machine-id /etc/machine-id rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/modprobe.d /etc/modprobe.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/modules-load.d /etc/modules-load.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/netplan /etc/netplan rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/network/if-up.d /etc/network/if-up.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
+-1:+3 /etc/nsswitch.conf /etc/nsswitch.conf ro,nodev,relatime master:+19 - squashfs /dev/loop5 ro,errors=continue
++1:-3 /system-data/root/test-etc/passwd /etc/passwd ro,relatime master:-26 - ext4 /dev/sda5 rw
++0:+0 /system-data/root/test-etc/shadow /etc/shadow ro,relatime master:+0 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/ssh /etc/ssh rw,nosuid,relatime master:+8 - ext4 /dev/sda5 rw
+-1:+3 /etc/ssl /etc/ssl ro,nodev,relatime master:+18 - squashfs /dev/loop5 ro,errors=continue
++1:-3 /system-data/etc/sudoers.d /etc/sudoers.d rw,nosuid,relatime master:-17 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/sysctl.d /etc/sysctl.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/systemd /etc/systemd rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/udev/rules.d /etc/udev/rules.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/update-motd.d /etc/update-motd.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/writable /etc/writable rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /user-data /home rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
+-1:+3 /lib /lib ro,nodev,relatime master:+11 - squashfs /dev/loop5 ro,errors=continue
++0:-3 /firmware /lib/firmware ro,relatime master:+19 - squashfs /dev/loop2 ro,errors=continue
++0:+0 /modules /lib/modules ro,relatime master:+1 - squashfs /dev/loop2 ro,errors=continue
++0:+3 /lib64 /lib64 ro,nodev,relatime master:-20 - squashfs /dev/loop5 ro,errors=continue
++2:+1 / /media rw,relatime shared:31 - tmpfs tmpfs rw,inode64
+-2:-1 /meta /meta ro,nodev,relatime master:40 - squashfs /dev/loop5 ro,errors=continue
++2:+2 / /mnt rw,relatime master:-8 - tmpfs tmpfs rw,inode64
+-2:-2 /opt /opt ro,nodev,relatime master:+8 - squashfs /dev/loop5 ro,errors=continue
++2:+3 / /proc rw,nosuid,nodev,noexec,relatime master:-7 - proc proc rw
++0:+1 / /proc/sys/fs/binfmt_misc rw,nosuid,nodev,noexec,relatime master:+1 - binfmt_misc binfmt_misc rw
++0:+1 / /proc/sys/fs/binfmt_misc rw,relatime master:+1 - autofs systemd-1 rw,fd=0,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=0
+-1:-8 /system-data/root /root rw,nosuid,relatime master:-21 - ext4 /dev/sda5 rw
++1:+3 / /run rw,nosuid,nodev master:+16 - tmpfs tmpfs rw,size=VARIABLE,nr_inodes=1,mode=755,inode64
++0:+6 / /run/lock rw,nosuid,nodev,noexec,relatime master:+6 - tmpfs tmpfs rw,size=VARIABLE,inode64
+-2:-11 / /run/mnt/base ro,relatime - squashfs /dev/loop0 ro,errors=continue
++1:+2 / /run/mnt/data rw,nosuid,relatime - ext4 /dev/sda5 rw
+-1:-1 / /run/mnt/gadget ro,relatime - squashfs /dev/loop1 ro,errors=continue
++0:+1 / /run/mnt/kernel ro,relatime - squashfs /dev/loop2 ro,errors=continue
++0:+1 / /run/mnt/snapd ro,relatime - squashfs /dev/loop3 ro,errors=continue
++1:-2 / /run/mnt/ubuntu-boot rw,relatime - ext4 /dev/sda3 rw
++0:+2 / /run/mnt/ubuntu-save rw,relatime - ext4 /dev/sda4 rw
++0:-3 / /run/mnt/ubuntu-seed rw,relatime - vfat /dev/sda2 rw,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
++1:+5 /netns /run/netns rw,nosuid,nodev shared:30 - tmpfs tmpfs rw,size=VARIABLE,nr_inodes=1,mode=755,inode64
++0:+0 /snapd/ns /run/snapd/ns rw,nosuid,nodev - tmpfs tmpfs rw,size=VARIABLE,nr_inodes=1,mode=755,inode64
++0:+7 / /run/user/1000 rw,nosuid,nodev,relatime master:37 - tmpfs tmpfs rw,size=VARIABLE,nr_inodes=2,mode=700,uid=1000,gid=1000,inode64
+-2:-7 /sbin /sbin ro,nodev,relatime master:+3 - squashfs /dev/loop5 ro,errors=continue
++1:-3 /system-data/snap /snap rw,nosuid,relatime master:-2 - ext4 /dev/sda5 rw
+-1:+2 / /snap/core/1 ro,nodev,relatime master:+1 - squashfs /dev/loop4 ro,errors=continue
++0:+1 / /snap/core18/1 ro,nodev,relatime master:+1 - squashfs /dev/loop5 ro,errors=continue
++0:-5 / /snap/core22/1 ro,nodev,relatime master:+1 - squashfs /dev/loop0 ro,errors=continue
++0:+2 / /snap/pc-kernel/1 ro,nodev,relatime master:+1 - squashfs /dev/loop2 ro,errors=continue
++0:-1 / /snap/pc/1 ro,nodev,relatime master:+1 - squashfs /dev/loop1 ro,errors=continue
++0:+5 / /snap/snapd/1 ro,nodev,relatime master:+1 - squashfs /dev/loop6 ro,errors=continue
++0:+1 / /snap/test-snapd-mountinfo-core16/1 ro,nodev,relatime master:+1 - squashfs /dev/loop7 ro,errors=continue
++0:+1 / /snap/test-snapd-mountinfo-core18/1 ro,nodev,relatime master:+1 - squashfs /dev/loop8 ro,errors=continue
++0:+1 / /snap/test-snapd-rsync-core22/1 ro,nodev,relatime master:+1 - squashfs /dev/loop9 ro,errors=continue
++0:-4 /srv /srv ro,nodev,relatime master:-7 - squashfs /dev/loop5 ro,errors=continue
++0:+0 /stdout /stdout ro,nodev,relatime master:+0 - squashfs /dev/loop5 ro,errors=continue
++2:+8 / /sys rw,nosuid,nodev,noexec,relatime master:+8 - sysfs sysfs rw
++0:+1 / /sys/firmware/efi/efivars rw,nosuid,nodev,noexec,relatime master:+1 - efivarfs efivarfs rw
++0:+1 / /sys/fs/bpf rw,nosuid,nodev,noexec,relatime master:+1 - bpf bpf rw,mode=700
++0:+1 / /sys/fs/cgroup rw,nosuid,nodev,noexec,relatime master:+1 - cgroup2 cgroup2 rw,nsdelegate,memory_recursiveprot
++0:+1 / /sys/fs/fuse/connections rw,nosuid,nodev,noexec,relatime master:+1 - fusectl fusectl rw
++0:+1 / /sys/fs/pstore rw,nosuid,nodev,noexec,relatime master:+1 - pstore pstore rw
++0:+1 / /sys/kernel/config rw,nosuid,nodev,noexec,relatime master:+1 - configfs configfs rw
++0:+1 / /sys/kernel/debug rw,nosuid,nodev,noexec,relatime master:+1 - debugfs debugfs rw
++0:+1 / /sys/kernel/security rw,nosuid,nodev,noexec,relatime master:+1 - securityfs securityfs rw
++0:+1 / /sys/kernel/tracing rw,nosuid,nodev,noexec,relatime master:+1 - tracefs tracefs rw
++0:+1 / /tmp rw,relatime master:+1 - tmpfs tmpfs rw,inode64
++0:+0 /snap-private-tmp/snap.test-snapd-mountinfo-core18/tmp /tmp rw,relatime - tmpfs tmpfs rw,inode64
+-2:-18 /usr /usr ro,nodev,relatime master:40 - squashfs /dev/loop5 ro,errors=continue
++0:+1 /usr/lib/snapd /usr/lib/snapd ro,nodev,relatime master:+4 - squashfs /dev/loop6 ro,errors=continue
++2:+21 / /usr/share/gdb rw,relatime - tmpfs tmpfs rw,mode=755,inode64
+-2:-22 /usr/share/gdb/auto-load /usr/share/gdb/auto-load ro,nodev,relatime master:40 - squashfs /dev/loop5 ro,errors=continue
++2:+23 / /usr/share/gdb/test rw,relatime - tmpfs tmpfs rw,inode64
+-2:-28 /usr/src /usr/src ro,relatime master:1 - squashfs /dev/loop0 ro,errors=continue
++0:+5 /var /var ro,nodev,relatime master:+39 - squashfs /dev/loop5 ro,errors=continue
++1:-3 /system-data/var/lib/extrausers /var/lib/extrausers rw,nosuid,relatime master:+27 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/lib/snapd /var/lib/snapd rw,nosuid,relatime master:+3 - ext4 /dev/sda5 rw
+-1:-2 / /var/lib/snapd/hostfs ro,relatime master:-69 - squashfs /dev/loop0 ro,errors=continue
++1:+2 /system-data/var/lib/snapd/hostfs /var/lib/snapd/hostfs rw,nosuid,relatime - ext4 /dev/sda5 rw
++0:-2 / /var/lib/snapd/hostfs/boot/efi rw,relatime master:2 - vfat /dev/sda2 rw,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
++0:+1 /EFI/ubuntu /var/lib/snapd/hostfs/boot/grub rw,relatime master:+1 - ext4 /dev/sda3 rw
++0:+1 /system-data/etc/cloud /var/lib/snapd/hostfs/etc/cloud rw,nosuid,relatime master:+6 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/dbus-1 /var/lib/snapd/hostfs/etc/dbus-1 rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/default/swapfile /var/lib/snapd/hostfs/etc/default/swapfile rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/environment /var/lib/snapd/hostfs/etc/environment rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++1:+3 /image.fstab /var/lib/snapd/hostfs/etc/fstab rw,nosuid,nodev master:+1 - tmpfs tmpfs rw,size=VARIABLE,nr_inodes=1,mode=755,inode64
+-1:-3 /system-data/root/test-etc/group /var/lib/snapd/hostfs/etc/group ro,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/root/test-etc/gshadow /var/lib/snapd/hostfs/etc/gshadow ro,relatime master:+0 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/hosts /var/lib/snapd/hostfs/etc/hosts rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/iproute2 /var/lib/snapd/hostfs/etc/iproute2 rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/machine-id /var/lib/snapd/hostfs/etc/machine-id rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/modprobe.d /var/lib/snapd/hostfs/etc/modprobe.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/modules-load.d /var/lib/snapd/hostfs/etc/modules-load.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/netplan /var/lib/snapd/hostfs/etc/netplan rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/network/if-up.d /var/lib/snapd/hostfs/etc/network/if-up.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/root/test-etc/passwd /var/lib/snapd/hostfs/etc/passwd ro,relatime master:-7 - ext4 /dev/sda5 rw
++0:+0 /system-data/root/test-etc/shadow /var/lib/snapd/hostfs/etc/shadow ro,relatime master:+0 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/ssh /var/lib/snapd/hostfs/etc/ssh rw,nosuid,relatime master:+8 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/sudoers.d /var/lib/snapd/hostfs/etc/sudoers.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/sysctl.d /var/lib/snapd/hostfs/etc/sysctl.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/systemd /var/lib/snapd/hostfs/etc/systemd rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/udev/rules.d /var/lib/snapd/hostfs/etc/udev/rules.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/update-motd.d /var/lib/snapd/hostfs/etc/update-motd.d rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/etc/writable /var/lib/snapd/hostfs/etc/writable rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /user-data /var/lib/snapd/hostfs/home rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++1:+3 /mnt/host /var/lib/snapd/hostfs/host rw,nosuid,nodev master:+1 - tmpfs tmpfs rw,size=VARIABLE,nr_inodes=1,mode=755,inode64
++0:+1 / /var/lib/snapd/hostfs/media rw,relatime master:+1 - tmpfs tmpfs rw,inode64
++0:+1 / /var/lib/snapd/hostfs/mnt rw,relatime master:+1 - tmpfs tmpfs rw,inode64
+-1:-5 /system-data/root /var/lib/snapd/hostfs/root rw,nosuid,relatime master:-18 - ext4 /dev/sda5 rw
++1:+3 / /var/lib/snapd/hostfs/run rw,nosuid,nodev master:+16 - tmpfs tmpfs rw,size=VARIABLE,nr_inodes=1,mode=755,inode64
++0:+6 / /var/lib/snapd/hostfs/run/lock rw,nosuid,nodev,noexec,relatime master:+6 - tmpfs tmpfs rw,size=VARIABLE,inode64
+-2:-11 / /var/lib/snapd/hostfs/run/mnt/base ro,relatime - squashfs /dev/loop0 ro,errors=continue
++1:+2 / /var/lib/snapd/hostfs/run/mnt/data rw,nosuid,relatime - ext4 /dev/sda5 rw
+-1:-1 / /var/lib/snapd/hostfs/run/mnt/gadget ro,relatime - squashfs /dev/loop1 ro,errors=continue
++0:+1 / /var/lib/snapd/hostfs/run/mnt/kernel ro,relatime - squashfs /dev/loop2 ro,errors=continue
++0:+1 / /var/lib/snapd/hostfs/run/mnt/snapd ro,relatime - squashfs /dev/loop3 ro,errors=continue
++1:-2 / /var/lib/snapd/hostfs/run/mnt/ubuntu-boot rw,relatime - ext4 /dev/sda3 rw
++0:+2 / /var/lib/snapd/hostfs/run/mnt/ubuntu-save rw,relatime - ext4 /dev/sda4 rw
++0:-3 / /var/lib/snapd/hostfs/run/mnt/ubuntu-seed rw,relatime - vfat /dev/sda2 rw,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
++1:+5 /snapd/ns /var/lib/snapd/hostfs/run/snapd/ns rw,nosuid,nodev - tmpfs tmpfs rw,size=VARIABLE,nr_inodes=1,mode=755,inode64
++0:+7 / /var/lib/snapd/hostfs/run/user/1000 rw,nosuid,nodev,relatime master:37 - tmpfs tmpfs rw,size=VARIABLE,nr_inodes=2,mode=700,uid=1000,gid=1000,inode64
+-1:-10 /system-data/snap /var/lib/snapd/hostfs/snap rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
+-1:+2 / /var/lib/snapd/hostfs/snap/core/1 ro,nodev,relatime master:+1 - squashfs /dev/loop4 ro,errors=continue
++0:+1 / /var/lib/snapd/hostfs/snap/core18/1 ro,nodev,relatime master:+1 - squashfs /dev/loop5 ro,errors=continue
++0:-5 / /var/lib/snapd/hostfs/snap/core22/1 ro,nodev,relatime master:+1 - squashfs /dev/loop0 ro,errors=continue
++0:+2 / /var/lib/snapd/hostfs/snap/pc-kernel/1 ro,nodev,relatime master:+1 - squashfs /dev/loop2 ro,errors=continue
++0:-1 / /var/lib/snapd/hostfs/snap/pc/1 ro,nodev,relatime master:+1 - squashfs /dev/loop1 ro,errors=continue
++0:+5 / /var/lib/snapd/hostfs/snap/snapd/1 ro,nodev,relatime master:+1 - squashfs /dev/loop6 ro,errors=continue
++0:+1 / /var/lib/snapd/hostfs/snap/test-snapd-mountinfo-core16/1 ro,nodev,relatime master:+1 - squashfs /dev/loop7 ro,errors=continue
++0:+1 / /var/lib/snapd/hostfs/snap/test-snapd-mountinfo-core18/1 ro,nodev,relatime master:+1 - squashfs /dev/loop8 ro,errors=continue
++0:+1 / /var/lib/snapd/hostfs/snap/test-snapd-rsync-core22/1 ro,nodev,relatime master:+1 - squashfs /dev/loop9 ro,errors=continue
++2:+14 / /var/lib/snapd/hostfs/tmp rw,relatime master:+11 - tmpfs tmpfs rw,inode64
+-2:-21 /firmware /var/lib/snapd/hostfs/usr/lib/firmware ro,relatime master:+1 - squashfs /dev/loop2 ro,errors=continue
++0:+0 /modules /var/lib/snapd/hostfs/usr/lib/modules ro,relatime master:+1 - squashfs /dev/loop2 ro,errors=continue
++0:+4 /usr/lib/snapd /var/lib/snapd/hostfs/usr/lib/snapd ro,nodev,relatime master:-16 - squashfs /dev/loop6 ro,errors=continue
++1:-4 /system-data/var/cache/apparmor /var/lib/snapd/hostfs/var/cache/apparmor rw,nosuid,relatime master:+17 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/cache/snapd /var/lib/snapd/hostfs/var/cache/snapd rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/lib/cloud /var/lib/snapd/hostfs/var/lib/cloud rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/lib/console-conf /var/lib/snapd/hostfs/var/lib/console-conf rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/lib/dbus /var/lib/snapd/hostfs/var/lib/dbus rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/lib/dhcp /var/lib/snapd/hostfs/var/lib/dhcp rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/lib/extrausers /var/lib/snapd/hostfs/var/lib/extrausers rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/lib/misc /var/lib/snapd/hostfs/var/lib/misc rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/lib/private/systemd /var/lib/snapd/hostfs/var/lib/private/systemd rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/lib/snapd /var/lib/snapd/hostfs/var/lib/snapd rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+1 / /var/lib/snapd/hostfs/var/lib/snapd/save rw,relatime master:+1 - ext4 /dev/sda4 rw
++0:-3 / /var/lib/snapd/hostfs/var/lib/snapd/seed ro,relatime master:+1 - vfat /dev/sda2 rw,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
++1:+24 / /var/lib/snapd/hostfs/var/lib/sudo rw,relatime master:+1 - tmpfs tmpfs rw,mode=700,inode64
+-1:-22 /system-data/var/lib/systemd /var/lib/snapd/hostfs/var/lib/systemd rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/log /var/lib/snapd/hostfs/var/log rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/snap /var/lib/snapd/hostfs/var/snap rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/tmp /var/lib/snapd/hostfs/var/tmp rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+1 / /var/lib/snapd/save rw,relatime master:-6 - ext4 /dev/sda4 rw
++0:-3 / /var/lib/snapd/seed ro,relatime master:+1 - vfat /dev/sda2 rw,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
++0:+2 /system-data/var/log /var/log rw,nosuid,relatime master:+3 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/snap /var/snap rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
++0:+0 /system-data/var/tmp /var/tmp rw,nosuid,relatime master:+1 - ext4 /dev/sda5 rw
+-1:+3 /writable /writable ro,nodev,relatime master:-37 - squashfs /dev/loop5 ro,errors=continue
