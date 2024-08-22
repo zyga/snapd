@@ -366,6 +366,7 @@ backends:
 
     qemu:
         memory: 4G
+        core-count: 4
         systems:
             - ubuntu-14.04-32:
                   username: ubuntu
