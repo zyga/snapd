@@ -66,7 +66,7 @@ dbus (send)
     bus=system
     path="/org/freedesktop/PolicyKit1/Authority"
     interface="org.freedesktop.PolicyKit1.Authority"
-    member="RegisterAuthenticationAgentWithOptions"
+    member="RegisterAuthenticationAgent{,WithOptions}"
     peer=(label=unconfined),
 dbus (send)
     bus=system
