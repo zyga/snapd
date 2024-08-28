@@ -14,7 +14,7 @@ prepare: |
 restore: |
     #shellcheck source=tests/lib/pkgdb.sh
     . "$TESTSLIB/pkgdb.sh"
-    distro_install_build_snapd
+    distro_install_built_snapd
 
 execute: |
     if os.query is-ubuntu 24.10; then

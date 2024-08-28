@@ -12,7 +12,7 @@ systems: [ubuntu-14.04-64]
 restore: |
     #shellcheck source=tests/lib/pkgdb.sh
     . "$TESTSLIB/pkgdb.sh"
-    distro_install_build_snapd
+    distro_install_built_snapd
 
 execute: |
     echo "Keep a copy of the core snap with our latest snapd"

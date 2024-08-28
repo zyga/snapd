@@ -370,7 +370,7 @@ distro_query_package_info() {
     esac
 }
 
-distro_install_build_snapd(){
+distro_install_built_snapd(){
     if [ "$SRU_VALIDATION" = "1" ]; then
         apt install -y snapd
         cp /etc/apt/sources.list sources.list.back

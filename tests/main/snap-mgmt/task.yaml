@@ -83,7 +83,7 @@ restore: |
     #shellcheck source=tests/lib/pkgdb.sh
     . "$TESTSLIB/pkgdb.sh"
     if [ -e pkg-removed ]; then
-        distro_install_build_snapd
+        distro_install_built_snapd
         rm pkg-removed
     fi
 

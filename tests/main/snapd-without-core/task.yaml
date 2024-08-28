@@ -32,7 +32,7 @@ execute: |
     #shellcheck source=tests/lib/pkgdb.sh
     . "$TESTSLIB"/pkgdb.sh
     distro_purge_package snapd
-    distro_install_build_snapd
+    distro_install_built_snapd
 
     echo "Install the snapd snap"
     snap set core experimental.snapd-snap=true

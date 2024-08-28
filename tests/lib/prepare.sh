@@ -347,7 +347,7 @@ prepare_each_classic() {
 prepare_classic() {
     # Skip building snapd when REUSE_SNAPD is set to 1
     if [ "$REUSE_SNAPD" != 1 ]; then
-        distro_install_build_snapd
+        distro_install_built_snapd
     fi
 
     if snap --version |MATCH unknown; then

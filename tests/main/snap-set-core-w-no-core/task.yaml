@@ -13,7 +13,7 @@ kill-timeout: 5m
 restore: |
     #shellcheck source=tests/lib/pkgdb.sh
     . "$TESTSLIB/pkgdb.sh"
-    distro_install_build_snapd
+    distro_install_built_snapd
 
 execute: |
     #shellcheck source=tests/lib/pkgdb.sh
@@ -21,7 +21,7 @@ execute: |
 
     echo "Ensure core is gone"
     distro_purge_package snapd
-    distro_install_build_snapd
+    distro_install_built_snapd
 
     echo "Check that we can set core config nevertheless"
     snap set core system.power-key-action="ignore"
