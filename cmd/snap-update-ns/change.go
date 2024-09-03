@@ -656,6 +656,25 @@ func neededChanges(currentProfile, desiredProfile *osutil.MountProfile) []*Chang
 		skipDir = strings.TrimSuffix(dir, "/") + "/"
 	}
 
+	// Do not reuse layout entries when they are may be used to distribute a
+	// content connection that were not kept. This is done so that we correctly
+	// re-create them to point to the disconnected location. This is needed
+	// because mount entries that are not reused are detached with private
+	// propagation, so the unmount does not propagate to the layout.
+	dropped := make(map[string]struct{})
+	for _, e := range current {
+		if !reuse[mountEntryId{dir: e.Dir, fsType: e.Type}] {
+			dropped[e.Dir] = struct{}{}
+		}
+	}
+	for _, e := range current {
+		if e.XSnapdOrigin() == "layout" && e.XSnapdKind() != "symlink" {
+			if _, ok := dropped[e.Name]; ok {
+				delete(reuse, mountEntryId{dir: e.Dir, fsType: e.Type})
+			}
+		}
+	}
+
 	logger.Debugf("desiredIDs: %v", desiredIDs)
 	logger.Debugf("reuse: %v", reuse)
 

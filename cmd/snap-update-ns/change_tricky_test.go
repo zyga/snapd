@@ -88,20 +88,20 @@ func (s *changeSuite) TestContentLayoutNowDisconnected(c *C) {
 	// mount profile. This is tracked as
 	// https://warthogs.atlassian.net/browse/SNAPDENG-31644
 	c.Assert(changes, DeepEquals, []*update.Change{
-		&update.Change{Action: "keep", Entry: current.Entries[4]},
+		&update.Change{Action: "unmount", Entry: withDetachOption(current.Entries[4])},
 		&update.Change{Action: "keep", Entry: current.Entries[3]},
 		&update.Change{Action: "keep", Entry: current.Entries[2]},
 		&update.Change{Action: "unmount", Entry: withDetachOption(current.Entries[1])},
 		&update.Change{Action: "keep", Entry: current.Entries[0]},
+		&update.Change{Action: "mount", Entry: current.Entries[4]},
 	})
 
-	// The actual entry for clarity.
-	c.Assert(changes[3].Entry, DeepEquals, osutil.MountEntry{
-		Name:    "/snap/test-snapd-content/x1",
-		Dir:     "/snap/test-snapd-content-layout/x2/attached-content",
-		Type:    "none",
-		Options: []string{"bind", "ro", "x-snapd.detach"},
-	})
+	// - change: unmount (/snap/test-snapd-content-layout/x2/attached-content /usr/share/secureboot/potato none rbind,rw,x-snapd.origin=layout,x-snapd.detach 0 0)
+	// - change: keep (/usr/share/secureboot/updates /usr/share/secureboot/updates none rbind,x-snapd.synthetic,x-snapd.needed-by=/usr/share/secureboot/potato,x-snapd.detach 0 0)
+	// - change: keep (tmpfs /usr/share/secureboot tmpfs x-snapd.synthetic,x-snapd.needed-by=/usr/share/secureboot/potato,mode=0755,uid=0,gid=0 0 0)
+	// - change: unmount (/snap/test-snapd-content/x1 /snap/test-snapd-content-layout/x2/attached-content none bind,ro,x-snapd.detach 0 0)
+	// - change: keep (tmpfs / tmpfs x-snapd.origin=rootfs 0 0)
+	// - change: mount (/snap/test-snapd-content-layout/x2/attached-content /usr/share/secureboot/potato none rbind,rw,x-snapd.origin=layout 0 0)
 }
 
 func (s *changeSuite) TestContentLayoutThenReconnected(c *C) {
