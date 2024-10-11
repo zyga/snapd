@@ -629,6 +629,7 @@ func planWritableMimic(dir, neededBy string) ([]*Change, error) {
 				fmt.Sprintf("mode=%#o", sb.Mode&07777),
 				fmt.Sprintf("uid=%d", sb.Uid),
 				fmt.Sprintf("gid=%d", sb.Gid),
+				"shared",
 			},
 		},
 	})

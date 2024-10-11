@@ -759,7 +759,7 @@ func (s *changeSuite) TestPerformFilesystemMountWithoutMountPointAndReadOnlyBase
 	c.Assert(synth, DeepEquals, []*update.Change{
 		{Action: update.Mount, Entry: osutil.MountEntry{
 			Name: "tmpfs", Dir: "/rofs", Type: "tmpfs",
-			Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/rofs/target", "mode=0755", "uid=0", "gid=0"}},
+			Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/rofs/target", "mode=0755", "uid=0", "gid=0", "shared"}},
 		},
 	})
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
@@ -812,6 +812,7 @@ func (s *changeSuite) TestPerformFilesystemMountWithoutMountPointAndReadOnlyBase
 
 		{C: `lstat "/rofs"`, R: testutil.FileInfoDir},
 		{C: `mount "tmpfs" "/rofs" "tmpfs" 0 "mode=0755,uid=0,gid=0"`},
+		{C: `mount "none" "/rofs" "" MS_SHARED ""`},
 		{C: `mount "none" "/tmp/.snap/rofs" "" MS_REC|MS_PRIVATE ""`},
 		{C: `unmount "/tmp/.snap/rofs" UMOUNT_NOFOLLOW|MNT_DETACH`},
 
@@ -1270,7 +1271,7 @@ func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountPointAndReadOnlyB
 	c.Assert(synth, DeepEquals, []*update.Change{
 		{Action: update.Mount, Entry: osutil.MountEntry{
 			Name: "tmpfs", Dir: "/rofs", Type: "tmpfs",
-			Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/rofs/target", "mode=0755", "uid=0", "gid=0"}},
+			Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/rofs/target", "mode=0755", "uid=0", "gid=0", "shared"}},
 		},
 	})
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
@@ -1323,6 +1324,7 @@ func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountPointAndReadOnlyB
 
 		{C: `lstat "/rofs"`, R: testutil.FileInfoDir},
 		{C: `mount "tmpfs" "/rofs" "tmpfs" 0 "mode=0755,uid=0,gid=0"`},
+		{C: `mount "none" "/rofs" "" MS_SHARED ""`},
 		{C: `mount "none" "/tmp/.snap/rofs" "" MS_REC|MS_PRIVATE ""`},
 		{C: `unmount "/tmp/.snap/rofs" UMOUNT_NOFOLLOW|MNT_DETACH`},
 
@@ -1419,7 +1421,7 @@ func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountSourceAndReadOnly
 	c.Check(synth, DeepEquals, []*update.Change{
 		{Action: update.Mount, Entry: osutil.MountEntry{
 			Name: "tmpfs", Dir: "/rofs", Type: "tmpfs",
-			Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/target", "mode=0755", "uid=0", "gid=0"}},
+			Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/target", "mode=0755", "uid=0", "gid=0", "shared"}},
 		},
 	})
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
@@ -1471,6 +1473,7 @@ func (s *changeSuite) TestPerformDirectoryBindMountWithoutMountSourceAndReadOnly
 		{C: `close 4`},
 		{C: `lstat "/rofs"`, R: testutil.FileInfoDir},
 		{C: `mount "tmpfs" "/rofs" "tmpfs" 0 "mode=0755,uid=0,gid=0"`},
+		{C: `mount "none" "/rofs" "" MS_SHARED ""`},
 		{C: `mount "none" "/tmp/.snap/rofs" "" MS_REC|MS_PRIVATE ""`},
 		{C: `unmount "/tmp/.snap/rofs" UMOUNT_NOFOLLOW|MNT_DETACH`},
 
@@ -1811,7 +1814,7 @@ func (s *changeSuite) TestPerformFileBindMountWithoutMountPointAndReadOnlyBase(c
 	c.Assert(synth, DeepEquals, []*update.Change{
 		{Action: update.Mount, Entry: osutil.MountEntry{
 			Name: "tmpfs", Dir: "/rofs", Type: "tmpfs",
-			Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/rofs/target", "mode=0755", "uid=0", "gid=0"}},
+			Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/rofs/target", "mode=0755", "uid=0", "gid=0", "shared"}},
 		},
 	})
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
@@ -1864,6 +1867,7 @@ func (s *changeSuite) TestPerformFileBindMountWithoutMountPointAndReadOnlyBase(c
 
 		{C: `lstat "/rofs"`, R: testutil.FileInfoDir},
 		{C: `mount "tmpfs" "/rofs" "tmpfs" 0 "mode=0755,uid=0,gid=0"`},
+		{C: `mount "none" "/rofs" "" MS_SHARED ""`},
 		{C: `mount "none" "/tmp/.snap/rofs" "" MS_REC|MS_PRIVATE ""`},
 		{C: `unmount "/tmp/.snap/rofs" UMOUNT_NOFOLLOW|MNT_DETACH`},
 
@@ -2205,7 +2209,7 @@ func (s *changeSuite) TestPerformCreateSymlinkWithoutBaseDirAndReadOnlyBase(c *C
 	c.Assert(synth, DeepEquals, []*update.Change{
 		{Action: update.Mount, Entry: osutil.MountEntry{
 			Name: "tmpfs", Dir: "/rofs", Type: "tmpfs",
-			Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/rofs/name", "mode=0755", "uid=0", "gid=0"}},
+			Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/rofs/name", "mode=0755", "uid=0", "gid=0", "shared"}},
 		},
 	})
 	c.Assert(s.sys.RCalls(), testutil.SyscallsEqual, []testutil.CallResultError{
@@ -2259,6 +2263,7 @@ func (s *changeSuite) TestPerformCreateSymlinkWithoutBaseDirAndReadOnlyBase(c *C
 
 		{C: `lstat "/rofs"`, R: testutil.FileInfoDir},
 		{C: `mount "tmpfs" "/rofs" "tmpfs" 0 "mode=0755,uid=0,gid=0"`},
+		{C: `mount "none" "/rofs" "" MS_SHARED ""`},
 		{C: `mount "none" "/tmp/.snap/rofs" "" MS_REC|MS_PRIVATE ""`},
 		{C: `unmount "/tmp/.snap/rofs" UMOUNT_NOFOLLOW|MNT_DETACH`},
 
@@ -2391,7 +2396,7 @@ func (s *changeSuite) TestPerformCreateSymlinkWithAvoidedTrespassing(c *C) {
 	c.Check(synth, HasLen, 2)
 	// We have created some synthetic change (made /etc a new tmpfs and re-populate it)
 	c.Assert(synth[0], DeepEquals, &update.Change{
-		Entry:  osutil.MountEntry{Name: "tmpfs", Dir: "/etc", Type: "tmpfs", Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/etc/demo.conf", "mode=0755", "uid=0", "gid=0"}},
+		Entry:  osutil.MountEntry{Name: "tmpfs", Dir: "/etc", Type: "tmpfs", Options: []string{"x-snapd.synthetic", "x-snapd.needed-by=/etc/demo.conf", "mode=0755", "uid=0", "gid=0", "shared"}},
 		Action: "mount"})
 	c.Assert(synth[1], DeepEquals, &update.Change{
 		Entry:  osutil.MountEntry{Name: "/etc/other.conf", Dir: "/etc/other.conf", Options: []string{"bind", "x-snapd.kind=file", "x-snapd.synthetic", "x-snapd.needed-by=/etc/demo.conf"}},
@@ -2470,6 +2475,7 @@ func (s *changeSuite) TestPerformCreateSymlinkWithAvoidedTrespassing(c *C) {
 
 		{C: `lstat "/etc"`, R: testutil.FileInfoDir},
 		{C: `mount "tmpfs" "/etc" "tmpfs" 0 "mode=0755,uid=0,gid=0"`},
+		{C: `mount "none" "/etc" "" MS_SHARED ""`},
 		// Here we restore the contents of /etc: here it's just one file - other.conf
 		{C: `lstat "/etc/other.conf"`, R: otherConfInfo},
 		{C: `lstat "/tmp/.snap/etc/other.conf"`, E: syscall.ENOENT},
