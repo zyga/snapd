@@ -716,6 +716,7 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config)
 		sc_do_mount(sc_snap_mount_dir(NULL), dst, NULL,
 			    MS_BIND | MS_REC, NULL);
 		sc_do_mount("none", dst, NULL, MS_REC | MS_SLAVE, NULL);
+		sc_do_mount("none", dst, NULL, MS_REC | MS_SHARED, NULL);
 	}
 	// Ensure that hostfs exists and is group-owned by root. We may have (now
 	// or earlier) created the directory as the user who first ran a snap on a

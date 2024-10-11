@@ -315,6 +315,7 @@ func (s *specSuite) TestApparmorSnippetsFromLayout(c *C) {
   mount options=(rbind, rw) "/etc/" -> "/tmp/.snap/etc/",
   # Allow mounting tmpfs over the read-only directory.
   mount fstype=tmpfs options=(rw) tmpfs -> "/etc/",
+  mount options=(rw, shared) -> "/etc/",
   # Allow creating empty files and directories for bind mounting things
   # to reconstruct the now-writable parent directory.
   "/tmp/.snap/etc/*/" rw,
@@ -344,6 +345,7 @@ func (s *specSuite) TestApparmorSnippetsFromLayout(c *C) {
   "/tmp/.snap/snap/vanguard/42/" rw,
   mount options=(rbind, rw) "/snap/vanguard/42/" -> "/tmp/.snap/snap/vanguard/42/",
   mount fstype=tmpfs options=(rw) tmpfs -> "/snap/vanguard/42/",
+  mount options=(rw, shared) -> "/snap/vanguard/42/",
   "/tmp/.snap/snap/vanguard/42/*/" rw,
   "/snap/vanguard/42/*/" rw,
   mount options=(rbind, rw) "/tmp/.snap/snap/vanguard/42/*/" -> "/snap/vanguard/42/*/",
@@ -375,6 +377,7 @@ func (s *specSuite) TestApparmorSnippetsFromLayout(c *C) {
   "/tmp/.snap/usr/" rw,
   mount options=(rbind, rw) "/usr/" -> "/tmp/.snap/usr/",
   mount fstype=tmpfs options=(rw) tmpfs -> "/usr/",
+  mount options=(rw, shared) -> "/usr/",
   "/tmp/.snap/usr/*/" rw,
   "/usr/*/" rw,
   mount options=(rbind, rw) "/tmp/.snap/usr/*/" -> "/usr/*/",
@@ -395,6 +398,7 @@ func (s *specSuite) TestApparmorSnippetsFromLayout(c *C) {
   "/tmp/.snap/snap/vanguard/42/usr/" rw,
   mount options=(rbind, rw) "/snap/vanguard/42/usr/" -> "/tmp/.snap/snap/vanguard/42/usr/",
   mount fstype=tmpfs options=(rw) tmpfs -> "/snap/vanguard/42/usr/",
+  mount options=(rw, shared) -> "/snap/vanguard/42/usr/",
   "/tmp/.snap/snap/vanguard/42/usr/*/" rw,
   "/snap/vanguard/42/usr/*/" rw,
   mount options=(rbind, rw) "/tmp/.snap/snap/vanguard/42/usr/*/" -> "/snap/vanguard/42/usr/*/",
@@ -424,6 +428,7 @@ func (s *specSuite) TestApparmorSnippetsFromLayout(c *C) {
   "/tmp/.snap/var/" rw,
   mount options=(rbind, rw) "/var/" -> "/tmp/.snap/var/",
   mount fstype=tmpfs options=(rw) tmpfs -> "/var/",
+  mount options=(rw, shared) -> "/var/",
   "/tmp/.snap/var/*/" rw,
   "/var/*/" rw,
   mount options=(rbind, rw) "/tmp/.snap/var/*/" -> "/var/*/",
@@ -443,6 +448,7 @@ func (s *specSuite) TestApparmorSnippetsFromLayout(c *C) {
   "/tmp/.snap/var/cache/" rw,
   mount options=(rbind, rw) "/var/cache/" -> "/tmp/.snap/var/cache/",
   mount fstype=tmpfs options=(rw) tmpfs -> "/var/cache/",
+  mount options=(rw, shared) -> "/var/cache/",
   "/tmp/.snap/var/cache/*/" rw,
   "/var/cache/*/" rw,
   mount options=(rbind, rw) "/tmp/.snap/var/cache/*/" -> "/var/cache/*/",

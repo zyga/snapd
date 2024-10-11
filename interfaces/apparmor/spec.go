@@ -549,6 +549,7 @@ func GenWritableMimicProfile(emit func(f string, args ...interface{}), path stri
 		emit("  mount options=(rbind, rw) \"%s\" -> \"%s\",\n", mimicPath, mimicAuxPath)
 		emit("  # Allow mounting tmpfs over the read-only directory.\n")
 		emit("  mount fstype=tmpfs options=(rw) tmpfs -> \"%s\",\n", mimicPath)
+		emit("  mount options=(rw, shared) -> \"%s\",\n", mimicPath)
 		emit("  # Allow creating empty files and directories for bind mounting things\n" +
 			"  # to reconstruct the now-writable parent directory.\n")
 		emit("  \"%s*/\" rw,\n", mimicAuxPath)

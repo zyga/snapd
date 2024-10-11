@@ -295,6 +295,7 @@
     # the /snap directory
     mount options=(rw rbind) @{SNAP_MOUNT_DIR_LIST}/ -> /tmp/snap.rootfs_*/snap/,
     mount options=(rw rslave) -> /tmp/snap.rootfs_*/snap/,
+    mount options=(rw rshared) -> /tmp/snap.rootfs_*/snap/,
     # pivot_root preparation and execution
     mount options=(rw bind) /tmp/snap.rootfs_*/var/lib/snapd/hostfs/ -> /tmp/snap.rootfs_*/var/lib/snapd/hostfs/,
     mount options=(rw private) -> /tmp/snap.rootfs_*/var/lib/snapd/hostfs/,
