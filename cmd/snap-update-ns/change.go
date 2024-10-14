@@ -687,6 +687,13 @@ func neededChanges(currentProfile, desiredProfile *osutil.MountProfile) []*Chang
 		}
 	}
 
+	for _, e := range current {
+		if e.XSnapdSynthetic() {
+			logger.Debugf("not reusing synthetic %q due to content-laytout interactions", e.Dir)
+			delete(reuse, mountEntryId{dir: e.Dir, fsType: e.Type})
+		}
+	}
+
 	logger.Debugf("desiredIDs: %v", desiredIDs)
 	logger.Debugf("reuse: %v", reuse)
 
