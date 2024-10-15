@@ -26,6 +26,23 @@ import (
 	"github.com/snapcore/snapd/osutil"
 )
 
+func (s *changeSuite) TestContentLayout0InitialConstruction(c *C) {
+	current := &osutil.MountProfile{}
+	desired, err := osutil.LoadMountProfile("testdata/usr-share-secureboot-potato/content-layout-1-initially-connected.desired.fstab")
+	c.Assert(err, IsNil)
+	changes := update.NeededChanges(current, desired)
+	showCurrentDesiredAndChanges(c, current, desired, changes)
+
+	c.Assert(changes, DeepEquals, []*update.Change{
+		// Since e2042477cc37f348b79c6e31f12ad5f84ef53ab3 (cmd/snap-update-ns:
+		// apply content mounts before layouts), layouts have lowest priority.
+		// The 2nd entry (desired.Entries[1]) is the content entry.
+		// The 1st entry (desired.Entries[0]) is the layout entry.
+		{Action: "mount", Entry: desired.Entries[1]},
+		{Action: "mount", Entry: desired.Entries[0]},
+	})
+}
+
 func (s *changeSuite) TestContentLayout1InitiallyConnected(c *C) {
 	// NOTE: This doesn't measure what is going on during construction. It
 	// merely measures what is constructed is stable and that it does not cause
