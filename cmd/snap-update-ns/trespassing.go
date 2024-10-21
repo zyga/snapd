@@ -214,6 +214,8 @@ func (rs *Restrictions) Check(dirFd int, dirName string) error {
 	if ok || err != nil {
 		return err
 	}
+	// TODO: This is not really true since snap-confine was modified to always
+	// to a mimic over the base snap. This needs re-thinking.
 	if dirName == "/" {
 		// If writing to / is not allowed then we are in a tough spot because
 		// we cannot construct a writable mimic over /. This should never
