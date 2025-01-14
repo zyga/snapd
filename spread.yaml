@@ -114,6 +114,46 @@ environment:
     USE_SNAPD_SNAP_URL: '$(HOST: echo "${SPREAD_USE_SNAPD_SNAP_URL:-}")'
 
 backends:
+    garden:
+        type: adhoc
+        # Convert snapd convention of system names to image-garden convention.
+        # It is important because a lot of the code looks at $SPREAD_SYSTEM.
+        allocate: |
+          export QEMU_MEM_OPTION="-m 2048"
+          export QEMU_SMP_OPTION="-smp $(nproc)"
+          exec image-garden allocate "$(echo "$SPREAD_SYSTEM" | sed -e 's/\(\w\+\)/\1-cloud/' -e 's/-64$/.'"$(uname -m)"'/g')"
+        discard: exec image-garden discard "$SPREAD_SYSTEM_ADDRESS"
+        systems:
+            - debian-11-64:
+                  username: debian
+                  password: debian
+            - debian-12-64:
+                  username: debian
+                  password: debian
+            - debian-13-64:
+                  username: debian
+                  password: debian
+            - ubuntu-16.04-64:
+                  username: ubuntu
+                  password: ubuntu
+            - ubuntu-18.04-64:
+                  username: ubuntu
+                  password: ubuntu
+            - ubuntu-20.04-64:
+                  username: ubuntu
+                  password: ubuntu
+            - ubuntu-22.04-64:
+                  username: ubuntu
+                  password: ubuntu
+            - ubuntu-24.04-64:
+                  username: ubuntu
+                  password: ubuntu
+            - ubuntu-24.10-64:
+                  username: ubuntu
+                  password: ubuntu
+            - ubuntu-25.04-64:
+                  username: ubuntu
+                  password: ubuntu
     google:
         key: '$(HOST: echo "$SPREAD_GOOGLE_KEY")'
         location: snapd-spread/europe-west2-b
@@ -604,6 +644,10 @@ exclude:
     - "*.pyc"
     - ./vendor
     - "*.snap"
+    - "*.qcow2"
+    - "*.log"
+    - "*.iso"
+    - "*.img"
 
 debug-each: |
     if [ "$SPREAD_DEBUG_EACH" != 1 ]; then
