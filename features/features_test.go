@@ -65,6 +65,7 @@ func (*featureSuite) TestName(c *C) {
 	check(features.ConfdbControl, "confdb-control")
 	check(features.AppArmorPrompting, "apparmor-prompting")
 	check(features.GPIOChardevInterface, "gpio-chardev-interface")
+	check(features.BidirectionalMountRunUser, "bidirectional-mount-run-user")
 
 	c.Check(tested, Equals, features.NumberOfFeatures())
 	c.Check(func() { _ = features.SnapdFeature(1000).String() }, PanicMatches, "unknown feature flag code 1000")
@@ -106,6 +107,7 @@ func (*featureSuite) TestIsExported(c *C) {
 	check(features.ConfdbControl, false)
 	check(features.AppArmorPrompting, true)
 	check(features.GPIOChardevInterface, true)
+	check(features.BidirectionalMountRunUser, true)
 
 	c.Check(tested, Equals, features.NumberOfFeatures())
 }
@@ -232,6 +234,7 @@ func (*featureSuite) TestIsEnabledWhenUnset(c *C) {
 	check(features.AppArmorPrompting, false)
 	check(features.ConfdbControl, false)
 	check(features.GPIOChardevInterface, false)
+	check(features.BidirectionalMountRunUser, false)
 
 	c.Check(tested, Equals, features.NumberOfFeatures())
 }
@@ -245,6 +248,7 @@ func (*featureSuite) TestControlFile(c *C) {
 	c.Check(features.RefreshAppAwarenessUX.ControlFile(), Equals, "/var/lib/snapd/features/refresh-app-awareness-ux")
 	c.Check(features.Confdb.ControlFile(), Equals, "/var/lib/snapd/features/confdb")
 	c.Check(features.AppArmorPrompting.ControlFile(), Equals, "/var/lib/snapd/features/apparmor-prompting")
+	c.Check(features.BidirectionalMountRunUser.ControlFile(), Equals, "/var/lib/snapd/features/bidirectional-mount-run-user")
 	// Features that are not exported don't have a control file.
 	c.Check(features.Layouts.ControlFile, PanicMatches, `cannot compute the control file of feature "layouts" because that feature is not exported`)
 }

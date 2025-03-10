@@ -45,6 +45,9 @@ bool sc_feature_enabled(sc_feature_flag flag) {
         case SC_FEATURE_HIDDEN_SNAP_FOLDER:
             file_name = "hidden-snap-folder";
             break;
+        case SC_FEATURE_BIDIRECTIONAL_MOUNT_RUN_USER:
+            file_name = "bidirectional-mount-run-user";
+            break;
         default:
             die("unknown feature flag code %d", flag);
     }

@@ -41,6 +41,7 @@
 #include "../libsnap-confine-private/apparmor-support.h"
 #include "../libsnap-confine-private/classic.h"
 #include "../libsnap-confine-private/cleanup-funcs.h"
+#include "../libsnap-confine-private/feature.h"
 #include "../libsnap-confine-private/mount-opt.h"
 #include "../libsnap-confine-private/mountinfo.h"
 #include "../libsnap-confine-private/snap-dir.h"
@@ -186,6 +187,8 @@ struct sc_mount {
     // Optional mount points are not processed unless the source and
     // destination both exist.
     bool is_optional;
+    // Feature flag controlling this mount entry.
+    sc_feature_flag feature;
 };
 
 struct sc_mount_config {
@@ -207,6 +210,11 @@ static void sc_create_mount_points(const char *scratch_dir, const struct sc_moun
     char dst[PATH_MAX] = {0};
     sc_identity old = sc_set_effective_identity(sc_root_group_identity());
     for (const struct sc_mount *mnt = mounts; mnt && mnt->path != NULL; mnt++) {
+        if (mnt->feature != 0) {
+            if (!sc_feature_enabled(mnt->feature)) {
+                continue;
+            }
+        }
         sc_must_snprintf(dst, sizeof(dst), "%s/%s", scratch_dir, mnt->path);
         if (sc_nonfatal_mkpath(dst, 0755) < 0) {
             die("cannot create mount point %s", dst);
@@ -235,6 +243,12 @@ static void sc_do_mounts(const char *scratch_dir, const struct sc_mount *mounts)
     // state visible on the host and in other snaps. This can be restricted by
     // disabling the "is_bidirectional" flag as can be seen below.
     for (const struct sc_mount *mnt = mounts; mnt && mnt->path != NULL; mnt++) {
+        if (mnt->feature != 0) {
+            if (!sc_feature_enabled(mnt->feature)) {
+                continue;
+            }
+        }
+
         if (mnt->is_bidirectional) {
             sc_identity old = sc_set_effective_identity(sc_root_group_identity());
             if (mkdir(mnt->path, 0755) < 0 && errno != EEXIST) {
@@ -897,6 +911,10 @@ void sc_populate_mount_ns(struct sc_apparmor *apparmor, int snap_update_ns_fd, c
             {.path = "/media", .is_bidirectional = true},  // access to the users removable devices
 #endif                                                         // MERGED_USR
             {.path = "/run/netns", .is_bidirectional = true},  // access to the 'ip netns' network namespaces
+            // The /mnt directory is optional in base snaps to ensure backwards
+            // compatibility with the first version of base snaps that was
+            // released.
+            {.path = "/run/user", .is_bidirectional = true, .feature = SC_FEATURE_BIDIRECTIONAL_MOUNT_RUN_USER},  // access to the 'ip netns' network namespaces
             // The /mnt directory is optional in base snaps to ensure backwards
             // compatibility with the first version of base snaps that was
             // released.

@@ -77,6 +77,8 @@ const (
 	AppArmorPrompting
 	// GPIOChardevInterface enables experimental gpio-chardev interface.
 	GPIOChardevInterface
+	// BidirectionalMountRunUser allows mounts in /run/user to propagate from the per-snap mount namespaces.
+	BidirectionalMountRunUser
 
 	// lastFeature is the final known feature, it is only used for testing.
 	lastFeature
@@ -128,6 +130,8 @@ var featureNames = map[SnapdFeature]string{
 	AppArmorPrompting: "apparmor-prompting",
 
 	GPIOChardevInterface: "gpio-chardev-interface",
+
+	BidirectionalMountRunUser: "bidirectional-mount-run-user",
 }
 
 // featuresEnabledWhenUnset contains a set of features that are enabled when not explicitly configured.
@@ -152,6 +156,8 @@ var featuresExported = map[SnapdFeature]bool{
 	Confdb:                true,
 	AppArmorPrompting:     true,
 	GPIOChardevInterface:  true,
+
+	BidirectionalMountRunUser: true,
 }
 
 var (

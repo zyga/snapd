@@ -202,6 +202,9 @@
     # should be handled here.
     /{,run/}media/ w,
     mount options=(rw rbind) /{,run/}media/ -> /tmp/snap.rootfs_*/{,run/}media/,
+    # bidirectional mounts for /run/user/
+    /run/user/ w,
+    mount options=(rw rbind) /run/user/ -> /tmp/snap.rootfs_*/run/user/,
     /run/netns/ w,
     mount options=(rw rbind) /run/netns/ -> /tmp/snap.rootfs_*/run/netns/,
     # unidirectional mounts (only for classic system)

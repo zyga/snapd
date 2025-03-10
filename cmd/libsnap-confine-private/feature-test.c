@@ -92,10 +92,24 @@ static void test_feature_hidden_snap_folder(void) {
     g_assert_true(sc_feature_enabled(SC_FEATURE_HIDDEN_SNAP_FOLDER));
 }
 
+static void test_feature_bidirectional_mount_run_user(void) {
+    const char *d = sc_testdir();
+    sc_mock_feature_flag_dir(d);
+
+    g_assert_false(sc_feature_enabled(SC_FEATURE_BIDIRECTIONAL_MOUNT_RUN_USER));
+
+    char pname[PATH_MAX];
+    sc_must_snprintf(pname, sizeof pname, "%s/bidirectional-mount-run-user", d);
+    g_assert_true(g_file_set_contents(pname, "", -1, NULL));
+
+    g_assert_true(sc_feature_enabled(SC_FEATURE_BIDIRECTIONAL_MOUNT_RUN_USER));
+}
+
 static void __attribute__((constructor)) init(void) {
     g_test_add_func("/feature/missing_dir", test_feature_enabled__missing_dir);
     g_test_add_func("/feature/missing_file", test_feature_enabled__missing_file);
     g_test_add_func("/feature/present_file", test_feature_enabled__present_file);
     g_test_add_func("/feature/parallel_instances", test_feature_parallel_instances);
     g_test_add_func("/feature/hidden_snap_folder", test_feature_hidden_snap_folder);
+    g_test_add_func("/feature/bidirectional-mount-run-user", test_feature_bidirectional_mount_run_user);
 }
