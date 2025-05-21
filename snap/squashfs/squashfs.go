@@ -592,7 +592,7 @@ func (s *Snap) Build(sourceDir string, opts *BuildOpts) error {
 	switch snapType {
 	case "os", "core", "base", "snapd":
 		// -xattrs is default, but let's be explicit about it
-		cmd.Args = append(cmd.Args, "-xattrs")
+		cmd.Args = append(cmd.Args, "-xattrs", "-xattrs-exclude", "^security.selinux")
 	default:
 		cmd.Args = append(cmd.Args, "-all-root", "-no-xattrs")
 	}

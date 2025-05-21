@@ -791,7 +791,7 @@ func (s *SquashfsTestSuite) TestBuildSupportsMultipleExcludesWithOnlyOneWildcard
 		// the usual:
 		"mksquashfs", ".", snapPath, "-noappend", "-comp", "xz", "-no-fragments", "-no-progress",
 		// the interesting bits:
-		"-wildcards", "-ef", "exclude1", "-ef", "exclude2", "-ef", "exclude3", "-xattrs",
+		"-wildcards", "-ef", "exclude1", "-ef", "exclude2", "-ef", "exclude3", "-xattrs", "-xattrs-exclude", "^security.selinux",
 	})
 }
 
@@ -865,7 +865,7 @@ func (s *SquashfsTestSuite) TestBuildVariesArgsByType(c *C) {
 	snap := squashfs.New(filename)
 
 	commonTypeArgs := []string{".", filename, "-noappend", "-comp", "xz", "-no-fragments", "-no-progress"}
-	permissiveTypeArgs := append(commonTypeArgs, "-xattrs")
+	permissiveTypeArgs := append(commonTypeArgs, "-xattrs", "-xattrs-exclude", "^security.selinux")
 	restrictedTypeArgs := append(commonTypeArgs, "-all-root", "-no-xattrs")
 	tests := []struct {
 		snapType string
