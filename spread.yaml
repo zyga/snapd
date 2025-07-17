@@ -620,6 +620,14 @@ backends:
             # - opensuse-tumbleweed-64  => opensuse-cloud-tumbleweed.$(uname -m)
             # - ubuntu-24.04-64         => ubuntu-cloud-24.04.$(uname -m)
             # - ubuntu-core-24-64       => ubuntu-cloud-24.04.$(uname -m)
+            #
+            # Apart from the system name mapping, expose the CACHE directory as
+            # a read-only 9p file system to the guest. If the guest chooses to
+            # mount it, it can obtain high-performance access to local
+            # resources. This is preferred to the built-in tar-based delivery
+            # system, as compressing and serializing large files is expensive.
+            # In contrast 9p exposes files as they are requested and has much
+            # lower overhead.
             exec image-garden allocate "$(echo "$SPREAD_SYSTEM" | sed \
               -e 's/ubuntu-core-16/ubuntu-16.04/' \
               -e 's/ubuntu-core-18/ubuntu-18.04/' \
@@ -628,7 +636,8 @@ backends:
               -e 's/ubuntu-core-24/ubuntu-24.04/' \
               -e 's/\(\w\+\)-linux/\1linux/' \
               -e 's/\(\w\+\)/\1-cloud/' \
-              -e 's/-64$/.'"$(uname -m)"'/g')"
+              -e 's/-64$/.'"$(uname -m)"'/g')" \
+              -virtfs local,path=$PWD/.image-garden/cache,mount_tag=CACHE,security_model=mapped
         discard: |
             # Spread automatically injects /snap/bin to PATH. When we are
             # running from the image-garden snap then SPREAD_HOST_PATH is the

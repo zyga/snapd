@@ -406,6 +406,25 @@ prepare_classic() {
     # Configure the proxy in the system when it is required
     setup_system_proxy   
 
+    # On garden systems, attempt to mount the CACHE 9p filesystem at /run/hostcache.
+    if [ "$SPREAD_BACKEND" = garden ]; then
+	cat >/etc/systemd/system/run-hostcache.mount <<__MOUNT__
+[Unit]
+Description=Mount image-garden host-guest cache
+
+[Mount]
+What=CACHE
+Where=/run/hostcache
+Type=9p
+Options=trans=virtio,version=9p2000.L
+
+[Install]
+WantedBy=multi-user.target
+__MOUNT__
+	systemctl daemon-reload
+	systemctl enable --now run-hostcache.mount
+    fi
+
     # Skip building snapd when REUSE_SNAPD is set to 1
     if [ "$REUSE_SNAPD" != 1 ]; then
         distro_install_build_snapd
