@@ -19,7 +19,11 @@ mkdir -p built-snap
 
 # Build snapd snap
 if [ -z "$SNAPCRAFT_NO_CLEAN" ]; then
-    snapcraft --verbose clean
+    # XXX: Clean only the snapd part. This is most commonly needed as snapcraft
+    # has a well-known problem with incremental builds that remove files from
+    # the source tree. By cleaning only one part of the snap, we avoid the very
+    # costly rebuild of libc and apparmor.
+    snapcraft --verbose clean snapd
 fi
 
 snapcraft --verbose
