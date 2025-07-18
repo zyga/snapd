@@ -164,7 +164,8 @@ type Store struct {
 	mu                sync.Mutex
 	suggestedCurrency string
 
-	cacher downloadCache
+	cacher1 downloadCache
+	cacher2 downloadCache
 
 	proxy              func(*http.Request) (*url.URL, error)
 	proxyConnectHeader http.Header
@@ -427,6 +428,11 @@ func New(cfg *Config, dauthCtx DeviceAndAuthContext) *Store {
 	store.auth = auth
 
 	store.SetCacheDownloads(cfg.CacheDownloads)
+	if d := os.Getenv("SNAPD_FOREVER_CACHE_DIR"); d != "" {
+		store.cacher2 = ForeverCache(d)
+	} else {
+		store.cacher2 = nullCache{}
+	}
 
 	return store
 }

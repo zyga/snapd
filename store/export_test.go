@@ -179,10 +179,10 @@ func MockApplyDelta(f func(s *Store, name string, deltaPath string, deltaInfo *s
 }
 
 func (sto *Store) MockCacher(obs downloadCache) (restore func()) {
-	oldCacher := sto.cacher
-	sto.cacher = obs
+	oldCacher := sto.cacher1
+	sto.cacher1 = obs
 	return func() {
-		sto.cacher = oldCacher
+		sto.cacher1 = oldCacher
 	}
 }
 

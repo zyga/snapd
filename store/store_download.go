@@ -204,7 +204,12 @@ func (s *Store) Download(ctx context.Context, name string, targetPath string, do
 		return err
 	}
 
-	if s.cacher.Get(downloadInfo.Sha3_384, targetPath) {
+	cacheHit := s.cacher1.Get(downloadInfo.Sha3_384, targetPath)
+	if !cacheHit {
+		cacheHit = s.cacher2.Get(downloadInfo.Sha3_384, targetPath)
+	}
+
+	if cacheHit {
 		logger.Debugf("Cache hit for SHA3_384 …%.5s.", downloadInfo.Sha3_384)
 		return nil
 	}
@@ -215,12 +220,14 @@ func (s *Store) Download(ctx context.Context, name string, targetPath string, do
 		if len(downloadInfo.Deltas) == 1 {
 			err := s.downloadAndApplyDelta(name, targetPath, downloadInfo, pbar, user, dlOpts)
 			if err == nil {
-				// try to place the file in the cacher
-				if err = s.cacher.Put(downloadInfo.Sha3_384, targetPath); err == nil {
-					// file is in the cache now
-					return nil
-				} else {
+				if err := s.cacher2.Put(downloadInfo.Sha3_384, targetPath); err != nil {
 					logger.Noticef("Cannot place rebuilt blob for %s in cache: %v", name, err)
+				}
+				if err := s.cacher1.Put(downloadInfo.Sha3_384, targetPath); err != nil {
+					logger.Noticef("Cannot place rebuilt blob for %s in cache: %v", name, err)
+				} else {
+					// Upkeep API contract.
+					return nil
 				}
 			} else {
 				// We revert to normal downloads if there is any error.
@@ -306,7 +313,17 @@ func (s *Store) Download(ctx context.Context, name string, targetPath string, do
 		return err
 	}
 
-	return s.cacher.Put(downloadInfo.Sha3_384, targetPath)
+	if err := s.cacher2.Put(downloadInfo.Sha3_384, targetPath); err != nil {
+		logger.Noticef("Cannot place downloaded blob for %s in cache: %v", name, err)
+	}
+
+	if err := s.cacher1.Put(downloadInfo.Sha3_384, targetPath); err != nil {
+		logger.Noticef("Cannot place downloaded blob for %s in cache: %v", name, err)
+		// Fail to upkeep API contract.
+		return err
+	}
+
+	return nil
 }
 
 var errIconUnchanged = errors.New("existing icon unchanged")
@@ -778,10 +795,14 @@ func (s *Store) DownloadStream(ctx context.Context, name string, downloadInfo *s
 		return nil, 0, err
 	}
 
-	// XXX: coverage of this is rather poor
-	if path := s.cacher.GetPath(downloadInfo.Sha3_384); path != "" {
+	cachePath := s.cacher1.GetPath(downloadInfo.Sha3_384)
+	if cachePath == "" {
+		cachePath = s.cacher2.GetPath(downloadInfo.Sha3_384)
+	}
+
+	if cachePath != "" {
 		logger.Debugf("Cache hit for SHA3_384 …%.5s.", downloadInfo.Sha3_384)
-		file, err := os.OpenFile(path, os.O_RDONLY, 0600)
+		file, err := os.Open(cachePath)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -939,8 +960,8 @@ func (s *Store) CacheDownloads() int {
 func (s *Store) SetCacheDownloads(fileCount int) {
 	s.cfg.CacheDownloads = fileCount
 	if fileCount > 0 {
-		s.cacher = NewCacheManager(dirs.SnapDownloadCacheDir, fileCount)
+		s.cacher1 = NewCacheManager(dirs.SnapDownloadCacheDir, fileCount)
 	} else {
-		s.cacher = &nullCache{}
+		s.cacher1 = nullCache{}
 	}
 }

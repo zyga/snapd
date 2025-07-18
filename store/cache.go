@@ -22,6 +22,8 @@ package store
 import (
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -49,13 +51,13 @@ type downloadCache interface {
 // nullCache is cache that does not cache
 type nullCache struct{}
 
-func (cm *nullCache) Get(cacheKey, targetPath string) bool {
+func (cm nullCache) Get(cacheKey, targetPath string) bool {
 	return false
 }
-func (cm *nullCache) GetPath(cacheKey string) string {
+func (cm nullCache) GetPath(cacheKey string) string {
 	return ""
 }
-func (cm *nullCache) Put(cacheKey, sourcePath string) error { return nil }
+func (cm nullCache) Put(cacheKey, sourcePath string) error { return nil }
 
 // changesByMtime sorts by the mtime of files
 type changesByMtime []os.FileInfo
@@ -224,4 +226,75 @@ func hardLinkCount(fi os.FileInfo) (uint64, error) {
 		return uint64(stat.Nlink), nil
 	}
 	return 0, fmt.Errorf("internal error: cannot read hardlink count from %s", fi.Name())
+}
+
+// ForeverCache implements a cache that never removes existing elements.
+type ForeverCache string
+
+// GetPath returns the path of the cached element if one exists.
+func (c ForeverCache) GetPath(cacheKey string) string {
+	p := filepath.Join(string(c), cacheKey)
+	if fi, err := os.Stat(p); err == nil && fi.Mode().IsRegular() {
+		return p
+	}
+
+	return ""
+}
+
+// Get retrieves the given cacheKey content and puts it into targetPath. Returns
+// true if a cached file was copied to targetPath or if one was already there.
+func (c ForeverCache) Get(cacheKey, targetPath string) bool {
+	sourcePath := filepath.Join(string(c), cacheKey)
+
+	src, err := os.Open(sourcePath)
+	if err != nil {
+		return false
+	}
+	defer src.Close()
+
+	dst, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0o644)
+	if err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			return true
+		}
+
+		return false
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		_ = dst.Close()
+		_ = os.Remove(targetPath)
+		return false
+	}
+
+	logger.Debugf("Using forever cache for %s", targetPath)
+
+	return true
+}
+
+// Put adds a new file to the cache with the given cacheKey
+func (c ForeverCache) Put(cacheKey, sourcePath string) error {
+	targetPath := filepath.Join(string(c), cacheKey)
+
+	src, err := os.Open(sourcePath)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	dst, err := osutil.NewAtomicFile(targetPath, 0o644, 0, osutil.NoChown, osutil.NoChown)
+	if err != nil {
+		return err
+	}
+
+	// on success, Cancel becomes a no-op
+	defer dst.Cancel()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		_ = dst.Close()
+		return err
+	}
+
+	return dst.Commit()
 }
