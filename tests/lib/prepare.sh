@@ -105,6 +105,31 @@ EOF
     systemctl restart snapd.service
 }
 
+setup_snapd_forever_cache() {
+    if [ -z "${SNAPD_FOREVER_CACHE_DIR:-}" ]; then
+	    return
+    fi
+
+    # Create the directory. The cache is a no-op if the directory does not
+    # exist ahead of time.
+    mkdir -p "${SNAPD_FOREVER_CACHE_DIR}"
+
+    mkdir -p /etc/systemd/system/snapd.service.d
+    cat <<EOF > /etc/systemd/system/snapd.service.d/forever-cache.conf
+[Service]
+Environment=SNAPD_FOREVER_CACHE_DIR=$SNAPD_FOREVER_CACHE_DIR
+
+[Unit]
+RequiresMountsFor=$SNAPD_FOREVER_CACHE_DIR
+EOF
+
+    # We change the service configuration so reload and restart
+    # the units to get them applied
+    systemctl daemon-reload
+    # restart the service (it pulls up the socket)
+    systemctl restart snapd.service
+}
+
 setup_system_proxy() {
     mkdir -p "$SNAPD_WORK_DIR"
     if [ "${SNAPD_USE_PROXY:-}" = true ]; then    
@@ -484,6 +509,7 @@ __MOUNT__
     snap list snapd
 
     setup_snapd_proxy
+    setup_snapd_forever_cache
 
     mount_dir="$(os.paths snap-mount-dir)"
     if ! getcap "$mount_dir"/snapd/current/usr/lib/snapd/snap-confine | grep "cap_sys_admin"; then
@@ -1756,6 +1782,7 @@ prepare_ubuntu_core() {
         REBOOT
     fi
     setup_snapd_proxy
+    setup_snapd_forever_cache
 
     # We setup the ntp server in case it is defined in the current env
     # This is not needed in classic systems becuase the images already have ntp configured

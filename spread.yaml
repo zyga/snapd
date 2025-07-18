@@ -650,6 +650,12 @@ backends:
             fi
             # Stop the running qemu instance corresponding to the given address.
             exec image-garden discard "$SPREAD_SYSTEM_ADDRESS"
+        environment:
+            # Set the environment variable SNAPD_FOREVER_CACHE_DIR which allows
+            # snapd to cache snaps, forever, on the host, making iterative
+            # development much faster due to significant reduction of network
+            # traffic.
+            SNAPD_FOREVER_CACHE_DIR: /run/hostcache/snaps
         systems:
             - ubuntu-core-16-64:
                   image: ubuntu-16.04-64
