@@ -89,10 +89,28 @@ type mount struct {
 	mountID    MountID
 	parentID   MountID
 	parent     *mount // Parent mount, possibly nil.
-	mountPoint string // Path of the mount point in the VFS. This might be a file.
+	attachedAt string // attached at the given point in the parent mount.
 	rootDir    string // Path of fsFS that is actually mounted.
 	isDir      bool   // Mount is attached to a directory.
 	fsFS       fs.StatFS
+}
+
+func (m *mount) mountPoint() string {
+	if m == nil {
+		return ""
+	}
+
+	p := m.parent.mountPoint() // This is safe to call on nil parent due to the check just above.
+	switch {
+	case p != "" && m.attachedAt != "":
+		return p + "/" + m.attachedAt
+	case p != "":
+		return p
+	case m.attachedAt != "":
+		return m.attachedAt
+	default:
+		return ""
+	}
 }
 
 // pathDominator contains information about the mount that dominates a given path.
@@ -168,13 +186,15 @@ func (v *VFS) pathDominator(path string) pathDominator {
 // separator except for when the mount point is the empty string to denote the
 // root directory which dominates all the paths.
 func (m *mount) isDom(path string) (domSuffix, fsPath string, ok bool) {
+	mountPoint := m.mountPoint()
+
 	// Path cannot be dominated by a mount point that is longer.
-	if len(path) < len(m.mountPoint) {
+	if len(path) < len(mountPoint) {
 		return "", "", false
 	}
 
 	// Exact match works for both files and directories.
-	if path == m.mountPoint {
+	if path == mountPoint {
 		domSuffix = ""
 		// NOTE: [filepath.Join] uses [filepath.Clean] which transforms "" to ".", as needed by [fs.Fs].
 		fsPath = filepath.Join(m.rootDir, ".")
@@ -187,7 +207,7 @@ func (m *mount) isDom(path string) (domSuffix, fsPath string, ok bool) {
 	}
 
 	// The rootfs dominates everything.
-	if m.mountPoint == "" {
+	if mountPoint == "" {
 		// NOTE: [filepath.Clean] transforms "" to ".", as needed by [fs.Fs].
 		// In practice m.rootDir is going to be empty unless we start to support
 		// pivot root, but keep the logic for completion.
@@ -195,18 +215,18 @@ func (m *mount) isDom(path string) (domSuffix, fsPath string, ok bool) {
 	}
 
 	// The mount point must be a prefix of the path to dominate it.
-	if !strings.HasPrefix(path, m.mountPoint) {
+	if !strings.HasPrefix(path, mountPoint) {
 		return "", "", false
 	}
 
-	if path[len(m.mountPoint)] != '/' {
+	if path[len(mountPoint)] != '/' {
 		// If we don't have a slash in the path then this is not a dominated sub-path
 		// but an unrelated path with a common prefix.
 		return "", "", false
 	}
 
 	// Get the path relative to the mount point.
-	domSuffix = path[len(m.mountPoint)+1:]
+	domSuffix = path[len(mountPoint)+1:]
 
 	// NOTE: [filepath.Clean] transforms "" to ".", as needed by [fs.Fs].
 	fsPath = filepath.Join(m.rootDir, domSuffix)
@@ -288,7 +308,7 @@ func (m *mount) String() string {
 		fsType    = "(fstype)"
 		source    = "(source)"
 	)
-	fmt.Fprintf(&sb, "%-2d %d %d:%d /%s /%s %s", m.mountID, m.parentID, major, minor, m.rootDir, m.mountPoint, mountOpts)
+	fmt.Fprintf(&sb, "%-2d %d %d:%d /%s /%s %s", m.mountID, m.parentID, major, minor, m.rootDir, m.mountPoint(), mountOpts)
 	// TODO: propagation flags here
 	fmt.Fprintf(&sb, " - %s %s %s", fsType, source, sbOpts)
 	return sb.String()
