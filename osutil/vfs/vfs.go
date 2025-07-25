@@ -88,6 +88,7 @@ const RootMountID MountID = -1 // LSMT_ROOT
 type mount struct {
 	mountID    MountID
 	parentID   MountID
+	parent     *mount // Parent mount, possibly nil.
 	mountPoint string // Path of the mount point in the VFS. This might be a file.
 	rootDir    string // Path of fsFS that is actually mounted.
 	isDir      bool   // Mount is attached to a directory.
@@ -133,6 +134,7 @@ func (v *VFS) attachMount(parent *mount, child *mount) {
 
 	child.parentID = parent.mountID
 	child.mountID = v.nextMountID
+	child.parent = parent
 	v.mounts = append(v.mounts, child)
 
 	v.nextMountID++
