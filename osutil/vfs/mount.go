@@ -60,14 +60,11 @@ func (v *VFS) Mount(fsFS fs.StatFS, mountPoint string) error {
 	}
 
 	// Mount and return.
-	v.mounts = append(v.mounts, &mount{
-		mountID:    v.nextMountID,
-		parentID:   pd.mount.mountID,
+	v.attachMount(pd.mount, &mount{
 		mountPoint: mountPoint,
 		isDir:      true,
 		fsFS:       fsFS,
 	})
-	v.nextMountID++
 
 	return nil
 }
@@ -130,16 +127,12 @@ func (v *VFS) unlockedBindMount(sourcePoint, mountPoint string) (*mount, error) 
 
 	// Mount and return.
 	m := &mount{
-		mountID:    v.nextMountID,
-		parentID:   pd.mount.mountID,
 		mountPoint: mountPoint,
 		rootDir:    sourcePd.combinedRootDir(),
 		isDir:      fsFi.IsDir(),
 		fsFS:       sourcePd.mount.fsFS,
 	}
-	v.mounts = append(v.mounts, m)
-
-	v.nextMountID++
+	v.attachMount(pd.mount, m)
 
 	return m, nil
 }

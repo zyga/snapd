@@ -120,6 +120,24 @@ func NewVFS(rootFS fs.StatFS) *VFS {
 	}}}
 }
 
+// attachMount attaches a new mount to the VFS.
+//
+// Both [mount.mountID] and [mount.parentID] are assigned.
+func (v *VFS) attachMount(parent *mount, child *mount) {
+	if child.mountID != 0 {
+		panic("attachMount called with mountID != 0")
+	}
+	if child.parentID != 0 {
+		panic("attachMount called with parentID != 0")
+	}
+
+	child.parentID = parent.mountID
+	child.mountID = v.nextMountID
+	v.mounts = append(v.mounts, child)
+
+	v.nextMountID++
+}
+
 // pathDominator returns information about the mount that dominates a given path.
 //
 // Out of all the mounts in the VFS, the last one that dominates a given path,
