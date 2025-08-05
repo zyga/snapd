@@ -181,18 +181,23 @@ type pathDominator struct {
 type VFS struct {
 	mu          sync.RWMutex
 	mounts      []*mount
+	root        *mount
 	nextMountID MountID
 	lastGroupID GroupID // Groups IDs start with 1 so that zero value is not a valid group.
 }
 
 // NewVFS returns a VFS with the given root file system mounted.
 func NewVFS(rootFS fs.StatFS) *VFS {
-	return &VFS{mounts: []*mount{{
+	m := &mount{
 		mountID:  RootMountID,
 		parentID: RootMountID, // The rootfs is its own parent to prevent being unmounted.
 		isDir:    true,
 		fsFS:     rootFS,
-	}}}
+	}
+	return &VFS{
+		mounts: []*mount{m},
+		root:   m,
+	}
 }
 
 // attachMount attaches a new mount to the VFS.
@@ -276,6 +281,32 @@ func (v *VFS) allocateGroupID() GroupID {
 // Out of all the mounts in the VFS, the last one that dominates a given path,
 // wins. Mounts are searched back-to-front. The search has linear complexity.
 func (v *VFS) pathDominator(path string) pathDominator {
+	// FIXME: This is wrong, we must ascend parent chains. Here pathDominator /dev/pts/1 must find mount-id: 25.
+	// We need to maintain a tree structure and descend from the root. Eh.
+	/*
+		22 28 0:21 / /sys rw,nosuid,nodev,noexec,relatime - sysfs sysfs rw
+		23 28 0:6 / /dev rw,nosuid,noexec,relatime - devtmpfs devtmpfs rw,size=10240k,nr_inodes=57563,mode=755,inode64
+		24 28 0:22 / /proc rw,nosuid,nodev,noexec,relatime - proc proc rw
+		25 23 0:23 / /dev/pts rw,nosuid,noexec,relatime - devpts devpts rw,gid=5,mode=620,ptmxmode=000
+		26 23 0:24 / /dev/shm rw,nosuid,nodev,noexec,relatime - tmpfs shm rw,inode64
+		28 1 253:2 / / rw,noatime - ext4 /dev/vda2 rw
+		29 28 0:26 / /run rw,nosuid,nodev - tmpfs tmpfs rw,size=94840k,nr_inodes=819200,mode=755,inode64
+		30 23 0:20 / /dev/mqueue rw,nosuid,nodev,noexec,relatime - mqueue mqueue rw
+		31 22 0:7 / /sys/kernel/security rw,nosuid,nodev,noexec,relatime - securityfs securityfs rw
+		32 22 0:8 / /sys/kernel/debug rw,nosuid,nodev,noexec,relatime - debugfs debugfs rw
+		33 22 0:27 / /sys/fs/pstore rw,nosuid,nodev,noexec,relatime - pstore pstore rw
+		34 22 0:28 / /sys/firmware/efi/efivars rw,nosuid,nodev,noexec,relatime - efivarfs efivarfs rw
+		35 22 0:29 / /sys/fs/bpf rw,nosuid,nodev,noexec,relatime - bpf bpf rw
+		36 32 0:13 / /sys/kernel/debug/tracing rw,nosuid,nodev,noexec,relatime - tracefs tracefs rw
+		37 28 253:1 / /boot/efi rw,noatime - vfat /dev/vda1 rw,fmask=0077,dmask=0077,codepage=437,iocharset=utf8,shortname=mixed,errors=remount-ro
+
+		0 0 /      attachedAt: ""
+		1 0 /home  attachedAt: "home"
+		...
+		2 1 /home  attachedAt: ""
+		...
+	*/
+
 	for idx := len(v.mounts) - 1; idx >= 0; idx-- {
 		m := v.mounts[idx]
 		suffix, fsPath, ok := m.isDom(path)
