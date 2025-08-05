@@ -116,6 +116,37 @@ func TestVFS_PropagationToSharedSlave(t *testing.T) {
 `)
 }
 
+func TestVFS_PropagationAndSubDirectories(t *testing.T) {
+	v := vfs.NewVFS(fstest.MapFS{
+		"a": &fstest.MapFile{Mode: fs.ModeDir},
+		"b": &fstest.MapFile{Mode: fs.ModeDir},
+		"c": &fstest.MapFile{Mode: fs.ModeDir},
+		"d": &fstest.MapFile{Mode: fs.ModeDir},
+	})
+	must(t, v.MakeShared(""))
+	must(t, v.Mount(WithMajorMinor(42, 0, fstest.MapFS{
+		"1": &fstest.MapFile{Mode: fs.ModeDir},
+	}), "a"))
+	must(t, v.Mount(WithMajorMinor(43, 0, fstest.MapFS{
+		"2": &fstest.MapFile{Mode: fs.ModeDir},
+	}), "a/1"))
+	must(t, v.BindMount("a", "b"))
+	must(t, v.BindMount("a/1", "c"))
+	must(t, v.BindMount("a/1/2", "d"))
+	must(t, v.Mount(WithMajorMinor(44, 0, fstest.MapFS{}), "a/1/2"))
+	assertVFS(t, v, `
+-1 -1 0:0 / / rw shared:1 - (fstype) (source) rw
+0  -1 42:0 / /a rw shared:2 - (fstype) (source) rw
+1  0 43:0 / /a/1 rw shared:3 - (fstype) (source) rw
+2  -1 42:0 / /b rw shared:2 - (fstype) (source) rw
+3  -1 43:0 / /c rw shared:3 - (fstype) (source) rw
+4  -1 43:0 /2 /d rw shared:3 - (fstype) (source) rw
+5  1 44:0 / /a/1/2 rw shared:4 - (fstype) (source) rw
+6  3 44:0 / /c/2 rw shared:4 - (fstype) (source) rw
+7  4 44:0 / /d/2 rw shared:4 - (fstype) (source) rw
+`)
+}
+
 func TestVFS_MakeShared(t *testing.T) {
 	t.Run("bind-keeps-sharing", func(t *testing.T) {
 		v := vfs.NewVFS(fstest.MapFS{
