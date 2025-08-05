@@ -49,61 +49,39 @@ func TestRbindOrder(t *testing.T) {
 		"a": &fstest.MapFile{Mode: fs.ModeDir},
 		"b": &fstest.MapFile{Mode: fs.ModeDir},
 	})
-
 	// a is a filesystem with three directories: 1, 2 and 3.
 	afs := fstest.MapFS{
 		"1": &fstest.MapFile{Mode: fs.ModeDir},
 		"2": &fstest.MapFile{Mode: fs.ModeDir},
 		"3": &fstest.MapFile{Mode: fs.ModeDir},
 	}
-	if err := v.Mount(WithMajorMinor(42, 0, afs), "a"); err != nil {
-		t.Fatal(err)
-	}
-
+	must(t, v.Mount(WithMajorMinor(42, 0, afs), "a"))
 	// a1 is a filesystem with only one directory: 1.
 	a1fs := fstest.MapFS{
 		"1": &fstest.MapFile{Mode: fs.ModeDir},
 	}
-	if err := v.Mount(WithMajorMinor(42, 1, a1fs), "a/1"); err != nil {
-		t.Fatal(err)
-	}
-
+	must(t, v.Mount(WithMajorMinor(42, 1, a1fs), "a/1"))
 	// a2 is a filesystem with only one directory: 2.
 	a2fs := fstest.MapFS{
 		"2": &fstest.MapFile{Mode: fs.ModeDir},
 	}
-	if err := v.Mount(WithMajorMinor(42, 2, a2fs), "a/2"); err != nil {
-		t.Fatal(err)
-	}
-
+	must(t, v.Mount(WithMajorMinor(42, 2, a2fs), "a/2"))
 	// a11 is a filesystem with only one directory: 1.
 	a11fs := fstest.MapFS{
 		"1": &fstest.MapFile{Mode: fs.ModeDir},
 	}
-	if err := v.Mount(WithMajorMinor(42, 3, a11fs), "a/1/1"); err != nil {
-		t.Fatal(err)
-	}
-
+	must(t, v.Mount(WithMajorMinor(42, 3, a11fs), "a/1/1"))
 	// a3 is an empty file system.
 	a3fs := fstest.MapFS{}
-	if err := v.Mount(WithMajorMinor(42, 4, a3fs), "a/3"); err != nil {
-		t.Fatal(err)
-	}
-
+	must(t, v.Mount(WithMajorMinor(42, 4, a3fs), "a/3"))
 	// a22 is a filesystem with only one directory: 2.
 	a22fs := fstest.MapFS{
 		"2": &fstest.MapFile{Mode: fs.ModeDir},
 	}
-	if err := v.Mount(WithMajorMinor(42, 5, a22fs), "a/2/2"); err != nil {
-		t.Fatal(err)
-	}
-
+	must(t, v.Mount(WithMajorMinor(42, 5, a22fs), "a/2/2"))
 	// Recursively bind mount a to b.
-	if err := v.RecursiveBindMount("a", "b"); err != nil {
-		t.Fatal(err)
-	}
-
-	const expected = `
+	must(t, v.RecursiveBindMount("a", "b"))
+	assertVFS(t, v, `
 -1 -1 0:0 / / rw - (fstype) (source) rw
 0  -1 42:0 / /a rw - (fstype) (source) rw
 1  0 42:1 / /a/1 rw - (fstype) (source) rw
@@ -117,42 +95,26 @@ func TestRbindOrder(t *testing.T) {
 9  6 42:2 / /b/2 rw - (fstype) (source) rw
 10 9 42:5 / /b/2/2 rw - (fstype) (source) rw
 11 6 42:4 / /b/3 rw - (fstype) (source) rw
-`
-	if v.String() != expected {
-		t.Log(v)
-		t.Fatal("Unexpected mount table")
-	}
+`)
 }
 
 func TestBindStack(t *testing.T) {
 	// This test replicates the logic of osutil/vfs/tests/bind-stack with
 	// both the bind and rbind variants.
-
 	makeVFS := func(t *testing.T) *vfs.VFS {
 		t.Helper()
-
 		// VFS has a rootfs with two directories, a and b.
 		v := vfs.NewVFS(fstest.MapFS{
 			"a": &fstest.MapFile{Mode: fs.ModeDir},
 			"b": &fstest.MapFile{Mode: fs.ModeDir},
 		})
-
 		// a has three identical empty file-systems mounted on it.
 		aXfs := fstest.MapFS{}
-		if err := v.Mount(WithMajorMinor(42, 0, aXfs), "a"); err != nil {
-			t.Fatal(err)
-		}
-
+		must(t, v.Mount(WithMajorMinor(42, 0, aXfs), "a"))
 		aYfs := fstest.MapFS{}
-		if err := v.Mount(WithMajorMinor(42, 1, aYfs), "a"); err != nil {
-			t.Fatal(err)
-		}
-
+		must(t, v.Mount(WithMajorMinor(42, 1, aYfs), "a"))
 		aZfs := fstest.MapFS{}
-		if err := v.Mount(WithMajorMinor(42, 2, aZfs), "a"); err != nil {
-			t.Fatal(err)
-		}
-
+		must(t, v.Mount(WithMajorMinor(42, 2, aZfs), "a"))
 		return v
 	}
 
@@ -164,31 +126,16 @@ func TestBindStack(t *testing.T) {
 2  1 42:2 / /a rw - (fstype) (source) rw
 3  -1 42:2 / /b rw - (fstype) (source) rw
 `
-
 	t.Run("bind", func(t *testing.T) {
 		v := makeVFS(t)
-
-		if err := v.BindMount("a", "b"); err != nil {
-			t.Fatal(err)
-		}
-
-		if v.String() != expected {
-			t.Log(v)
-			t.Fatal("Unexpected mount table")
-		}
+		must(t, v.BindMount("a", "b"))
+		assertVFS(t, v, expected)
 	})
 
 	t.Run("rbind", func(t *testing.T) {
 		v := makeVFS(t)
-
-		if err := v.RecursiveBindMount("a", "b"); err != nil {
-			t.Fatal(err)
-		}
-
-		if v.String() != expected {
-			t.Log(v)
-			t.Fatal("Unexpected mount table")
-		}
+		must(t, v.RecursiveBindMount("a", "b"))
+		assertVFS(t, v, expected)
 	})
 }
 
