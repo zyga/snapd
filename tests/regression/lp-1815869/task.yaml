@@ -25,7 +25,7 @@ details: |
     that matches the way we want to allow LXD + Jenkins + Snaps to work
     together.
 
-systems: [ubuntu-18.04-64]
+systems: [ubuntu-24.04-64]
 
 prepare: |
     # Ensure that we have the freshly-built snapd deb available

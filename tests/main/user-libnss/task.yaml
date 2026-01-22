@@ -8,7 +8,7 @@ details: |
     working correctly.
 
 # only run on a well defined system where we know how to setup libnss
-systems: [ubuntu-18.04-64]
+systems: [ubuntu-24.04-64]
 
 prepare: |
     echo "Save nsswitch.conf"

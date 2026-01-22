@@ -3,7 +3,7 @@ summary: Test snapd refresh from a very old snapd snap.
 details: |
   Test that a refresh from a very old snapd and core18 to a recent one succeeds.
 
-systems: [ubuntu-18.04-*]
+systems: [ubuntu-24.04-*]
 
 environment:
   # test variants:

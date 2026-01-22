@@ -6,7 +6,7 @@ details: |
     working, and we are able to start the snapd service by interacting with the
     snapd socket.
 
-systems: [ubuntu-18.04-64]
+systems: [ubuntu-24.04-64]
 
 prepare: |
     tests.systemd stop-unit snapd.service snapd.socket
