@@ -257,6 +257,8 @@ func (s *SnapOpSuite) TestWait(c *check.C) {
 	defer progress.MockMeter(meter)()
 	restore := snap.MockMaxGoneTime(time.Millisecond)
 	defer restore()
+	restoreClientRetry := client.MockDoTimings(time.Millisecond, 25*time.Millisecond)
+	defer restoreClientRetry()
 
 	// should always result in a connection refused error, since port zero isn't
 	// valid
@@ -323,6 +325,8 @@ func (s *SnapOpSuite) TestWaitDaemonUnavailableWithMaintenance(c *check.C) {
 	defer progress.MockMeter(meter)()
 	restore := snap.MockMaxGoneTime(time.Millisecond)
 	defer restore()
+	restoreClientRetry := client.MockDoTimings(time.Millisecond, 25*time.Millisecond)
+	defer restoreClientRetry()
 
 	dirs.SetRootDir(c.MkDir())
 	err := os.MkdirAll(filepath.Dir(dirs.SnapdMaintenanceFile), 0755)
