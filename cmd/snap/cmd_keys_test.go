@@ -65,6 +65,19 @@ func (s *SnapKeysSuite) SetUpTest(c *C) {
 	if testing.Short() && s.GnupgCmd == "/usr/bin/gpg2" {
 		c.Skip("gpg2 does not do short tests")
 	}
+	if s.GnupgCmd == "/usr/bin/gpg2" {
+		gpg2Path, err := filepath.EvalSymlinks(s.GnupgCmd)
+		if err != nil {
+			c.Skip("cannot resolve gpg2 binary")
+		}
+		gpgPath, err := filepath.EvalSymlinks("/usr/bin/gpg")
+		if err != nil {
+			c.Skip("cannot resolve gpg binary")
+		}
+		if gpg2Path == gpgPath {
+			c.Skip("gpg2 resolves to gpg, duplicate backend coverage")
+		}
+	}
 	s.BaseSnapSuite.SetUpTest(c)
 
 	s.tempdir = c.MkDir()
