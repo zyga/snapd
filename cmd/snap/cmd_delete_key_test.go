@@ -20,11 +20,12 @@
 package main_test
 
 import (
-	"encoding/json"
 	"os"
 
 	. "gopkg.in/check.v1"
 
+	"github.com/snapcore/snapd/asserts/assertstest"
+	"github.com/snapcore/snapd/asserts/signtool"
 	snap "github.com/snapcore/snapd/cmd/snap"
 	"github.com/snapcore/snapd/testutil"
 )
@@ -64,22 +65,24 @@ func (s *SnapKeysSuite) TestDeleteKeyNonexistent(c *C) {
 }
 
 func (s *SnapKeysSuite) TestDeleteKey(c *C) {
+	pk, _ := assertstest.ReadPrivKey(assertstest.DevKey)
+	keypairMgr := newNamedKeypairManager()
+	c.Assert(keypairMgr.AddKey("another", pk), IsNil)
+	restore := snap.MockDeleteKeyGetKeypairManager(func() (signtool.KeypairManager, error) {
+		return keypairMgr, nil
+	})
+	defer restore()
+
 	rest, err := snap.Parser(snap.Client()).ParseArgs([]string{"delete-key", "another"})
 	c.Assert(err, IsNil)
 	c.Assert(rest, DeepEquals, []string{})
 	c.Check(s.Stdout(), Equals, "")
 	c.Check(s.Stderr(), Equals, "")
-	_, err = snap.Parser(snap.Client()).ParseArgs([]string{"keys", "--json"})
-	c.Assert(err, IsNil)
-	expectedResponse := []snap.Key{
-		{
-			Name:     "default",
-			Sha3_384: "g4Pks54W_US4pZuxhgG_RHNAf_UeZBBuZyGRLLmMj1Do3GkE_r_5A5BFjx24ZwVJ",
-		},
-	}
-	var obtainedResponse []snap.Key
-	json.Unmarshal(s.stdout.Bytes(), &obtainedResponse)
-	c.Check(obtainedResponse, DeepEquals, expectedResponse)
+	s.ResetStdStreams()
+	_, err = snap.Parser(snap.Client()).ParseArgs([]string{"delete-key", "another"})
+	c.Assert(err, NotNil)
+	c.Check(err.Error(), Equals, `cannot delete key named "another": cannot find key pair in GPG keyring`)
+	c.Check(s.Stdout(), Equals, "")
 	c.Check(s.Stderr(), Equals, "")
 }
 

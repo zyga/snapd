@@ -30,6 +30,8 @@ import (
 	"github.com/snapcore/snapd/i18n"
 )
 
+var deleteKeyGetKeypairManager = signtool.GetKeypairManager
+
 type cmdDeleteKey struct {
 	Positional struct {
 		KeyName keyName
@@ -60,7 +62,7 @@ func (x *cmdDeleteKey) Execute(args []string) error {
 		return ErrExtraArgs
 	}
 
-	keypairMgr, err := signtool.GetKeypairManager()
+	keypairMgr, err := deleteKeyGetKeypairManager()
 	if err != nil {
 		return err
 	}

@@ -9,6 +9,7 @@ import (
 
 	snaprun "github.com/snapcore/snapd/cmd/snap"
 	"github.com/snapcore/snapd/logger"
+	"github.com/snapcore/snapd/snap/pack"
 )
 
 const packSnapYaml = `name: hello
@@ -132,17 +133,18 @@ printf "hello world"
 
 func (s *SnapSuite) TestPackPacksASnapWithCompressionHappy(c *check.C) {
 	snapDir := makeSnapDirForPack(c, "name: hello\nversion: 1.0")
+	var seen []string
+	restore := snaprun.MockPackPack(func(_ string, opts *pack.Options) (string, error) {
+		seen = append(seen, opts.Compression)
+		return filepath.Join(opts.TargetDir, "hello_1.0_all.snap"), nil
+	})
+	defer restore()
 
 	for _, comp := range []string{"xz", "lzo"} {
 		_, err := snaprun.Parser(snaprun.Client()).ParseArgs([]string{"pack", "--compression", comp, snapDir, snapDir})
 		c.Assert(err, check.IsNil)
-
-		matches, err := filepath.Glob(snapDir + "/hello*.snap")
-		c.Assert(err, check.IsNil)
-		c.Assert(matches, check.HasLen, 1)
-		err = os.Remove(matches[0])
-		c.Assert(err, check.IsNil)
 	}
+	c.Check(seen, check.DeepEquals, []string{"xz", "lzo"})
 }
 
 func (s *SnapSuite) TestPackPacksASnapWithCompressionUnhappy(c *check.C) {

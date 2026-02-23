@@ -33,6 +33,8 @@ import (
 	"github.com/snapcore/snapd/i18n"
 )
 
+var signBuildGetKeypairManager = signtool.GetKeypairManager
+
 type cmdSignBuild struct {
 	Positional struct {
 		Filename string
@@ -85,7 +87,7 @@ func (x *cmdSignBuild) Execute(args []string) error {
 		return err
 	}
 
-	keypairMgr, err := signtool.GetKeypairManager()
+	keypairMgr, err := signBuildGetKeypairManager()
 	if err != nil {
 		return err
 	}

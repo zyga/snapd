@@ -22,11 +22,12 @@ package main_test
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	. "gopkg.in/check.v1"
 
 	"github.com/snapcore/snapd/asserts"
+	"github.com/snapcore/snapd/asserts/assertstest"
+	"github.com/snapcore/snapd/asserts/signtool"
 	snap "github.com/snapcore/snapd/cmd/snap"
 )
 
@@ -76,15 +77,13 @@ func (s *SnapSignBuildSuite) TestSignBuildWorks(c *C) {
 	c.Assert(_err, IsNil)
 	defer os.Remove(snapFilename)
 
-	tempdir := c.MkDir()
-	for _, fileName := range []string{"pubring.gpg", "secring.gpg", "trustdb.gpg"} {
-		data, err := os.ReadFile(filepath.Join("test-data", fileName))
-		c.Assert(err, IsNil)
-		err = os.WriteFile(filepath.Join(tempdir, fileName), data, 0644)
-		c.Assert(err, IsNil)
-	}
-	os.Setenv("SNAP_GNUPG_HOME", tempdir)
-	defer os.Unsetenv("SNAP_GNUPG_HOME")
+	pk, _ := assertstest.ReadPrivKey(assertstest.DevKey)
+	keypairMgr := newNamedKeypairManager()
+	c.Assert(keypairMgr.AddKey("default", pk), IsNil)
+	restore := snap.MockSignBuildGetKeypairManager(func() (signtool.KeypairManager, error) {
+		return keypairMgr, nil
+	})
+	defer restore()
 
 	_, err := snap.Parser(snap.Client()).ParseArgs([]string{"sign-build", snapFilename, "--developer-id", "dev-id1", "--snap-id", "snap-id-1"})
 	c.Assert(err, IsNil)
@@ -111,15 +110,13 @@ func (s *SnapSignBuildSuite) TestSignBuildWorksDevelGrade(c *C) {
 	c.Assert(_err, IsNil)
 	defer os.Remove(snapFilename)
 
-	tempdir := c.MkDir()
-	for _, fileName := range []string{"pubring.gpg", "secring.gpg", "trustdb.gpg"} {
-		data, err := os.ReadFile(filepath.Join("test-data", fileName))
-		c.Assert(err, IsNil)
-		err = os.WriteFile(filepath.Join(tempdir, fileName), data, 0644)
-		c.Assert(err, IsNil)
-	}
-	os.Setenv("SNAP_GNUPG_HOME", tempdir)
-	defer os.Unsetenv("SNAP_GNUPG_HOME")
+	pk, _ := assertstest.ReadPrivKey(assertstest.DevKey)
+	keypairMgr := newNamedKeypairManager()
+	c.Assert(keypairMgr.AddKey("default", pk), IsNil)
+	restore := snap.MockSignBuildGetKeypairManager(func() (signtool.KeypairManager, error) {
+		return keypairMgr, nil
+	})
+	defer restore()
 
 	_, err := snap.Parser(snap.Client()).ParseArgs([]string{"sign-build", snapFilename, "--developer-id", "dev-id1", "--snap-id", "snap-id-1", "--grade", "devel"})
 	c.Assert(err, IsNil)

@@ -45,6 +45,11 @@ type packCmd struct {
 	} `positional-args:"yes"`
 }
 
+var (
+	packCheckSkeleton = pack.CheckSkeleton
+	packPack          = pack.Pack
+)
+
 var shortPackHelp = i18n.G("Pack the given directory as a snap")
 var longPackHelp = i18n.G(`
 The pack command packs the given snap-dir as a snap and writes the result to
@@ -101,14 +106,14 @@ func (x *packCmd) Execute([]string) error {
 	}
 
 	if x.CheckSkeleton {
-		err := pack.CheckSkeleton(Stderr, x.Positional.SnapDir)
+		err := packCheckSkeleton(Stderr, x.Positional.SnapDir)
 		if errors.Is(err, snap.ErrMissingPaths) {
 			return nil
 		}
 		return err
 	}
 
-	snapPath, err := pack.Pack(x.Positional.SnapDir, &pack.Options{
+	snapPath, err := packPack(x.Positional.SnapDir, &pack.Options{
 		TargetDir:   x.Positional.TargetDir,
 		SnapName:    x.Filename,
 		Compression: x.Compression,

@@ -35,6 +35,8 @@ import (
 	"github.com/snapcore/snapd/sandbox/selinux"
 	"github.com/snapcore/snapd/seed/seedwriter"
 	"github.com/snapcore/snapd/snap"
+	"github.com/snapcore/snapd/snap/pack"
+	"github.com/snapcore/snapd/asserts/signtool"
 	"github.com/snapcore/snapd/store"
 	"github.com/snapcore/snapd/store/tooling"
 	"github.com/snapcore/snapd/testutil"
@@ -483,6 +485,18 @@ func MockSeedWriterReadManifest(f func(manifestFile string) (*seedwriter.Manifes
 	restore = testutil.Backup(&seedwriterReadManifest)
 	seedwriterReadManifest = f
 	return restore
+}
+
+func MockPackPack(f func(snapDir string, opts *pack.Options) (string, error)) (restore func()) {
+	return testutil.Mock(&packPack, f)
+}
+
+func MockDeleteKeyGetKeypairManager(f func() (signtool.KeypairManager, error)) (restore func()) {
+	return testutil.Mock(&deleteKeyGetKeypairManager, f)
+}
+
+func MockSignBuildGetKeypairManager(f func() (signtool.KeypairManager, error)) (restore func()) {
+	return testutil.Mock(&signBuildGetKeypairManager, f)
 }
 
 func MockGetSystemKeyRetryCount(f func() int) (restore func()) {
