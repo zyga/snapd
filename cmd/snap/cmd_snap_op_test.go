@@ -695,12 +695,9 @@ func (s *SnapOpSuite) TestInstallIgnoreRunning(c *check.C) {
 
 func (s *SnapOpSuite) TestInstallNoPATH(c *check.C) {
 	// PATH restored by test tear down
-	os.Setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin")
+	defer testutil.MockEnv(map[string]string{"PATH": "/bin:/usr/bin:/sbin:/usr/sbin"})()
 	// SUDO_UID env must be unset in this test
-	if sudoUidEnv, isSet := os.LookupEnv("SUDO_UID"); isSet {
-		os.Unsetenv("SUDO_UID")
-		defer os.Setenv("SUDO_UID", sudoUidEnv)
-	}
+	defer testutil.MockEnv(map[string]string{"SUDO_UID": ""})()
 
 	s.srv.checker = func(r *http.Request) {
 		c.Check(r.URL.Path, check.Equals, "/v2/snaps/foo")
@@ -724,11 +721,10 @@ func (s *SnapOpSuite) TestInstallNoPATH(c *check.C) {
 
 func (s *SnapOpSuite) TestInstallNoPATHMaybeResetBySudo(c *check.C) {
 	// PATH restored by test tear down
-	os.Setenv("PATH", "/bin:/usr/bin:/sbin:/usr/sbin")
-	if old, isset := os.LookupEnv("SUDO_UID"); isset {
-		defer os.Setenv("SUDO_UID", old)
-	}
-	os.Setenv("SUDO_UID", "1234")
+	defer testutil.MockEnv(map[string]string{
+		"PATH":     "/bin:/usr/bin:/sbin:/usr/sbin",
+		"SUDO_UID": "1234",
+	})()
 	restore := release.MockReleaseInfo(&release.OS{ID: "fedora"})
 	defer restore()
 	s.srv.checker = func(r *http.Request) {
