@@ -99,10 +99,7 @@ func (s *fdeMgrSuite) SetUpTest(c *C) {
 	s.AddCleanup(restore)
 	s.logbuf = buf
 
-	c.Assert(os.Setenv("SNAPD_DEBUG", "1"), IsNil)
-	s.AddCleanup(func() {
-		os.Unsetenv("SNAPD_DEBUG")
-	})
+	s.AddCleanup(testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"}))
 
 	s.AddCleanup(fdestate.MockBackendResealKeyForBootChains(
 		func(manager backend.FDEStateManager, method device.SealingMethod, rootdir string, params *boot.ResealKeyForBootChainsParams) error {
