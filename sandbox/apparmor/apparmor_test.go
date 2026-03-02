@@ -1046,8 +1046,7 @@ func (s *apparmorSuite) TestSystemAppArmorLoadsSnapPolicyErr(c *C) {
 	err := os.MkdirAll(filepath.Dir(fakeApparmorFunctionsPath), 0750)
 	c.Assert(err, IsNil)
 
-	os.Setenv("SNAPD_DEBUG", "1")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})()
 
 	log, restore := logger.MockLogger()
 	defer restore()
