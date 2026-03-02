@@ -1258,12 +1258,8 @@ func (s *sideloadSuite) TestInstallPathSystemRestartImmediate(c *check.C) {
 }
 
 func (s *sideloadSuite) TestFormdataIsWrittenToCorrectTmpLocation(c *check.C) {
-	oldTempDir := os.Getenv("TMPDIR")
-	defer func() {
-		c.Assert(os.Setenv("TMPDIR", oldTempDir), check.IsNil)
-	}()
 	tmpDir := c.MkDir()
-	c.Assert(os.Setenv("TMPDIR", tmpDir), check.IsNil)
+	defer testutil.MockEnv(map[string]string{"TMPDIR": tmpDir})()
 
 	head := map[string]string{"Content-Type": "multipart/thing; boundary=--hello--"}
 	chgSummary, _ := s.sideloadCheck(c, sideLoadBodyWithoutDevMode, head, "local", snapstate.Flags{RemoveSnapPath: true, Transaction: client.TransactionPerSnap})
