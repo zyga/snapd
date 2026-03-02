@@ -28,6 +28,7 @@ import (
 
 	"github.com/snapcore/snapd/asserts"
 	snap "github.com/snapcore/snapd/cmd/snap"
+	"github.com/snapcore/snapd/testutil"
 )
 
 type SnapSignBuildSuite struct {
@@ -59,8 +60,7 @@ func (s *SnapSignBuildSuite) TestSignBuildMissingKey(c *C) {
 	defer os.Remove(snapFilename)
 
 	tempdir := c.MkDir()
-	os.Setenv("SNAP_GNUPG_HOME", tempdir)
-	defer os.Unsetenv("SNAP_GNUPG_HOME")
+	defer testutil.MockEnv(map[string]string{"SNAP_GNUPG_HOME": tempdir})()
 
 	_, err := snap.Parser(snap.Client()).ParseArgs([]string{"sign-build", snapFilename, "--developer-id", "dev-id1", "--snap-id", "snap-id-1"})
 	c.Assert(err, NotNil)
@@ -83,8 +83,7 @@ func (s *SnapSignBuildSuite) TestSignBuildWorks(c *C) {
 		err = os.WriteFile(filepath.Join(tempdir, fileName), data, 0644)
 		c.Assert(err, IsNil)
 	}
-	os.Setenv("SNAP_GNUPG_HOME", tempdir)
-	defer os.Unsetenv("SNAP_GNUPG_HOME")
+	defer testutil.MockEnv(map[string]string{"SNAP_GNUPG_HOME": tempdir})()
 
 	_, err := snap.Parser(snap.Client()).ParseArgs([]string{"sign-build", snapFilename, "--developer-id", "dev-id1", "--snap-id", "snap-id-1"})
 	c.Assert(err, IsNil)
@@ -118,8 +117,7 @@ func (s *SnapSignBuildSuite) TestSignBuildWorksDevelGrade(c *C) {
 		err = os.WriteFile(filepath.Join(tempdir, fileName), data, 0644)
 		c.Assert(err, IsNil)
 	}
-	os.Setenv("SNAP_GNUPG_HOME", tempdir)
-	defer os.Unsetenv("SNAP_GNUPG_HOME")
+	defer testutil.MockEnv(map[string]string{"SNAP_GNUPG_HOME": tempdir})()
 
 	_, err := snap.Parser(snap.Client()).ParseArgs([]string{"sign-build", snapFilename, "--developer-id", "dev-id1", "--snap-id", "snap-id-1", "--grade", "devel"})
 	c.Assert(err, IsNil)
