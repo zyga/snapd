@@ -244,9 +244,6 @@ func (s *createUserSuite) TestAddUserPasswordForceChangeUnhappy(c *check.C) {
 }
 
 func (s *createUserSuite) TestUserMaybeSudoUser(c *check.C) {
-	oldUser := os.Getenv("SUDO_USER")
-	defer func() { os.Setenv("SUDO_USER", oldUser) }()
-
 	for _, t := range []struct {
 		SudoUsername    string
 		CurrentUsername string
@@ -291,8 +288,9 @@ func (s *createUserSuite) TestUserMaybeSudoUser(c *check.C) {
 		})
 		defer restore()
 
-		os.Setenv("SUDO_USER", t.SudoUsername)
+		restoreEnv := testutil.MockEnv(map[string]string{"SUDO_USER": t.SudoUsername})
 		cur, err := osutil.UserMaybeSudoUser()
+		restoreEnv()
 		c.Assert(err, check.IsNil)
 		c.Check(cur.Username, check.Equals, t.CurrentUsername)
 	}
