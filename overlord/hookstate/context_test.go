@@ -21,7 +21,6 @@ package hookstate
 
 import (
 	"encoding/json"
-	"os"
 	"time"
 
 	. "gopkg.in/check.v1"
@@ -33,6 +32,7 @@ import (
 	"github.com/snapcore/snapd/overlord/state"
 	"github.com/snapcore/snapd/snap"
 	"github.com/snapcore/snapd/snap/snaptest"
+	"github.com/snapcore/snapd/testutil"
 )
 
 type contextSuite struct {
@@ -229,10 +229,7 @@ func (s *contextSuite) TestChangeErrorf(c *C) {
 	mockLog, restore := logger.MockLogger()
 	defer restore()
 
-	if v, ok := os.LookupEnv("SNAPD_DEBUG"); ok {
-		os.Unsetenv("SNAPD_DEBUG")
-		defer os.Setenv("SNAPD_DEBUG=%v", v)
-	}
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": ""})()
 
 	s.state.Lock()
 	task1 := s.state.NewTask("foo1", "summary foo1")
