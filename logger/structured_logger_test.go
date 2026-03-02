@@ -49,8 +49,7 @@ type LogStructuredSuite struct {
 
 func (s *LogStructuredSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-	os.Setenv("SNAPD_JSON_LOGGING", "1")
-	defer os.Unsetenv("SNAPD_JSON_LOGGING")
+	defer testutil.MockEnv(map[string]string{"SNAPD_JSON_LOGGING": "1"})()
 	s.logbuf, s.restoreLogger = logger.MockLogger()
 }
 
@@ -75,8 +74,7 @@ type TestLogEntry struct {
 }
 
 func (s *LogStructuredSuite) TestNewStructured(c *C) {
-	os.Setenv("SNAPD_JSON_LOGGING", "1")
-	defer os.Unsetenv("SNAPD_JSON_LOGGING")
+	defer testutil.MockEnv(map[string]string{"SNAPD_JSON_LOGGING": "1"})()
 	var buf bytes.Buffer
 	l := logger.New(&buf, logger.DefaultFlags, nil)
 	c.Assert(l, NotNil)
@@ -93,8 +91,7 @@ func (s *LogStructuredSuite) TestTrace(c *C) {
 }
 
 func (s *LogStructuredSuite) TestTraceEnvStructured(c *C) {
-	os.Setenv("SNAPD_TRACE", "1")
-	defer os.Unsetenv("SNAPD_TRACE")
+	defer testutil.MockEnv(map[string]string{"SNAPD_TRACE": "1"})()
 
 	logger.Trace("xyzzy", "attr", "val")
 	data := TestLogEntry{}
@@ -107,8 +104,7 @@ func (s *LogStructuredSuite) TestTraceEnvStructured(c *C) {
 }
 
 func (s *LogStructuredSuite) TestTraceEnvDebugStructured(c *C) {
-	os.Setenv("SNAPD_TRACE", "1")
-	defer os.Unsetenv("SNAPD_TRACE")
+	defer testutil.MockEnv(map[string]string{"SNAPD_TRACE": "1"})()
 
 	logger.Debug("xyzzy")
 	data := TestLogEntry{}
@@ -132,8 +128,7 @@ func (s *LogStructuredSuite) TestNoticeStructured(c *C) {
 }
 
 func (s *LogStructuredSuite) TestNoTimestamp(c *C) {
-	os.Setenv("SNAPD_JSON_LOGGING", "1")
-	defer os.Unsetenv("SNAPD_JSON_LOGGING")
+	defer testutil.MockEnv(map[string]string{"SNAPD_JSON_LOGGING": "1"})()
 
 	var buf bytes.Buffer
 	l := logger.New(&buf, log.Lshortfile, nil)
@@ -180,13 +175,7 @@ func (s *LogStructuredSuite) TestWithLoggerLockStructured(c *C) {
 }
 
 func (s *LogStructuredSuite) TestNoGuardDebugStructured(c *C) {
-	debugValue, ok := os.LookupEnv("SNAPD_DEBUG")
-	if ok {
-		defer func() {
-			os.Setenv("SNAPD_DEBUG", debugValue)
-		}()
-		os.Unsetenv("SNAPD_DEBUG")
-	}
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": ""})()
 
 	logger.NoGuardDebugf("xyzzy")
 	data := TestLogEntry{}
@@ -199,8 +188,7 @@ func (s *LogStructuredSuite) TestNoGuardDebugStructured(c *C) {
 }
 
 func (s *LogStructuredSuite) TestIntegrationDebugFromKernelCmdlineStructured(c *C) {
-	os.Setenv("SNAPD_JSON_LOGGING", "1")
-	defer os.Unsetenv("SNAPD_JSON_LOGGING")
+	defer testutil.MockEnv(map[string]string{"SNAPD_JSON_LOGGING": "1"})()
 	// must enable actually checking the command line, because by default the
 	// logger package will skip checking for the kernel command line parameter
 	// if it detects it is in a test because otherwise we would have to mock the
@@ -226,8 +214,7 @@ func (s *LogStructuredSuite) TestIntegrationDebugFromKernelCmdlineStructured(c *
 }
 
 func (s *LogStructuredSuite) TestStartupTimestampMsgStructured(c *C) {
-	os.Setenv("SNAPD_DEBUG", "1")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})()
 
 	type msgTimestamp struct {
 		Stage string `json:"stage"`
@@ -258,8 +245,7 @@ func (s *LogStructuredSuite) TestStartupTimestampMsgStructured(c *C) {
 }
 
 func (s *LogStructuredSuite) TestForceDebugStructured(c *C) {
-	os.Setenv("SNAPD_JSON_LOGGING", "1")
-	defer os.Unsetenv("SNAPD_JSON_LOGGING")
+	defer testutil.MockEnv(map[string]string{"SNAPD_JSON_LOGGING": "1"})()
 
 	var buf bytes.Buffer
 	l := logger.New(&buf, logger.DefaultFlags, &logger.LoggerOptions{ForceDebug: true})
@@ -272,8 +258,7 @@ func (s *LogStructuredSuite) TestForceDebugStructured(c *C) {
 }
 
 func (s *LogStructuredSuite) TestMockDebugLoggerStructured(c *C) {
-	os.Setenv("SNAPD_JSON_LOGGING", "1")
-	defer os.Unsetenv("SNAPD_JSON_LOGGING")
+	defer testutil.MockEnv(map[string]string{"SNAPD_JSON_LOGGING": "1"})()
 
 	logbuf, restore := logger.MockDebugLogger()
 	defer restore()
