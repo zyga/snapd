@@ -20,7 +20,6 @@
 package testutil_test
 
 import (
-	"os"
 	"time"
 
 	. "gopkg.in/check.v1"
@@ -32,25 +31,8 @@ var _ = Suite(&TimeoutTestSuite{})
 
 type TimeoutTestSuite struct{}
 
-func mockEnvVar(envVar, value string) (restore func()) {
-	oldVal, ok := os.LookupEnv(envVar)
-	if value == "" {
-		os.Unsetenv(envVar)
-	} else {
-		os.Setenv(envVar, value)
-	}
-
-	return func() {
-		if ok {
-			os.Setenv(envVar, oldVal)
-		} else {
-			os.Unsetenv(envVar)
-		}
-	}
-}
-
 func (ts *TimeoutTestSuite) TestHostScaledTimeout(c *C) {
-	restore := mockEnvVar("GO_TEST_RACE", "")
+	restore := testutil.MockEnv(map[string]string{"GO_TEST_RACE": ""})
 	defer restore()
 
 	restore = testutil.MockRuntimeARCH("default")
@@ -78,7 +60,7 @@ func (ts *TimeoutTestSuite) TestHostScaledTimeout(c *C) {
 		{
 
 			name:     "go test -race",
-			setup:    func() func() { return mockEnvVar("GO_TEST_RACE", "1") },
+			setup:    func() func() { return testutil.MockEnv(map[string]string{"GO_TEST_RACE": "1"}) },
 			expected: 5 * origDuration,
 		},
 		{
@@ -86,7 +68,7 @@ func (ts *TimeoutTestSuite) TestHostScaledTimeout(c *C) {
 			name: "go test -race and riscv64 arch",
 			setup: func() func() {
 				archRestore := testutil.MockRuntimeARCH("riscv64")
-				envVarRestore := mockEnvVar("GO_TEST_RACE", "1")
+				envVarRestore := testutil.MockEnv(map[string]string{"GO_TEST_RACE": "1"})
 				return func() {
 					archRestore()
 					envVarRestore()
