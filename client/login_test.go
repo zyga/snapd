@@ -37,8 +37,7 @@ func (cs *clientSuite) TestClientLogin(c *check.C) {
                       "discharges": ["discharge-macaroon"]}}`
 
 	outfile := filepath.Join(c.MkDir(), "json")
-	os.Setenv(client.TestAuthFileEnvKey, outfile)
-	defer os.Unsetenv(client.TestAuthFileEnvKey)
+	defer testutil.MockEnv(map[string]string{client.TestAuthFileEnvKey: outfile})()
 
 	c.Assert(cs.cli.LoggedInUser(), check.IsNil)
 
@@ -63,8 +62,7 @@ func (cs *clientSuite) TestClientLoginWhenLoggedIn(c *check.C) {
                       "discharges": ["discharge-macaroon"]}}`
 
 	outfile := filepath.Join(c.MkDir(), "json")
-	os.Setenv(client.TestAuthFileEnvKey, outfile)
-	defer os.Unsetenv(client.TestAuthFileEnvKey)
+	defer testutil.MockEnv(map[string]string{client.TestAuthFileEnvKey: outfile})()
 
 	err := os.WriteFile(outfile, []byte(`{"email":"foo@bar.com","macaroon":"macaroon"}`), 0600)
 	c.Assert(err, check.IsNil)
@@ -99,8 +97,7 @@ func (cs *clientSuite) TestClientLoginError(c *check.C) {
 	}`
 
 	outfile := filepath.Join(c.MkDir(), "json")
-	os.Setenv(client.TestAuthFileEnvKey, outfile)
-	defer os.Unsetenv(client.TestAuthFileEnvKey)
+	defer testutil.MockEnv(map[string]string{client.TestAuthFileEnvKey: outfile})()
 
 	user, err := cs.cli.Login("username", "pass", "")
 
@@ -114,8 +111,7 @@ func (cs *clientSuite) TestClientLogout(c *check.C) {
 	cs.rsp = `{"type": "sync", "result": {}}`
 
 	outfile := filepath.Join(c.MkDir(), "json")
-	os.Setenv(client.TestAuthFileEnvKey, outfile)
-	defer os.Unsetenv(client.TestAuthFileEnvKey)
+	defer testutil.MockEnv(map[string]string{client.TestAuthFileEnvKey: outfile})()
 
 	err := os.WriteFile(outfile, []byte(`{"macaroon":"macaroon","discharges":["discharged"]}`), 0600)
 	c.Assert(err, check.IsNil)
@@ -130,8 +126,7 @@ func (cs *clientSuite) TestClientLogout(c *check.C) {
 
 func (cs *clientSuite) TestWriteAuthData(c *check.C) {
 	outfile := filepath.Join(c.MkDir(), "json")
-	os.Setenv(client.TestAuthFileEnvKey, outfile)
-	defer os.Unsetenv(client.TestAuthFileEnvKey)
+	defer testutil.MockEnv(map[string]string{client.TestAuthFileEnvKey: outfile})()
 
 	authData := client.User{
 		Macaroon:   "macaroon",
@@ -146,8 +141,7 @@ func (cs *clientSuite) TestWriteAuthData(c *check.C) {
 
 func (cs *clientSuite) TestReadAuthData(c *check.C) {
 	outfile := filepath.Join(c.MkDir(), "json")
-	os.Setenv(client.TestAuthFileEnvKey, outfile)
-	defer os.Unsetenv(client.TestAuthFileEnvKey)
+	defer testutil.MockEnv(map[string]string{client.TestAuthFileEnvKey: outfile})()
 
 	authData := client.User{
 		Macaroon:   "macaroon",
