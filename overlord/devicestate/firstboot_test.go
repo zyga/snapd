@@ -102,8 +102,7 @@ func (t *firstBootBaseTest) setupBaseTest(c *C, s *seedtest.SeedSnaps) {
 
 	err = os.MkdirAll(dirs.SnapServicesDir, 0755)
 	c.Assert(err, IsNil)
-	os.Setenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS", "1")
-	t.AddCleanup(func() { os.Unsetenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS") })
+	t.AddCleanup(testutil.MockEnv(map[string]string{"SNAPPY_SQUASHFS_UNPACK_FOR_TESTS": "1"}))
 	t.systemctl = testutil.MockCommand(c, "systemctl", "")
 	t.AddCleanup(t.systemctl.Restore)
 
