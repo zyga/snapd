@@ -582,8 +582,7 @@ func (r *failureSuite) testNoReexec(c *C) {
 }
 
 func (r *failureSuite) TestReexecDisabled(c *C) {
-	os.Setenv("SNAP_REEXEC", "0")
-	defer os.Unsetenv("SNAP_REEXEC")
+	defer testutil.MockEnv(map[string]string{"SNAP_REEXEC": "0"})()
 	r.testNoReexec(c)
 
 }
