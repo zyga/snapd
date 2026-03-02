@@ -21,7 +21,6 @@ package main_test
 
 import (
 	"encoding/json"
-	"os"
 
 	. "gopkg.in/check.v1"
 
@@ -31,7 +30,7 @@ import (
 
 // XXX: share this helper with signtool tests?
 func mockNopExtKeyMgr(c *C) (pgm *testutil.MockCmd, restore func()) {
-	os.Setenv("SNAPD_EXT_KEYMGR", "keymgr")
+	restoreEnv := testutil.MockEnv(map[string]string{"SNAPD_EXT_KEYMGR": "keymgr"})
 	pgm = testutil.MockCommand(c, "keymgr", `
 if [ "$1" == "features" ]; then
   echo '{"signing":["RSA-PKCS"] , "public-keys":["DER"]}'
@@ -41,7 +40,7 @@ exit 1
 `)
 	r := func() {
 		pgm.Restore()
-		os.Unsetenv("SNAPD_EXT_KEYMGR")
+		restoreEnv()
 	}
 
 	return pgm, r
