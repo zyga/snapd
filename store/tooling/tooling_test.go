@@ -133,8 +133,7 @@ func (s *toolingSuite) TestNewToolingStoreUbuntuStoreURL(c *C) {
 	u, err := url.Parse("https://api.other")
 	c.Assert(err, IsNil)
 
-	os.Setenv("UBUNTU_STORE_URL", "https://api.other")
-	defer os.Unsetenv("UBUNTU_STORE_URL")
+	defer testutil.MockEnv(map[string]string{"UBUNTU_STORE_URL": "https://api.other"})()
 
 	tsto, err := tooling.NewToolingStore()
 	c.Assert(err, IsNil)
@@ -143,8 +142,7 @@ func (s *toolingSuite) TestNewToolingStoreUbuntuStoreURL(c *C) {
 }
 
 func (s *toolingSuite) TestNewToolingStoreInvalidUbuntuStoreURL(c *C) {
-	os.Setenv("UBUNTU_STORE_URL", ":/what")
-	defer os.Unsetenv("UBUNTU_STORE_URL")
+	defer testutil.MockEnv(map[string]string{"UBUNTU_STORE_URL": ":/what"})()
 
 	_, err := tooling.NewToolingStore()
 	c.Assert(err, ErrorMatches, `invalid UBUNTU_STORE_URL: .*`)
@@ -159,8 +157,7 @@ func (s *toolingSuite) TestNewToolingStoreWithAuthFile(c *C) {
 }`), 0600)
 	c.Assert(err, IsNil)
 
-	os.Setenv("UBUNTU_STORE_AUTH_DATA_FILENAME", authFn)
-	defer os.Unsetenv("UBUNTU_STORE_AUTH_DATA_FILENAME")
+	defer testutil.MockEnv(map[string]string{"UBUNTU_STORE_AUTH_DATA_FILENAME": authFn})()
 
 	tsto, err := tooling.NewToolingStore()
 	c.Assert(err, IsNil)
@@ -182,8 +179,7 @@ func (s *toolingSuite) TestNewToolingStoreWithBase64AuthFile(c *C) {
 	err := os.WriteFile(authFn, enc, 0600)
 	c.Assert(err, IsNil)
 
-	os.Setenv("UBUNTU_STORE_AUTH_DATA_FILENAME", authFn)
-	defer os.Unsetenv("UBUNTU_STORE_AUTH_DATA_FILENAME")
+	defer testutil.MockEnv(map[string]string{"UBUNTU_STORE_AUTH_DATA_FILENAME": authFn})()
 
 	tsto, err := tooling.NewToolingStore()
 	c.Assert(err, IsNil)
@@ -198,8 +194,7 @@ func (s *toolingSuite) TestNewToolingStoreWithAuthFileErrors(c *C) {
 	tmpdir := c.MkDir()
 	authFn := filepath.Join(tmpdir, "creds")
 
-	os.Setenv("UBUNTU_STORE_AUTH_DATA_FILENAME", authFn)
-	defer os.Unsetenv("UBUNTU_STORE_AUTH_DATA_FILENAME")
+	defer testutil.MockEnv(map[string]string{"UBUNTU_STORE_AUTH_DATA_FILENAME": authFn})()
 
 	tests := []struct {
 		data string
@@ -234,8 +229,7 @@ unbound_discharge = DISCHARGE
 `), 0600)
 	c.Assert(err, IsNil)
 
-	os.Setenv("UBUNTU_STORE_AUTH_DATA_FILENAME", authFn)
-	defer os.Unsetenv("UBUNTU_STORE_AUTH_DATA_FILENAME")
+	defer testutil.MockEnv(map[string]string{"UBUNTU_STORE_AUTH_DATA_FILENAME": authFn})()
 
 	tsto, err := tooling.NewToolingStore()
 	c.Assert(err, IsNil)
@@ -283,10 +277,8 @@ func (s *toolingSuite) TestNewToolingStoreWithAuthFromEnv(c *C) {
 		}, {dat: `{"t": "macaroon", "v": []}`,
 			err: `cannot recognize unmarshalled base64-decoded auth credentials from UBUNTU_STORE_AUTH: no known field combination set`,
 		}}
-	defer os.Unsetenv("UBUNTU_STORE_AUTH")
-
 	for _, t := range tests {
-		os.Setenv("UBUNTU_STORE_AUTH", base64.StdEncoding.EncodeToString([]byte(t.dat)))
+		restore := testutil.MockEnv(map[string]string{"UBUNTU_STORE_AUTH": base64.StdEncoding.EncodeToString([]byte(t.dat))})
 		tsto, err := tooling.NewToolingStore()
 		if t.err == "" {
 			c.Assert(err, IsNil)
@@ -295,6 +287,7 @@ func (s *toolingSuite) TestNewToolingStoreWithAuthFromEnv(c *C) {
 		} else {
 			c.Check(err, ErrorMatches, t.err)
 		}
+		restore()
 	}
 }
 
@@ -371,13 +364,7 @@ func (s *toolingSuite) TestDownloadSnap(c *C) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	debug, hadDebug := os.LookupEnv("SNAPD_DEBUG")
-	os.Setenv("SNAPD_DEBUG", "1")
-	if hadDebug {
-		defer os.Setenv("SNAPD_DEBUG", debug)
-	} else {
-		defer os.Unsetenv("SNAPD_DEBUG")
-	}
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})()
 	logbuf, restore := logger.MockLogger()
 	defer restore()
 
@@ -442,13 +429,7 @@ func (s *toolingSuite) testDownloadSnapWithComps(c *C, opts tooling.DownloadSnap
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	debug, hadDebug := os.LookupEnv("SNAPD_DEBUG")
-	os.Setenv("SNAPD_DEBUG", "1")
-	if hadDebug {
-		defer os.Setenv("SNAPD_DEBUG", debug)
-	} else {
-		defer os.Unsetenv("SNAPD_DEBUG")
-	}
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})()
 	logbuf, restore := logger.MockLogger()
 	defer restore()
 
