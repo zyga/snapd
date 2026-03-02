@@ -231,8 +231,7 @@ func (s *baseMgrsSuite) SetUpTest(c *C) {
 
 	s.AddCleanup(ifacestate.MockConnectRetryTimeout(connectRetryTimeout))
 
-	os.Setenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS", "1")
-	s.AddCleanup(func() { os.Unsetenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS") })
+	s.AddCleanup(testutil.MockEnv(map[string]string{"SNAPPY_SQUASHFS_UNPACK_FOR_TESTS": "1"}))
 
 	// create a fake systemd environment
 	os.MkdirAll(filepath.Join(dirs.SnapServicesDir, "multi-user.target.wants"), 0755)
@@ -14389,7 +14388,7 @@ type: snapd`
 	func() {
 		// simple case, the environment variable from snap-failure is
 		// unset
-		os.Unsetenv("SNAPD_REVERT_TO_REV")
+		defer testutil.MockEnv(map[string]string{"SNAPD_REVERT_TO_REV": ""})()
 
 		err := snapstate.CheckExpectedRestart(st)
 		c.Assert(err, IsNil)
@@ -14397,8 +14396,7 @@ type: snapd`
 
 	func() {
 		// environment variable from snap-failure is set
-		os.Setenv("SNAPD_REVERT_TO_REV", "999")
-		defer os.Unsetenv("SNAPD_REVERT_TO_REV")
+		defer testutil.MockEnv(map[string]string{"SNAPD_REVERT_TO_REV": "999"})()
 
 		err := snapstate.CheckExpectedRestart(st)
 		c.Assert(err, IsNil)
@@ -14418,7 +14416,7 @@ type: snapd`
 		// the environment variable from snap-failure is unset, snapd
 		// could have restated at runtime for whatever reason and
 		// systemd handled it
-		os.Unsetenv("SNAPD_REVERT_TO_REV")
+		defer testutil.MockEnv(map[string]string{"SNAPD_REVERT_TO_REV": ""})()
 
 		err := snapstate.CheckExpectedRestart(st)
 		c.Assert(err, Equals, nil)
@@ -14427,8 +14425,7 @@ type: snapd`
 	func() {
 		// environment variable from snap-failure is set, but we did not
 		// expect a restart
-		os.Setenv("SNAPD_REVERT_TO_REV", "999")
-		defer os.Unsetenv("SNAPD_REVERT_TO_REV")
+		defer testutil.MockEnv(map[string]string{"SNAPD_REVERT_TO_REV": "999"})()
 
 		err := snapstate.CheckExpectedRestart(st)
 		c.Assert(err, Equals, snapstate.ErrUnexpectedRuntimeRestart)
