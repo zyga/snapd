@@ -181,9 +181,7 @@ func (s *snapExecSuite) TestSnapExecAppIntegration(c *C) {
 
 	// FIXME: TEST_PATH was meant to be just PATH but this uncovers another
 	// bug in the test suite where mocking binaries misbehaves.
-	oldPath := os.Getenv("TEST_PATH")
-	os.Setenv("TEST_PATH", "/vanilla")
-	defer os.Setenv("TEST_PATH", oldPath)
+	defer testutil.MockEnv(map[string]string{"TEST_PATH": "/vanilla"})()
 
 	// launch and verify its run the right way
 	err := snapExec.ExecApp("snapname.app", "42", "stop", []string{"arg1", "arg2"})
@@ -370,8 +368,7 @@ func (s *snapExecSuite) TestSnapExecAppRealIntegration(c *C) {
 	oldOsArgs := os.Args
 	defer func() { os.Args = oldOsArgs }()
 
-	os.Setenv("SNAP_REVISION", "42")
-	defer os.Unsetenv("SNAP_REVISION")
+	defer testutil.MockEnv(map[string]string{"SNAP_REVISION": "42"})()
 
 	snaptest.MockSnap(c, string(mockYaml), &snap.SideInfo{
 		Revision: snap.R("42"),
@@ -408,8 +405,7 @@ func (s *snapExecSuite) TestSnapExecHookRealIntegration(c *C) {
 	oldOsArgs := os.Args
 	defer func() { os.Args = oldOsArgs }()
 
-	os.Setenv("SNAP_REVISION", "42")
-	defer os.Unsetenv("SNAP_REVISION")
+	defer testutil.MockEnv(map[string]string{"SNAP_REVISION": "42"})()
 
 	canaryFile := filepath.Join(c.MkDir(), "canary.txt")
 
@@ -496,8 +492,7 @@ func (s *snapExecSuite) TestSnapExecAppIntegrationWithVars(c *C) {
 	defer restore()
 
 	// setup env
-	os.Setenv("SNAP_DATA", "/var/snap/snapname/42")
-	defer os.Unsetenv("SNAP_DATA")
+	defer testutil.MockEnv(map[string]string{"SNAP_DATA": "/var/snap/snapname/42"})()
 
 	// launch and verify its run the right way
 	err := snapExec.ExecApp("snapname.app", "42", "", []string{"user-arg1"})
@@ -554,8 +549,7 @@ func (s *snapExecSuite) TestSnapExecCompleteError(c *C) {
 	defer restore()
 
 	// setup env
-	os.Setenv("SNAP_DATA", "/var/snap/snapname/42")
-	defer os.Unsetenv("SNAP_DATA")
+	defer testutil.MockEnv(map[string]string{"SNAP_DATA": "/var/snap/snapname/42"})()
 
 	// launch and verify its run the right way
 	err := snapExec.ExecApp("snapname.app", "42", "complete", []string{"foo"})
@@ -585,8 +579,7 @@ func (s *snapExecSuite) TestSnapExecCompleteConfined(c *C) {
 	defer restore()
 
 	// setup env
-	os.Setenv("SNAP_DATA", "/var/snap/snapname/42")
-	defer os.Unsetenv("SNAP_DATA")
+	defer testutil.MockEnv(map[string]string{"SNAP_DATA": "/var/snap/snapname/42"})()
 
 	// launch and verify its run the right way
 	err := snapExec.ExecApp("snapname.app", "42", "complete", []string{"foo"})
@@ -623,8 +616,7 @@ func (s *snapExecSuite) TestSnapExecCompleteClassicReexec(c *C) {
 	defer restore()
 
 	// setup env
-	os.Setenv("SNAP_DATA", "/var/snap/snapname/42")
-	defer os.Unsetenv("SNAP_DATA")
+	defer testutil.MockEnv(map[string]string{"SNAP_DATA": "/var/snap/snapname/42"})()
 
 	// launch and verify its run the right way
 	err := snapExec.ExecApp("snapname.app", "42", "complete", []string{"foo"})
@@ -663,10 +655,10 @@ func (s *snapExecSuite) TestSnapExecCompleteClassicNoReexec(c *C) {
 	defer restore()
 
 	// setup env
-	os.Setenv("SNAP_DATA", "/var/snap/snapname/42")
-	defer os.Unsetenv("SNAP_DATA")
-	os.Setenv("SNAP_SAVED_TMPDIR", "/var/tmp99")
-	defer os.Unsetenv("SNAP_SAVED_TMPDIR")
+	defer testutil.MockEnv(map[string]string{
+		"SNAP_DATA":         "/var/snap/snapname/42",
+		"SNAP_SAVED_TMPDIR": "/var/tmp99",
+	})()
 
 	// launch and verify its run the right way
 	err := snapExec.ExecApp("snapname.app", "42", "complete", []string{"foo"})
