@@ -67,10 +67,7 @@ func (s *BaseSnapSuite) SetUpTest(c *C) {
 	dirs.SetRootDir(c.MkDir())
 
 	path := os.Getenv("PATH")
-	s.AddCleanup(func() {
-		os.Setenv("PATH", path)
-	})
-	os.Setenv("PATH", path+":"+dirs.SnapBinariesDir)
+	s.AddCleanup(testutil.MockEnv(map[string]string{"PATH": path + ":" + dirs.SnapBinariesDir}))
 
 	s.stdin = bytes.NewBuffer(nil)
 	s.stdout = bytes.NewBuffer(nil)
@@ -82,7 +79,7 @@ func (s *BaseSnapSuite) SetUpTest(c *C) {
 	snap.Stderr = s.stderr
 	snap.ReadPassword = s.readPassword
 	s.AuthFile = filepath.Join(c.MkDir(), "json")
-	os.Setenv(TestAuthFileEnvKey, s.AuthFile)
+	s.AddCleanup(testutil.MockEnv(map[string]string{TestAuthFileEnvKey: s.AuthFile}))
 
 	s.AddCleanup(interfaces.MockSystemKey(`
 {
@@ -116,8 +113,6 @@ func (s *BaseSnapSuite) TearDownTest(c *C) {
 	snap.ReadPassword = terminal.ReadPassword
 
 	c.Assert(s.AuthFile == "", Equals, false)
-	err := os.Unsetenv(TestAuthFileEnvKey)
-	c.Assert(err, IsNil)
 	dirs.SetRootDir("/")
 	s.BaseTest.TearDownTest(c)
 }
