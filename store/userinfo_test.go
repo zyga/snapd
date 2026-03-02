@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"time"
 
 	"gopkg.in/check.v1"
@@ -84,8 +83,7 @@ func (t *userInfoSuite) TearDownTest(c *check.C) {
 func (s *userInfoSuite) redirectToTestSSO(handler func(http.ResponseWriter, *http.Request)) {
 	server := httptest.NewServer(http.HandlerFunc(handler))
 	s.BaseTest.AddCleanup(func() { server.Close() })
-	os.Setenv("SNAPPY_FORCE_SSO_URL", server.URL+"/api/v2")
-	s.BaseTest.AddCleanup(func() { os.Unsetenv("SNAPPY_FORCE_SSO_URL") })
+	s.BaseTest.AddCleanup(testutil.MockEnv(map[string]string{"SNAPPY_FORCE_SSO_URL": server.URL + "/api/v2"}))
 }
 
 func (s *userInfoSuite) TestCreateUserNoSSHKeys(c *check.C) {
