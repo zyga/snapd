@@ -29,6 +29,7 @@ import (
 	"github.com/snapcore/snapd/image"
 	"github.com/snapcore/snapd/seed/seedwriter"
 	"github.com/snapcore/snapd/snap"
+	"github.com/snapcore/snapd/testutil"
 )
 
 type SnapPrepareImageSuite struct {
@@ -106,7 +107,7 @@ func (s *SnapPrepareImageSuite) TestPrepareImageClassicWideCohort(c *C) {
 	r := cmdsnap.MockImagePrepare(prep)
 	defer r()
 
-	os.Setenv("UBUNTU_STORE_COHORT_KEY", "is-six-centuries")
+	defer testutil.MockEnv(map[string]string{"UBUNTU_STORE_COHORT_KEY": "is-six-centuries"})()
 
 	rest, err := cmdsnap.Parser(cmdsnap.Client()).ParseArgs([]string{"prepare-image", "--classic", "model", "prepare-dir"})
 	c.Assert(err, IsNil)
@@ -119,7 +120,6 @@ func (s *SnapPrepareImageSuite) TestPrepareImageClassicWideCohort(c *C) {
 		PrepareDir:    "prepare-dir",
 	})
 
-	os.Unsetenv("UBUNTU_STORE_COHORT_KEY")
 }
 
 func (s *SnapPrepareImageSuite) TestPrepareImageExtraSnaps(c *C) {
