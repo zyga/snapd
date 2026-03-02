@@ -21,12 +21,12 @@ package systemd_test
 
 import (
 	"net"
-	"os"
 	"path/filepath"
 
 	. "gopkg.in/check.v1"
 
 	"github.com/snapcore/snapd/systemd"
+	"github.com/snapcore/snapd/testutil"
 )
 
 type sdNotifyTestSuite struct{}
@@ -45,10 +45,9 @@ func (sd *sdNotifyTestSuite) TestSdNotifyWrongNotifySocket(c *C) {
 		{"", "cannot find NOTIFY_SOCKET environment"},
 		{"xxx", `cannot use NOTIFY_SOCKET "xxx"`},
 	} {
-		os.Setenv("NOTIFY_SOCKET", t.env)
-		defer os.Unsetenv("NOTIFY_SOCKET")
-
+		restore := testutil.MockEnv(map[string]string{"NOTIFY_SOCKET": t.env})
 		c.Check(systemd.SdNotify("something"), ErrorMatches, t.errStr)
+		restore()
 	}
 }
 
