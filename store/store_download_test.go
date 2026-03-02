@@ -618,9 +618,7 @@ var downloadDeltaTests = []struct {
 }}
 
 func (s *storeDownloadSuite) TestDownloadDelta(c *C) {
-	origUseDeltas := os.Getenv("SNAPD_USE_DELTAS_EXPERIMENTAL")
-	defer os.Setenv("SNAPD_USE_DELTAS_EXPERIMENTAL", origUseDeltas)
-	c.Assert(os.Setenv("SNAPD_USE_DELTAS_EXPERIMENTAL", "1"), IsNil)
+	defer testutil.MockEnv(map[string]string{"SNAPD_USE_DELTAS_EXPERIMENTAL": "1"})()
 
 	dauthCtx := &testDauthContext{c: c}
 	sto := store.New(nil, dauthCtx)
