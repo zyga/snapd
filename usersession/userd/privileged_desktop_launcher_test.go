@@ -86,11 +86,7 @@ func (s *privilegedDesktopLauncherSuite) TearDownTest(c *C) {
 }
 
 func (s *privilegedDesktopLauncherSuite) mockEnv(key, value string) {
-	old := os.Getenv(key)
-	os.Setenv(key, value)
-	s.AddCleanup(func() {
-		os.Setenv(key, old)
-	})
+	s.AddCleanup(testutil.MockEnv(map[string]string{key: value}))
 }
 
 func (s *privilegedDesktopLauncherSuite) TestDesktopFileLookup(c *C) {
