@@ -2190,8 +2190,7 @@ func (s *deviceMgrSerialSuite) TestNewEnoughProxyParse(c *C) {
 	s.state.Lock()
 	defer s.state.Unlock()
 
-	os.Setenv("SNAPD_DEBUG", "1")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})()
 
 	badURL := &url.URL{Opaque: "%a"} // url.Parse(badURL.String()) needs to fail, which isn't easy :-)
 	newEnoughProxy, err := devicestate.NewEnoughProxy(s.state, badURL, http.DefaultClient)
@@ -2206,8 +2205,7 @@ func (s *deviceMgrSerialSuite) TestNewEnoughProxy(c *C) {
 	expectedUserAgent := snapdenv.UserAgent()
 	log, restore := logger.MockLogger()
 	defer restore()
-	os.Setenv("SNAPD_DEBUG", "1")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})()
 
 	expecteds := []string{
 		`Head \"?http://\S+\"?: EOF`,
