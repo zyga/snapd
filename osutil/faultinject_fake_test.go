@@ -37,16 +37,16 @@ var _ = Suite(&testhelperFakeFaultInjectionSuite{})
 
 func (s *testhelperFakeFaultInjectionSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
-
-	oldSnappyTesting := os.Getenv("SNAPPY_TESTING")
-	s.AddCleanup(func() { os.Setenv("SNAPPY_TESTING", oldSnappyTesting) })
-	s.AddCleanup(func() { os.Unsetenv("SNAPD_FAULT_INJECT") })
+	s.AddCleanup(testutil.MockEnv(map[string]string{
+		"SNAPPY_TESTING":    os.Getenv("SNAPPY_TESTING"),
+		"SNAPD_FAULT_INJECT": os.Getenv("SNAPD_FAULT_INJECT"),
+	}))
 }
 
 func (s *testhelperFakeFaultInjectionSuite) TestFakeFaultInject(c *C) {
-	os.Setenv("SNAPPY_TESTING", "1")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_TESTING": "1"})()
 
-	os.Setenv("SNAPD_FAULT_INJECT", "tag:reboot,othertag:panic,funtag:reboot")
+	defer testutil.MockEnv(map[string]string{"SNAPD_FAULT_INJECT": "tag:reboot,othertag:panic,funtag:reboot"})()
 	osutil.MaybeInjectFault("tag")
 	osutil.MaybeInjectFault("othertag")
 	osutil.MaybeInjectFault("funtag")
