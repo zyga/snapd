@@ -29,8 +29,7 @@ var _ = Suite(&fipsSuite{})
 func (s *fipsSuite) SetUpTest(c *C) {
 	s.BaseTest.SetUpTest(c)
 
-	os.Setenv("SNAPD_DEBUG", "1")
-	s.AddCleanup(func() { os.Unsetenv("SNAPD_DEBUG") })
+	s.AddCleanup(testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"}))
 
 	buf, restore := logger.MockLogger()
 	s.AddCleanup(restore)
@@ -234,17 +233,12 @@ func (s *fipsSuite) TestMaybeSetupFIPSBootstrapAlreadyDone(c *C) {
 		fipsEnabledYes:     true,
 	})
 
-	defer func() {
-		os.Unsetenv("GOFIPS")
-		os.Unsetenv("SNAPD_FIPS_BOOSTRAP")
-		os.Unsetenv("OPENSSL_MODULES")
-		os.Unsetenv("GO_OPENSSL_VERSION_OVERRIDE")
-	}()
-
-	os.Setenv("SNAPD_FIPS_BOOTSTRAP", "1")
-	os.Setenv("GOFIPS", "1")
-	os.Setenv("OPENSSL_MODULES", "bogus-dir")
-	os.Setenv("GO_OPENSSL_VERSION_OVERRIDE", "123-xyz")
+	defer testutil.MockEnv(map[string]string{
+		"SNAPD_FIPS_BOOTSTRAP":        "1",
+		"GOFIPS":                      "1",
+		"OPENSSL_MODULES":             "bogus-dir",
+		"GO_OPENSSL_VERSION_OVERRIDE": "123-xyz",
+	})()
 
 	err := snapdtool.MaybeSetupFIPS()
 	c.Assert(err, IsNil)
