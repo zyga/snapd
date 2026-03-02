@@ -450,8 +450,7 @@ func (s *trackingSuite) testCreateTransientScopeConfirm(c *C, tc testTransientSc
 
 	logBuf, restore := logger.MockLogger()
 	defer restore()
-	os.Setenv("SNAPD_DEBUG", "true")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "true"})()
 	restore = cgroup.MockOsGetuid(12345)
 	defer restore()
 	restore = cgroup.MockOsGetpid(312123)
@@ -657,8 +656,7 @@ func (s *trackingSuite) TestCreateTransientScopeHappyWithRetriedCheckCgroupV1(c 
 	defer restore()
 	logBuf, restore := logger.MockLogger()
 	defer restore()
-	os.Setenv("SNAPD_DEBUG", "true")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "true"})()
 	restore = cgroup.MockOsGetuid(12345)
 	defer restore()
 	restore = cgroup.MockOsGetpid(312123)
@@ -929,8 +927,7 @@ func (s *trackingSuite) TestSessionOrMaybeSystemBusTotalFailureForRoot(c *C) {
 	defer restore()
 	logBuf, restore := logger.MockLogger()
 	defer restore()
-	os.Setenv("SNAPD_DEBUG", "true")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "true"})()
 
 	uid := 0
 	isSession, conn, err := cgroup.SessionOrMaybeSystemBus(uid)
@@ -953,8 +950,7 @@ func (s *trackingSuite) TestSessionOrMaybeSystemBusFallbackForRoot(c *C) {
 	defer restore()
 	logBuf, restore := logger.MockLogger()
 	defer restore()
-	os.Setenv("SNAPD_DEBUG", "true")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "true"})()
 
 	uid := 0
 	isSession, conn, err := cgroup.SessionOrMaybeSystemBus(uid)
@@ -977,8 +973,7 @@ func (s *trackingSuite) TestSessionOrMaybeSystemBusNonRootSessionFailure(c *C) {
 	defer restore()
 	logBuf, restore := logger.MockLogger()
 	defer restore()
-	os.Setenv("SNAPD_DEBUG", "true")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "true"})()
 
 	uid := 12345
 	isSession, conn, err := cgroup.SessionOrMaybeSystemBus(uid)
