@@ -27,7 +27,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -1256,9 +1255,7 @@ func (s *storeActionSuite) TestSnapActionNonDefaultsHeaders(c *C) {
 }
 
 func (s *storeActionSuite) TestSnapActionWithDeltas(c *C) {
-	origUseDeltas := os.Getenv("SNAPD_USE_DELTAS_EXPERIMENTAL")
-	defer os.Setenv("SNAPD_USE_DELTAS_EXPERIMENTAL", origUseDeltas)
-	c.Assert(os.Setenv("SNAPD_USE_DELTAS_EXPERIMENTAL", "1"), IsNil)
+	defer testutil.MockEnv(map[string]string{"SNAPD_USE_DELTAS_EXPERIMENTAL": "1"})()
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assertRequest(c, r, "POST", snapActionPath)
