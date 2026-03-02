@@ -196,25 +196,10 @@ func MockReadDir(fn func(string) ([]fs.DirEntry, error)) (restore func()) {
 // MockSnapConfineUserEnv provide the environment variables provided by snap-confine
 // when it calls snap-update-ns for a specific user
 func MockSnapConfineUserEnv(xdgNew, realHomeNew string) (restore func()) {
-	xdgCur, xdgExists := os.LookupEnv("XDG_RUNTIME_DIR")
-	realHomeCur, realHomeExists := os.LookupEnv("SNAP_REAL_HOME")
-
-	os.Setenv("XDG_RUNTIME_DIR", xdgNew)
-	os.Setenv("SNAP_REAL_HOME", realHomeNew)
-
-	return func() {
-		if xdgExists {
-			os.Setenv("XDG_RUNTIME_DIR", xdgCur)
-		} else {
-			os.Unsetenv("XDG_RUNTIME_DIR")
-		}
-
-		if realHomeExists {
-			os.Setenv("SNAP_REAL_HOME", realHomeCur)
-		} else {
-			os.Unsetenv("SNAP_REAL_HOME")
-		}
-	}
+	return testutil.MockEnv(map[string]string{
+		"XDG_RUNTIME_DIR": xdgNew,
+		"SNAP_REAL_HOME":  realHomeNew,
+	})
 }
 
 func MockReadlink(fn func(string) (string, error)) (restore func()) {
