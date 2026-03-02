@@ -20,8 +20,6 @@
 package signtool_test
 
 import (
-	"os"
-
 	"gopkg.in/check.v1"
 
 	"github.com/snapcore/snapd/asserts"
@@ -40,7 +38,7 @@ func (keymgrSuite) TestGPGKeypairManager(c *check.C) {
 }
 
 func mockNopExtKeyMgr(c *check.C) (pgm *testutil.MockCmd, restore func()) {
-	os.Setenv("SNAPD_EXT_KEYMGR", "keymgr")
+	restoreEnv := testutil.MockEnv(map[string]string{"SNAPD_EXT_KEYMGR": "keymgr"})
 	pgm = testutil.MockCommand(c, "keymgr", `
 if [ "$1" == "features" ]; then
   echo '{"signing":["RSA-PKCS"] , "public-keys":["DER"]}'
@@ -50,7 +48,7 @@ exit 1
 `)
 	r := func() {
 		pgm.Restore()
-		os.Unsetenv("SNAPD_EXT_KEYMGR")
+		restoreEnv()
 	}
 
 	return pgm, r
@@ -67,8 +65,7 @@ func (keymgrSuite) TestExternalKeypairManager(c *check.C) {
 }
 
 func (keymgrSuite) TestExternalKeypairManagerError(c *check.C) {
-	os.Setenv("SNAPD_EXT_KEYMGR", "keymgr")
-	defer os.Unsetenv("SNAPD_EXT_KEYMGR")
+	defer testutil.MockEnv(map[string]string{"SNAPD_EXT_KEYMGR": "keymgr"})()
 
 	pgm := testutil.MockCommand(c, "keymgr", `
 exit 1
