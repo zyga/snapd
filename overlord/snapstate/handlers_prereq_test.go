@@ -21,7 +21,6 @@ package snapstate_test
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	. "gopkg.in/check.v1"
@@ -601,10 +600,10 @@ func (s *prereqSuite) TestDoPrereqNoRetryWhenBaseInFlightDuringRemodel(c *C) {
 }
 
 func (s *prereqSuite) TestDoPrereqChannelEnvvars(c *C) {
-	os.Setenv("SNAPD_BASES_CHANNEL", "edge")
-	defer os.Unsetenv("SNAPD_BASES_CHANNEL")
-	os.Setenv("SNAPD_PREREQS_CHANNEL", "candidate")
-	defer os.Unsetenv("SNAPD_PREREQS_CHANNEL")
+	defer testutil.MockEnv(map[string]string{
+		"SNAPD_BASES_CHANNEL":   "edge",
+		"SNAPD_PREREQS_CHANNEL": "candidate",
+	})()
 	s.state.Lock()
 
 	// install snapd so that prerequisites handler won't try to install it
@@ -869,8 +868,7 @@ func (s *prereqSuite) TestDoPrereqBaseIsNotBase(c *C) {
 }
 
 func (s *prereqSuite) TestDoPrereqBaseNoRevision(c *C) {
-	os.Setenv("SNAPD_BASES_CHANNEL", "channel-no-revision")
-	defer os.Unsetenv("SNAPD_BASES_CHANNEL")
+	defer testutil.MockEnv(map[string]string{"SNAPD_BASES_CHANNEL": "channel-no-revision"})()
 
 	s.state.Lock()
 
@@ -898,8 +896,7 @@ func (s *prereqSuite) TestDoPrereqBaseNoRevision(c *C) {
 }
 
 func (s *prereqSuite) TestDoPrereqNoRevision(c *C) {
-	os.Setenv("SNAPD_PREREQS_CHANNEL", "channel-no-revision")
-	defer os.Unsetenv("SNAPD_PREREQS_CHANNEL")
+	defer testutil.MockEnv(map[string]string{"SNAPD_PREREQS_CHANNEL": "channel-no-revision"})()
 
 	s.state.Lock()
 
@@ -926,8 +923,7 @@ func (s *prereqSuite) TestDoPrereqNoRevision(c *C) {
 }
 
 func (s *prereqSuite) TestDoPrereqSnapdNoRevision(c *C) {
-	os.Setenv("SNAPD_SNAPD_CHANNEL", "channel-no-revision")
-	defer os.Unsetenv("SNAPD_SNAPD_CHANNEL")
+	defer testutil.MockEnv(map[string]string{"SNAPD_SNAPD_CHANNEL": "channel-no-revision"})()
 
 	s.state.Lock()
 
