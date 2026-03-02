@@ -89,6 +89,15 @@ func MockEnv(env map[string]string) (restore func()) {
 	}
 }
 
+// MockLocale sets locale-related environment variables and returns a restore function.
+func MockLocale(locale string) (restore func()) {
+	return MockEnv(map[string]string{
+		"LANG":        locale,
+		"LC_ALL":      locale,
+		"LC_MESSAGES": locale,
+	})
+}
+
 // Backup a single element before further mocking.
 func Backup[T any](mockable *T) (restore func()) {
 	backup := *mockable
