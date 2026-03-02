@@ -11793,7 +11793,7 @@ func noticeToMap(c *C, notice *state.Notice) map[string]any {
 }
 
 func (s *snapmgrTestSuite) TestCheckExpectedRestartNoEnv(c *C) {
-	os.Unsetenv("SNAPD_REVERT_TO_REV")
+	defer testutil.MockEnv(map[string]string{"SNAPD_REVERT_TO_REV": ""})()
 
 	st := s.state
 	st.Lock()
@@ -11838,8 +11838,7 @@ func (s *snapmgrTestSuite) TestCheckExpectedRestartNoEnv(c *C) {
 }
 
 func (s *snapmgrTestSuite) TestCheckExpectedRestartFromSnapFailure(c *C) {
-	os.Setenv("SNAPD_REVERT_TO_REV", "1")
-	defer os.Unsetenv("SNAPD_REVERT_TO_REV")
+	defer testutil.MockEnv(map[string]string{"SNAPD_REVERT_TO_REV": "1"})()
 
 	st := s.state
 	st.Lock()
@@ -11899,8 +11898,7 @@ func (s *snapmgrTestSuite) TestCheckExpectedRestartFromSnapFailure(c *C) {
 }
 
 func (s *snapmgrTestSuite) TestCheckExpectedRestartFromStartUpRequestsStop(c *C) {
-	os.Setenv("SNAPD_REVERT_TO_REV", "1")
-	defer os.Unsetenv("SNAPD_REVERT_TO_REV")
+	defer testutil.MockEnv(map[string]string{"SNAPD_REVERT_TO_REV": "1"})()
 
 	s.state.Lock()
 	// make sure we have an expected state
