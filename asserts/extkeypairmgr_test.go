@@ -110,7 +110,6 @@ fi
 echo "${EXT_KEYMGR_FAIL}"
 `)
 	defer pgm.Restore()
-	defer os.Unsetenv("EXT_KEYMGR_FAIL")
 
 	tests := []struct {
 		outcome string
@@ -123,11 +122,11 @@ echo "${EXT_KEYMGR_FAIL}"
 		{"", `cannot decode external keypair manager "keymgr" \[features\] output.*`},
 	}
 
-	defer os.Unsetenv("EXT_KEYMGR_FAIL")
 	for _, t := range tests {
-		os.Setenv("EXT_KEYMGR_FAIL", t.outcome)
+		restoreEnv := testutil.MockEnv(map[string]string{"EXT_KEYMGR_FAIL": t.outcome})
 
 		_, err := asserts.NewExternalKeypairManager("keymgr")
+		restoreEnv()
 		c.Check(err, ErrorMatches, t.err)
 		c.Check(pgm.Calls(), DeepEquals, [][]string{
 			{"keymgr", "features"},
