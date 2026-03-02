@@ -29,6 +29,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/snapcore/snapd/osutil"
+	"github.com/snapcore/snapd/testutil"
 )
 
 type StatTestSuite struct{}
@@ -80,10 +81,8 @@ func (ts *StatTestSuite) TestIsSymlinkNoSymlink(c *C) {
 }
 
 func (ts *StatTestSuite) TestExecutableExists(c *C) {
-	oldPath := os.Getenv("PATH")
-	defer os.Setenv("PATH", oldPath)
 	d := c.MkDir()
-	os.Setenv("PATH", d)
+	defer testutil.MockEnv(map[string]string{"PATH": d})()
 	c.Check(osutil.ExecutableExists("xyzzy"), Equals, false)
 
 	fname := filepath.Join(d, "xyzzy")
