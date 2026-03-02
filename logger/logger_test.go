@@ -62,44 +62,32 @@ func (s *LogSuite) TestDefault(c *C) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	oldTerm, hadTerm := os.LookupEnv("TERM")
-	defer func() {
-		if hadTerm {
-			os.Setenv("TERM", oldTerm)
-		} else {
-			os.Unsetenv("TERM")
-		}
-	}()
-
 	if logger.GetLogger() != nil {
 		logger.SetLogger(nil)
 	}
 	c.Check(logger.GetLogger(), IsNil)
 
-	os.Setenv("TERM", "dumb")
-	logger.SimpleSetup(nil)
-	c.Check(logger.GetLogger(), NotNil)
-	c.Check(logger.GetLoggerFlags(), Equals, logger.DefaultFlags)
+	{
+		restore := testutil.MockEnv(map[string]string{"TERM": "dumb"})
+		logger.SimpleSetup(nil)
+		c.Check(logger.GetLogger(), NotNil)
+		c.Check(logger.GetLoggerFlags(), Equals, logger.DefaultFlags)
+		restore()
+	}
 
-	os.Unsetenv("TERM")
-	logger.SimpleSetup(nil)
-	c.Check(logger.GetLogger(), NotNil)
-	c.Check(logger.GetLoggerFlags(), Equals, log.Lshortfile)
+	{
+		restore := testutil.MockEnv(map[string]string{"TERM": ""})
+		logger.SimpleSetup(nil)
+		c.Check(logger.GetLogger(), NotNil)
+		c.Check(logger.GetLoggerFlags(), Equals, log.Lshortfile)
+		restore()
+	}
 }
 
 func (s *LogSuite) TestBootSetup(c *C) {
 	// env shenanigans
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-
-	oldTerm, hadTerm := os.LookupEnv("TERM")
-	defer func() {
-		if hadTerm {
-			os.Setenv("TERM", oldTerm)
-		} else {
-			os.Unsetenv("TERM")
-		}
-	}()
 
 	if logger.GetLogger() != nil {
 		logger.SetLogger(nil)
@@ -111,24 +99,30 @@ func (s *LogSuite) TestBootSetup(c *C) {
 	c.Assert(err, IsNil)
 	restore := kcmdline.MockProcCmdline(cmdlineFile)
 	defer restore()
-	os.Setenv("TERM", "dumb")
-	err = logger.BootSetup()
-	c.Assert(err, IsNil)
-	c.Check(logger.GetLogger(), NotNil)
-	c.Check(logger.GetLoggerFlags(), Equals, logger.DefaultFlags)
-	c.Check(logger.GetQuiet(), Equals, false)
+	{
+		restoreTerm := testutil.MockEnv(map[string]string{"TERM": "dumb"})
+		err = logger.BootSetup()
+		c.Assert(err, IsNil)
+		c.Check(logger.GetLogger(), NotNil)
+		c.Check(logger.GetLoggerFlags(), Equals, logger.DefaultFlags)
+		c.Check(logger.GetQuiet(), Equals, false)
+		restoreTerm()
+	}
 
 	cmdlineFile = filepath.Join(c.MkDir(), "cmdline")
 	err = os.WriteFile(cmdlineFile, []byte("mocked panic=-1 quiet"), 0644)
 	c.Assert(err, IsNil)
 	restore = kcmdline.MockProcCmdline(cmdlineFile)
 	defer restore()
-	os.Unsetenv("TERM")
-	err = logger.BootSetup()
-	c.Assert(err, IsNil)
-	c.Check(logger.GetLogger(), NotNil)
-	c.Check(logger.GetLoggerFlags(), Equals, log.Lshortfile)
-	c.Check(logger.GetQuiet(), Equals, true)
+	{
+		restoreTerm := testutil.MockEnv(map[string]string{"TERM": ""})
+		err = logger.BootSetup()
+		c.Assert(err, IsNil)
+		c.Check(logger.GetLogger(), NotNil)
+		c.Check(logger.GetLoggerFlags(), Equals, log.Lshortfile)
+		c.Check(logger.GetQuiet(), Equals, true)
+		restoreTerm()
+	}
 }
 
 func (s *LogSuite) TestNew(c *C) {
@@ -143,8 +137,7 @@ func (s *LogSuite) TestDebugf(c *C) {
 }
 
 func (s *LogSuite) TestDebugfEnv(c *C) {
-	os.Setenv("SNAPD_DEBUG", "1")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})()
 
 	logger.Debugf("xyzzy")
 	c.Check(s.logbuf.String(), Matches, `(?m).*logger_test\.go:\d+: DEBUG: xyzzy`)
@@ -172,13 +165,7 @@ func (s *LogSuite) TestWithLoggerLock(c *C) {
 }
 
 func (s *LogSuite) TestNoGuardDebug(c *C) {
-	debugValue, ok := os.LookupEnv("SNAPD_DEBUG")
-	if ok {
-		defer func() {
-			os.Setenv("SNAPD_DEBUG", debugValue)
-		}()
-		os.Unsetenv("SNAPD_DEBUG")
-	}
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": ""})()
 
 	logger.NoGuardDebugf("xyzzy")
 	c.Check(s.logbuf.String(), testutil.Contains, `DEBUG: xyzzy`)
@@ -205,8 +192,7 @@ func (s *LogSuite) TestIntegrationDebugFromKernelCmdline(c *C) {
 }
 
 func (s *LogSuite) TestStartupTimestampMsg(c *C) {
-	os.Setenv("SNAPD_DEBUG", "1")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})()
 
 	type msgTimestamp struct {
 		Stage string `json:"stage"`
