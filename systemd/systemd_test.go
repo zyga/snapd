@@ -86,6 +86,7 @@ type SystemdTestSuite struct {
 	restoreSystemctl  func()
 	restoreJournalctl func()
 	restoreSELinux    func()
+	restoreEnv        func()
 }
 
 var _ = Suite(&SystemdTestSuite{})
@@ -101,7 +102,7 @@ func (s *SystemdTestSuite) SetUpTest(c *C) {
 	c.Assert(os.MkdirAll(filepath.Join(dirs.SnapServicesDir, "multi-user.target.wants"), 0755), IsNil)
 
 	// force UTC timezone, for reproducible timestamps
-	os.Setenv("TZ", "")
+	s.restoreEnv = testutil.MockEnv(map[string]string{"TZ": ""})
 
 	s.restoreSystemctl = MockSystemctlWithDelay(s.myRun)
 	s.i = 0
@@ -131,6 +132,7 @@ func (s *SystemdTestSuite) TearDownTest(c *C) {
 	s.restoreSystemctl()
 	s.restoreJournalctl()
 	s.restoreSELinux()
+	s.restoreEnv()
 }
 
 func (s *SystemdTestSuite) myRun(args ...string) (out []byte, delay time.Duration, err error) {
@@ -2777,9 +2779,7 @@ func (s *systemdErrorSuite) TestErrorStringNoOutput(c *C) {
 }
 
 func (s *systemdErrorSuite) TestErrorStringNoSystemctl(c *C) {
-	oldPath := os.Getenv("PATH")
-	os.Setenv("PATH", "/xxx")
-	defer func() { os.Setenv("PATH", oldPath) }()
+	defer testutil.MockEnv(map[string]string{"PATH": "/xxx"})()
 
 	_, err := Version()
 	c.Check(err, ErrorMatches, `systemctl command \[--version\] failed with: exec: "systemctl": executable file not found in \$PATH`)
