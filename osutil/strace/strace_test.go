@@ -109,9 +109,7 @@ func (s *straceSuite) TestStraceCommandNoSudo(c *C) {
 		c.Assert(err, IsNil)
 	}
 
-	origPath := os.Getenv("PATH")
-	defer func() { os.Setenv("PATH", origPath) }()
-	os.Setenv("PATH", tmp)
+	defer testutil.MockEnv(map[string]string{"PATH": tmp})()
 
 	_, err := strace.Command(nil)
 	c.Assert(err, ErrorMatches, `cannot use strace without sudo: exec: "sudo": executable file not found in \$PATH`)
@@ -127,10 +125,7 @@ func (s *straceSuite) TestStraceCommandNoStrace(c *C) {
 		c.Assert(err, IsNil)
 	}
 
-	origPath := os.Getenv("PATH")
-	defer func() { os.Setenv("PATH", origPath) }()
-
-	os.Setenv("PATH", tmp)
+	defer testutil.MockEnv(map[string]string{"PATH": tmp})()
 	err := os.WriteFile(filepath.Join(tmp, "sudo"), nil, 0755)
 	c.Assert(err, IsNil)
 
