@@ -109,8 +109,7 @@ func (s *downloadSuite) TestActualDownloadAutoRefresh(c *C) {
 }
 
 func (s *downloadSuite) TestActualDownloadNoCDN(c *C) {
-	os.Setenv("SNAPPY_STORE_NO_CDN", "1")
-	defer os.Unsetenv("SNAPPY_STORE_NO_CDN")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_STORE_NO_CDN": "1"})()
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c.Check(r.Header.Get("Snap-CDN"), Equals, "none")
@@ -385,8 +384,6 @@ func (s *downloadSuite) TestActualDownloadServerNoResumeHandeled(c *C) {
 }
 
 func (s *downloadSuite) TestUseDeltas(c *C) {
-	origUseDeltas := os.Getenv("SNAPD_USE_DELTAS_EXPERIMENTAL")
-	defer os.Setenv("SNAPD_USE_DELTAS_EXPERIMENTAL", origUseDeltas)
 	restore := release.MockOnClassic(false)
 	defer restore()
 
@@ -409,7 +406,7 @@ func (s *downloadSuite) TestUseDeltas(c *C) {
 		comment := Commentf("%#v", scenario)
 
 		// setup the env var for the scenario
-		os.Setenv("SNAPD_USE_DELTAS_EXPERIMENTAL", scenario.env)
+		restore := testutil.MockEnv(map[string]string{"SNAPD_USE_DELTAS_EXPERIMENTAL": scenario.env})
 		release.MockOnClassic(scenario.classic)
 
 		// run the check for delta usage
@@ -421,6 +418,8 @@ func (s *downloadSuite) TestUseDeltas(c *C) {
 			// disabled via an env var
 			c.Assert(scenario.env == "0", Equals, true)
 		}
+
+		restore()
 	}
 }
 
@@ -476,9 +475,7 @@ var deltaTests = []struct {
 }}
 
 func (s *downloadSuite) TestDownloadWithDelta(c *C) {
-	origUseDeltas := os.Getenv("SNAPD_USE_DELTAS_EXPERIMENTAL")
-	defer os.Setenv("SNAPD_USE_DELTAS_EXPERIMENTAL", origUseDeltas)
-	c.Assert(os.Setenv("SNAPD_USE_DELTAS_EXPERIMENTAL", "1"), IsNil)
+	defer testutil.MockEnv(map[string]string{"SNAPD_USE_DELTAS_EXPERIMENTAL": "1"})()
 
 	for i, testCase := range deltaTests {
 		c.Log("tc:", i)
