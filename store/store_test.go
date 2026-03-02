@@ -96,8 +96,7 @@ func (suite *configTestSuite) TestSetBaseURLStoreOverrides(c *C) {
 	c.Assert(cfg.SetBaseURL(store.ApiURL()), IsNil)
 	c.Check(cfg.StoreBaseURL, Matches, store.ApiURL().String()+".*")
 
-	c.Assert(os.Setenv("SNAPPY_FORCE_API_URL", "https://force-api.local/"), IsNil)
-	defer os.Setenv("SNAPPY_FORCE_API_URL", "")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_FORCE_API_URL": "https://force-api.local/"})()
 	cfg = store.DefaultConfig()
 	c.Assert(cfg.SetBaseURL(store.ApiURL()), IsNil)
 	c.Check(cfg.StoreBaseURL.String(), Equals, "https://force-api.local/")
@@ -105,8 +104,7 @@ func (suite *configTestSuite) TestSetBaseURLStoreOverrides(c *C) {
 }
 
 func (suite *configTestSuite) TestSetBaseURLStoreURLBadEnviron(c *C) {
-	c.Assert(os.Setenv("SNAPPY_FORCE_API_URL", "://example.com"), IsNil)
-	defer os.Setenv("SNAPPY_FORCE_API_URL", "")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_FORCE_API_URL": "://example.com"})()
 
 	cfg := store.DefaultConfig()
 	err := cfg.SetBaseURL(store.ApiURL())
@@ -118,16 +116,14 @@ func (suite *configTestSuite) TestSetBaseURLAssertsOverrides(c *C) {
 	c.Assert(cfg.SetBaseURL(store.ApiURL()), IsNil)
 	c.Check(cfg.AssertionsBaseURL, IsNil)
 
-	c.Assert(os.Setenv("SNAPPY_FORCE_SAS_URL", "https://force-sas.local/"), IsNil)
-	defer os.Setenv("SNAPPY_FORCE_SAS_URL", "")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_FORCE_SAS_URL": "https://force-sas.local/"})()
 	cfg = store.DefaultConfig()
 	c.Assert(cfg.SetBaseURL(store.ApiURL()), IsNil)
 	c.Check(cfg.AssertionsBaseURL, Matches, "https://force-sas.local/.*")
 }
 
 func (suite *configTestSuite) TestSetBaseURLAssertsURLBadEnviron(c *C) {
-	c.Assert(os.Setenv("SNAPPY_FORCE_SAS_URL", "://example.com"), IsNil)
-	defer os.Setenv("SNAPPY_FORCE_SAS_URL", "")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_FORCE_SAS_URL": "://example.com"})()
 
 	cfg := store.DefaultConfig()
 	err := cfg.SetBaseURL(store.ApiURL())
@@ -395,8 +391,7 @@ func (s *baseStoreSuite) SetUpTest(c *C) {
 	dirs.SetRootDir(c.MkDir())
 	s.AddCleanup(func() { dirs.SetRootDir("") })
 
-	os.Setenv("SNAPD_DEBUG", "1")
-	s.AddCleanup(func() { os.Unsetenv("SNAPD_DEBUG") })
+	s.AddCleanup(testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"}))
 
 	var restoreLogger func()
 	s.logbuf, restoreLogger = logger.MockLogger()
@@ -3490,8 +3485,10 @@ func (s *storeTestSuite) TestStoreURLDependsOnEnviron(c *C) {
 	// TestApiURLDependsOnEnviron).
 	api := store.ApiURL()
 
-	c.Assert(os.Setenv("SNAPPY_FORCE_CPI_URL", ""), IsNil)
-	c.Assert(os.Setenv("SNAPPY_FORCE_API_URL", ""), IsNil)
+	defer testutil.MockEnv(map[string]string{
+		"SNAPPY_FORCE_CPI_URL": "",
+		"SNAPPY_FORCE_API_URL": "",
+	})()
 
 	// Test in order of precedence (low first) leaving env vars set as we go ...
 
@@ -3499,29 +3496,25 @@ func (s *storeTestSuite) TestStoreURLDependsOnEnviron(c *C) {
 	c.Assert(err, IsNil)
 	c.Check(u.String(), Matches, api.String()+".*")
 
-	c.Assert(os.Setenv("SNAPPY_FORCE_API_URL", "https://force-api.local/"), IsNil)
-	defer os.Setenv("SNAPPY_FORCE_API_URL", "")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_FORCE_API_URL": "https://force-api.local/"})()
 	u, err = store.StoreURL(api)
 	c.Assert(err, IsNil)
 	c.Check(u.String(), Matches, "https://force-api.local/.*")
 
-	c.Assert(os.Setenv("SNAPPY_FORCE_CPI_URL", "https://force-cpi.local/api/v1/"), IsNil)
-	defer os.Setenv("SNAPPY_FORCE_CPI_URL", "")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_FORCE_CPI_URL": "https://force-cpi.local/api/v1/"})()
 	u, err = store.StoreURL(api)
 	c.Assert(err, IsNil)
 	c.Check(u.String(), Matches, "https://force-cpi.local/.*")
 }
 
 func (s *storeTestSuite) TestStoreURLBadEnvironAPI(c *C) {
-	c.Assert(os.Setenv("SNAPPY_FORCE_API_URL", "://force-api.local/"), IsNil)
-	defer os.Setenv("SNAPPY_FORCE_API_URL", "")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_FORCE_API_URL": "://force-api.local/"})()
 	_, err := store.StoreURL(store.ApiURL())
 	c.Check(err, ErrorMatches, "invalid SNAPPY_FORCE_API_URL: parse \"?://force-api.local/\"?: missing protocol scheme")
 }
 
 func (s *storeTestSuite) TestStoreURLBadEnvironCPI(c *C) {
-	c.Assert(os.Setenv("SNAPPY_FORCE_CPI_URL", "://force-cpi.local/api/v1/"), IsNil)
-	defer os.Setenv("SNAPPY_FORCE_CPI_URL", "")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_FORCE_CPI_URL": "://force-cpi.local/api/v1/"})()
 	_, err := store.StoreURL(store.ApiURL())
 	c.Check(err, ErrorMatches, "invalid SNAPPY_FORCE_CPI_URL: parse \"?://force-cpi.local/\"?: missing protocol scheme")
 }
