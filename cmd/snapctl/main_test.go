@@ -32,6 +32,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/snapcore/snapd/client"
+	"github.com/snapcore/snapd/testutil"
 )
 
 func TestT(t *testing.T) { TestingT(t) }
@@ -42,14 +43,18 @@ type snapctlSuite struct {
 	expectedContextID string
 	expectedArgs      []string
 	expectedStdin     []byte
+	restoreEnv        func()
+	restoreAuthEnv    func()
 }
 
 var _ = Suite(&snapctlSuite{})
 
 func (s *snapctlSuite) SetUpTest(c *C) {
-	os.Setenv("SNAP_COOKIE", "snap-context-test")
+	s.restoreEnv = testutil.MockEnv(map[string]string{
+		"SNAP_COOKIE":  "snap-context-test",
+		"SNAP_CONTEXT": "",
+	})
 	// don't use SNAP_CONTEXT, in case other tests accidentally leak this
-	os.Unsetenv("SNAP_CONTEXT")
 	n := 0
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch n {
@@ -79,14 +84,14 @@ func (s *snapctlSuite) SetUpTest(c *C) {
 	s.expectedArgs = []string{}
 
 	fakeAuthPath := filepath.Join(c.MkDir(), "auth.json")
-	os.Setenv("SNAPD_AUTH_DATA_FILENAME", fakeAuthPath)
+	s.restoreAuthEnv = testutil.MockEnv(map[string]string{"SNAPD_AUTH_DATA_FILENAME": fakeAuthPath})
 	err := os.WriteFile(fakeAuthPath, []byte(`{"macaroon":"user-macaroon"}`), 0644)
 	c.Assert(err, IsNil)
 }
 
 func (s *snapctlSuite) TearDownTest(c *C) {
-	os.Unsetenv("SNAP_COOKIE")
-	os.Unsetenv("SNAPD_AUTH_DATA_FILENAME")
+	s.restoreAuthEnv()
+	s.restoreEnv()
 	clientConfig.BaseURL = ""
 	s.server.Close()
 	os.Args = s.oldArgs
@@ -110,7 +115,8 @@ func (s *snapctlSuite) TestSnapctlWithArgs(c *C) {
 }
 
 func (s *snapctlSuite) TestSnapctlHelp(c *C) {
-	os.Unsetenv("SNAP_COOKIE")
+	restore := testutil.MockEnv(map[string]string{"SNAP_COOKIE": ""})
+	defer restore()
 	s.expectedContextID = ""
 
 	os.Args = []string{"snapctl", "-h"}
