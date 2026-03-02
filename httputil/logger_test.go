@@ -25,7 +25,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -61,12 +60,13 @@ func (loggerSuite) TestFlags(c *check.C) {
 		httputil.DebugBody,
 		httputil.DebugRequest | httputil.DebugResponse | httputil.DebugBody,
 	} {
-		os.Setenv("TEST_FOO", fmt.Sprintf("%d", f))
+		restoreEnv := testutil.MockEnv(map[string]string{"TEST_FOO": fmt.Sprintf("%d", f)})
 		tr := &httputil.LoggedTransport{
 			Key: "TEST_FOO",
 		}
 
 		c.Check(httputil.GetFlags(tr), check.Equals, f)
+		restoreEnv()
 	}
 }
 
@@ -94,7 +94,7 @@ func (s loggerSuite) TestLogging(c *check.C) {
 		Key: "TEST_FOO",
 	}
 
-	os.Setenv("TEST_FOO", "7")
+	defer testutil.MockEnv(map[string]string{"TEST_FOO": "7"})()
 
 	aRsp, err := tr.RoundTrip(req)
 	c.Assert(err, check.IsNil)
@@ -122,7 +122,7 @@ func (s loggerSuite) TestNotLoggingOctetStream(c *check.C) {
 		Key: "TEST_FOO",
 	}
 
-	os.Setenv("TEST_FOO", "7")
+	defer testutil.MockEnv(map[string]string{"TEST_FOO": "7"})()
 
 	aRsp, err := tr.RoundTrip(req)
 	c.Assert(err, check.IsNil)
