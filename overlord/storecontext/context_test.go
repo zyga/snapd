@@ -22,7 +22,6 @@ package storecontext_test
 import (
 	"errors"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +35,7 @@ import (
 	"github.com/snapcore/snapd/overlord/state"
 	"github.com/snapcore/snapd/overlord/storecontext"
 	"github.com/snapcore/snapd/store"
+	"github.com/snapcore/snapd/testutil"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -213,8 +213,7 @@ func (s *storeCtxSuite) TestStoreParamsFallback(c *C) {
 func (s *storeCtxSuite) TestStoreIDFromEnv(c *C) {
 	storeCtx := storecontext.New(s.state, &testBackend{nothing: true})
 
-	os.Setenv("UBUNTU_STORE_ID", "env-store-id")
-	defer os.Unsetenv("UBUNTU_STORE_ID")
+	defer testutil.MockEnv(map[string]string{"UBUNTU_STORE_ID": "env-store-id"})()
 	storeID, err := storeCtx.StoreID("")
 	c.Assert(err, IsNil)
 	c.Check(storeID, Equals, "env-store-id")
@@ -434,8 +433,7 @@ func (s *storeCtxSuite) TestWithDeviceAssertions(c *C) {
 	c.Check(strings.Contains(model, "serial:\n"), Equals, false)
 
 	// going to be ignored
-	os.Setenv("UBUNTU_STORE_ID", "env-store-id")
-	defer os.Unsetenv("UBUNTU_STORE_ID")
+	defer testutil.MockEnv(map[string]string{"UBUNTU_STORE_ID": "env-store-id"})()
 	storeID, err := storeCtx.StoreID("store-id")
 	c.Assert(err, IsNil)
 	c.Check(storeID, Equals, "my-brand-store-id")
@@ -460,8 +458,7 @@ func (s *storeCtxSuite) TestWithDeviceAssertionsGenericClassicModel(c *C) {
 	storeCtx := storecontext.New(s.state, &testBackend{})
 
 	// for the generic classic model we continue to consider the env var
-	os.Setenv("UBUNTU_STORE_ID", "env-store-id")
-	defer os.Unsetenv("UBUNTU_STORE_ID")
+	defer testutil.MockEnv(map[string]string{"UBUNTU_STORE_ID": "env-store-id"})()
 	storeID, err := storeCtx.StoreID("store-id")
 	c.Assert(err, IsNil)
 	c.Check(storeID, Equals, "env-store-id")
@@ -478,7 +475,7 @@ func (s *storeCtxSuite) TestWithDeviceAssertionsGenericClassicModelNoEnvVar(c *C
 
 	// for the generic classic model we continue to consider the env var
 	// but when the env var is unset we don't do anything wrong.
-	os.Unsetenv("UBUNTU_STORE_ID")
+	defer testutil.MockEnv(map[string]string{"UBUNTU_STORE_ID": ""})()
 	storeID, err := storeCtx.StoreID("store-id")
 	c.Assert(err, IsNil)
 	c.Check(storeID, Equals, "store-id")
