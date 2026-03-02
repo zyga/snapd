@@ -54,10 +54,7 @@ func (s *dbusutilSuite) SetUpTest(c *C) {
 
 	// Pretend that we don't have the environment variable with session bus
 	// address.
-	if value := os.Getenv(envVar); value != "" {
-		os.Unsetenv(envVar)
-		s.AddCleanup(func() { os.Setenv(envVar, value) })
-	}
+	s.AddCleanup(testutil.MockEnv(map[string]string{envVar: ""}))
 }
 
 func (*dbusutilSuite) TestIsSessionBusLikelyPresentNothing(c *C) {
@@ -65,7 +62,7 @@ func (*dbusutilSuite) TestIsSessionBusLikelyPresentNothing(c *C) {
 }
 
 func (*dbusutilSuite) TestIsSessionBusLikelyPresentEnvVar(c *C) {
-	os.Setenv(envVar, "address")
+	defer testutil.MockEnv(map[string]string{envVar: "address"})()
 
 	c.Assert(dbusutil.IsSessionBusLikelyPresent(), Equals, true)
 }
