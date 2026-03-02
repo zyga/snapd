@@ -25,7 +25,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
-	"os"
 	"time"
 
 	"golang.org/x/crypto/openpgp/packet"
@@ -34,11 +33,13 @@ import (
 	"github.com/snapcore/snapd/asserts"
 	"github.com/snapcore/snapd/asserts/assertstest"
 	"github.com/snapcore/snapd/osutil"
+	"github.com/snapcore/snapd/testutil"
 )
 
 type gpgKeypairMgrSuite struct {
 	homedir    string
 	keypairMgr asserts.KeypairManager
+	restoreEnv func()
 }
 
 var _ = Suite(&gpgKeypairMgrSuite{})
@@ -55,14 +56,16 @@ func (gkms *gpgKeypairMgrSuite) importKey(key string) {
 
 func (gkms *gpgKeypairMgrSuite) SetUpTest(c *C) {
 	gkms.homedir = c.MkDir()
-	os.Setenv("SNAP_GNUPG_HOME", gkms.homedir)
+	gkms.restoreEnv = testutil.MockEnv(map[string]string{"SNAP_GNUPG_HOME": gkms.homedir})
 	gkms.keypairMgr = asserts.NewGPGKeypairManager()
 	// import test key
 	gkms.importKey(assertstest.DevKey)
 }
 
 func (gkms *gpgKeypairMgrSuite) TearDownTest(c *C) {
-	os.Unsetenv("SNAP_GNUPG_HOME")
+	if gkms.restoreEnv != nil {
+		gkms.restoreEnv()
+	}
 }
 
 func (gkms *gpgKeypairMgrSuite) TestGetPublicKeyLooksGood(c *C) {
