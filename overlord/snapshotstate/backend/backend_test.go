@@ -558,11 +558,7 @@ func (s *snapshotSuite) TestList(c *check.C) {
 func (s *snapshotSuite) TestAddDirToZipBails(c *check.C) {
 	snapshot := &client.Snapshot{SetID: 42, Snap: "a-snap", Revision: snap.R(5)}
 
-	oldVal := os.Getenv("SNAPD_DEBUG")
-	c.Assert(os.Setenv("SNAPD_DEBUG", "1"), check.IsNil)
-	defer func() {
-		os.Setenv("SNAPD_DEBUG", oldVal)
-	}()
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})()
 
 	buf, restore := logger.MockLogger()
 	defer restore()
