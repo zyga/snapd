@@ -20,38 +20,14 @@
 package main_test
 
 import (
-	"os"
 	"runtime"
 
 	"gopkg.in/check.v1"
 
 	cmdsnap "github.com/snapcore/snapd/cmd/snap"
 	"github.com/snapcore/snapd/snap"
+	"github.com/snapcore/snapd/testutil"
 )
-
-func setEnviron(env map[string]string) func() {
-	old := make(map[string]string, len(env))
-	ok := make(map[string]bool, len(env))
-
-	for k, v := range env {
-		old[k], ok[k] = os.LookupEnv(k)
-		if v != "" {
-			os.Setenv(k, v)
-		} else {
-			os.Unsetenv(k)
-		}
-	}
-
-	return func() {
-		for k := range ok {
-			if ok[k] {
-				os.Setenv(k, old[k])
-			} else {
-				os.Unsetenv(k)
-			}
-		}
-	}
-}
 
 func (s *SnapSuite) TestCanUnicode(c *check.C) {
 	// setenv is per thread
@@ -77,7 +53,7 @@ func (s *SnapSuite) TestCanUnicode(c *check.C) {
 		{lang: "C.UTF-8", expected: true},
 		{lang: "C.utf8", expected: true}, // deals with a bit of rando weirdness
 	} {
-		restore := setEnviron(map[string]string{"LANG": t.lang, "LC_ALL": t.lcAll, "LC_MESSAGES": t.lcMsg})
+		restore := testutil.MockEnv(map[string]string{"LANG": t.lang, "LC_ALL": t.lcAll, "LC_MESSAGES": t.lcMsg})
 		c.Check(cmdsnap.CanUnicode("never"), check.Equals, false)
 		c.Check(cmdsnap.CanUnicode("always"), check.Equals, true)
 		restoreIsTTY := cmdsnap.MockIsStdoutTTY(true)
@@ -111,7 +87,7 @@ func (s *SnapSuite) TestColorTable(c *check.C) {
 		{isTTY: true, term: "xterm-mono", expected: cmdsnap.MonoColorTable, desc: "is a tty, but TERM=xterm-mono"},
 	} {
 		restoreIsTTY := cmdsnap.MockIsStdoutTTY(t.isTTY)
-		restoreEnv := setEnviron(map[string]string{"NO_COLOR": t.noColor, "TERM": t.term})
+		restoreEnv := testutil.MockEnv(map[string]string{"NO_COLOR": t.noColor, "TERM": t.term})
 		c.Check(cmdsnap.ColorTable("never"), check.DeepEquals, cmdsnap.NoEscColorTable, check.Commentf(t.desc))
 		c.Check(cmdsnap.ColorTable("always"), check.DeepEquals, cmdsnap.ColorColorTable, check.Commentf(t.desc))
 		c.Check(cmdsnap.ColorTable("auto"), check.DeepEquals, t.expected, check.Commentf(t.desc))
