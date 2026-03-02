@@ -52,9 +52,7 @@ func (s *sysconfigSuite) SetUpTest(c *C) {
 	dirs.SetRootDir(s.tmpdir)
 	s.AddCleanup(func() { dirs.SetRootDir("/") })
 
-	oldTmpdir := os.Getenv("TMPDIR")
-	os.Setenv("TMPDIR", s.tmpdir)
-	s.AddCleanup(func() { os.Unsetenv(oldTmpdir) })
+	s.AddCleanup(testutil.MockEnv(map[string]string{"TMPDIR": s.tmpdir}))
 	err := os.MkdirAll(filepath.Join(s.tmpdir, "proc"), 0755)
 	c.Assert(err, IsNil)
 	restore := kcmdline.MockProcCmdline(filepath.Join(s.tmpdir, "proc/cmdline"))
@@ -736,11 +734,7 @@ fi
 
 func (s *sysconfigSuite) TestCloudInitNotFoundStatus(c *C) {
 	emptyDir := c.MkDir()
-	oldPath := os.Getenv("PATH")
-	defer func() {
-		c.Assert(os.Setenv("PATH", oldPath), IsNil)
-	}()
-	os.Setenv("PATH", emptyDir)
+	defer testutil.MockEnv(map[string]string{"PATH": emptyDir})()
 
 	status, err := sysconfig.CloudInitStatus()
 	c.Assert(err, IsNil)
