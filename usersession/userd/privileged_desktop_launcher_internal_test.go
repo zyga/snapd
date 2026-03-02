@@ -20,8 +20,6 @@
 package userd_test
 
 import (
-	"os"
-
 	. "gopkg.in/check.v1"
 
 	"github.com/snapcore/snapd/strutil"
@@ -64,11 +62,7 @@ func existsOnMockFileSystem(desktop_file string) (bool, bool, error) {
 }
 
 func (s *privilegedDesktopLauncherInternalSuite) mockEnv(key, value string) {
-	old := os.Getenv(key)
-	os.Setenv(key, value)
-	s.AddCleanup(func() {
-		os.Setenv(key, old)
-	})
+	s.AddCleanup(testutil.MockEnv(map[string]string{key: value}))
 }
 
 func (s *privilegedDesktopLauncherInternalSuite) TestDesktopFileSearchPath(c *C) {
