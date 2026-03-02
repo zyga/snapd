@@ -23,7 +23,6 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
-	"os"
 
 	"gopkg.in/check.v1"
 
@@ -42,21 +41,11 @@ var _ = check.Suite(&reportIssueSuite{})
 func (s *reportIssueSuite) SetUpTest(c *check.C) {
 	s.BaseSnapSuite.SetUpTest(c)
 
-	preserveEnv := func(evar string) {
-		v := os.Getenv(evar)
-		if v != "" {
-			s.AddCleanup(func() { os.Setenv(evar, v) })
-		} else {
-			s.AddCleanup(func() { os.Unsetenv(evar) })
-		}
-	}
-	preserveEnv("DISPLAY")
-	preserveEnv("WAYLAND_DISPLAY")
-	preserveEnv("DESKTOP_SESSION")
-
-	os.Unsetenv("DISPLAY")
-	os.Unsetenv("WAYLAND_DISPLAY")
-	os.Unsetenv("DESKTOP_SESSION")
+	s.AddCleanup(testutil.MockEnv(map[string]string{
+		"DISPLAY":         "",
+		"WAYLAND_DISPLAY": "",
+		"DESKTOP_SESSION": "",
+	}))
 
 	s.xdgOpen = testutil.MockCommand(c, "xdg-open", ``)
 	s.AddCleanup(s.xdgOpen.Restore)
@@ -255,11 +244,9 @@ func (s *reportIssueSuite) TestReportIssueHappyNoPrompt(c *check.C) {
 func (s *reportIssueSuite) TestReportIssueHappyNoPromptDesktopNoXdgOpen(c *check.C) {
 	restore := snap.MockIsStdinTTY(true)
 	defer restore()
-	os.Setenv("DESKTOP_SESSION", "gnome")
+	defer testutil.MockEnv(map[string]string{"DESKTOP_SESSION": "gnome", "PATH": ""})()
 
 	// override PATH so that even the host's xdg-open cannot be found
-	os.Setenv("PATH", "")
-
 	s.testReportIssueHappyNoPrompt(c)
 }
 
@@ -267,14 +254,14 @@ func (s *reportIssueSuite) TestReportIssueHappyNoPromptDesktopNotInteractive(c *
 	restore := snap.MockIsStdinTTY(false)
 	defer restore()
 
-	os.Setenv("DESKTOP_SESSION", "gnome")
+	defer testutil.MockEnv(map[string]string{"DESKTOP_SESSION": "gnome"})()
 	s.testReportIssueHappyNoPrompt(c)
 }
 
 func (s *reportIssueSuite) testReportIssueHappyOpenLink(c *check.C, input string, opens bool) {
 	restore := snap.MockIsStdinTTY(true)
 	defer restore()
-	os.Setenv("DESKTOP_SESSION", "gnome")
+	defer testutil.MockEnv(map[string]string{"DESKTOP_SESSION": "gnome"})()
 
 	n := 0
 	s.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
@@ -330,7 +317,7 @@ Would you like to open https://github.com/canonical/hello-snap/issues in browser
 func (s *reportIssueSuite) TestReportIssueHappyOpenLinkHeuristic(c *check.C) {
 	restore := snap.MockIsStdinTTY(true)
 	defer restore()
-	os.Setenv("DESKTOP_SESSION", "gnome")
+	defer testutil.MockEnv(map[string]string{"DESKTOP_SESSION": "gnome"})()
 
 	n := 0
 	s.RedirectClientToTestServer(func(w http.ResponseWriter, r *http.Request) {
