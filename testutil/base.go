@@ -62,6 +62,33 @@ func (s *BaseTest) AddCleanup(f func()) {
 	s.cleanupHandlers = append(s.cleanupHandlers, f)
 }
 
+// MockEnv sets environment variables and returns a restore function.
+//
+// Empty value means the variable should be unset.
+func MockEnv(env map[string]string) (restore func()) {
+	old := make(map[string]string, len(env))
+	ok := make(map[string]bool, len(env))
+
+	for k, v := range env {
+		old[k], ok[k] = os.LookupEnv(k)
+		if v != "" {
+			os.Setenv(k, v)
+		} else {
+			os.Unsetenv(k)
+		}
+	}
+
+	return func() {
+		for k := range ok {
+			if ok[k] {
+				os.Setenv(k, old[k])
+			} else {
+				os.Unsetenv(k)
+			}
+		}
+	}
+}
+
 // Backup a single element before further mocking.
 func Backup[T any](mockable *T) (restore func()) {
 	backup := *mockable
