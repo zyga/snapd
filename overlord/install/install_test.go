@@ -2228,6 +2228,8 @@ func (s *installSuite) TestPrepareRunSystemDataWritesTimesyncdClockErr(c *C) {
 		c.Skip("the test cannot be executed by the root user")
 	}
 
+	defer testutil.MockLocale("C")()
+
 	clockTsInSrc := filepath.Join(dirs.GlobalRootDir, "/var/lib/systemd/timesync/clock")
 	c.Assert(os.MkdirAll(filepath.Dir(clockTsInSrc), 0755), IsNil)
 	c.Assert(os.WriteFile(clockTsInSrc, nil, 0644), IsNil)
