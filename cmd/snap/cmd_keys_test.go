@@ -31,6 +31,7 @@ import (
 
 	snap "github.com/snapcore/snapd/cmd/snap"
 	"github.com/snapcore/snapd/store"
+	"github.com/snapcore/snapd/testutil"
 )
 
 type SnapKeysSuite struct {
@@ -81,8 +82,10 @@ func (s *SnapKeysSuite) SetUpTest(c *C) {
 	err = os.WriteFile(gpgAgentConfFn, []byte(fmt.Sprintf(`pinentry-program %s`, fakePinentryFn)), 0644)
 	c.Assert(err, IsNil)
 
-	os.Setenv("SNAP_GNUPG_HOME", s.tempdir)
-	os.Setenv("SNAP_GNUPG_CMD", s.GnupgCmd)
+	s.AddCleanup(testutil.MockEnv(map[string]string{
+		"SNAP_GNUPG_HOME": s.tempdir,
+		"SNAP_GNUPG_CMD":  s.GnupgCmd,
+	}))
 
 	// by default avoid talking to the real store
 	s.AddCleanup(snap.MockStoreNew(func(cfg *store.Config, stoCtx store.DeviceAndAuthContext) *store.Store {
@@ -96,8 +99,6 @@ func (s *SnapKeysSuite) SetUpTest(c *C) {
 }
 
 func (s *SnapKeysSuite) TearDownTest(c *C) {
-	os.Unsetenv("SNAP_GNUPG_HOME")
-	os.Unsetenv("SNAP_GNUPG_CMD")
 	s.BaseSnapSuite.TearDownTest(c)
 }
 
