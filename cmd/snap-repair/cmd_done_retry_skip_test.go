@@ -28,6 +28,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	repair "github.com/snapcore/snapd/cmd/snap-repair"
+	"github.com/snapcore/snapd/testutil"
 )
 
 func (r *repairSuite) TestStatusNoStatusFdEnv(c *C) {
@@ -39,21 +40,21 @@ func (r *repairSuite) TestStatusNoStatusFdEnv(c *C) {
 
 func (r *repairSuite) TestStatusBadStatusFD(c *C) {
 	for _, s := range []string{"done", "skip", "retry"} {
-		os.Setenv("SNAP_REPAIR_STATUS_FD", "123456789")
-		defer os.Unsetenv("SNAP_REPAIR_STATUS_FD")
+		restore := testutil.MockEnv(map[string]string{"SNAP_REPAIR_STATUS_FD": "123456789"})
 
 		err := repair.ParseArgs([]string{s})
 		c.Check(err, ErrorMatches, `write <snap-repair-status-fd>: bad file descriptor`)
+		restore()
 	}
 }
 
 func (r *repairSuite) TestStatusUnparsableStatusFD(c *C) {
 	for _, s := range []string{"done", "skip", "retry"} {
-		os.Setenv("SNAP_REPAIR_STATUS_FD", "xxx")
-		defer os.Unsetenv("SNAP_REPAIR_STATUS_FD")
+		restore := testutil.MockEnv(map[string]string{"SNAP_REPAIR_STATUS_FD": "xxx"})
 
 		err := repair.ParseArgs([]string{s})
 		c.Check(err, ErrorMatches, `cannot parse SNAP_REPAIR_STATUS_FD environment: strconv.*: parsing "xxx": invalid syntax`)
+		restore()
 	}
 }
 
@@ -68,8 +69,7 @@ func (r *repairSuite) TestStatusHappy(c *C) {
 		c.Assert(e, IsNil)
 		wp.Close()
 
-		os.Setenv("SNAP_REPAIR_STATUS_FD", strconv.Itoa(fd))
-		defer os.Unsetenv("SNAP_REPAIR_STATUS_FD")
+		restore := testutil.MockEnv(map[string]string{"SNAP_REPAIR_STATUS_FD": strconv.Itoa(fd)})
 
 		err = repair.ParseArgs([]string{s})
 		c.Check(err, IsNil)
@@ -77,5 +77,6 @@ func (r *repairSuite) TestStatusHappy(c *C) {
 		status, err := io.ReadAll(rp)
 		c.Assert(err, IsNil)
 		c.Check(string(status), Equals, s+"\n")
+		restore()
 	}
 }
