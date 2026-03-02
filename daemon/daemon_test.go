@@ -1467,8 +1467,7 @@ func (s *daemonSuite) TestDegradedModeReply(c *check.C) {
 }
 
 func (s *daemonSuite) TestHandleUnexpectedRestart(c *check.C) {
-	os.Setenv("SNAPD_REVERT_TO_REV", "999")
-	defer os.Unsetenv("SNAPD_REVERT_TO_REV")
+	defer testutil.MockEnv(map[string]string{"SNAPD_REVERT_TO_REV": "999"})()
 
 	d := s.newTestDaemon(c)
 
