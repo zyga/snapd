@@ -495,17 +495,12 @@ echo '{"label":"label","action":{"mode":"install","title":"reinstall"}}'
 
 type mockedSyslogCmdSuite struct {
 	baseCmdSuite
-
-	term string
 }
 
 var _ = Suite(&mockedSyslogCmdSuite{})
 
 func (s *mockedSyslogCmdSuite) SetUpTest(c *C) {
 	s.baseCmdSuite.SetUpTest(c)
-
-	s.term = os.Getenv("TERM")
-	s.AddCleanup(func() { os.Setenv("TERM", s.term) })
 
 	r := main.MockSyslogNew(func(p syslog.Priority, t string) (io.Writer, error) {
 		c.Fatal("not mocked")
@@ -515,8 +510,7 @@ func (s *mockedSyslogCmdSuite) SetUpTest(c *C) {
 }
 
 func (s *mockedSyslogCmdSuite) TestNoSyslogFallback(c *C) {
-	err := os.Setenv("TERM", "someterm")
-	c.Assert(err, IsNil)
+	defer testutil.MockEnv(map[string]string{"TERM": "someterm"})()
 
 	called := false
 	r := main.MockSyslogNew(func(_ syslog.Priority, _ string) (io.Writer, error) {
@@ -533,8 +527,7 @@ func (s *mockedSyslogCmdSuite) TestNoSyslogFallback(c *C) {
 }
 
 func (s *mockedSyslogCmdSuite) TestWithSyslog(c *C) {
-	err := os.Setenv("TERM", "someterm")
-	c.Assert(err, IsNil)
+	defer testutil.MockEnv(map[string]string{"TERM": "someterm"})()
 
 	called := false
 	tag := ""
@@ -557,8 +550,7 @@ func (s *mockedSyslogCmdSuite) TestWithSyslog(c *C) {
 }
 
 func (s *mockedSyslogCmdSuite) TestSimple(c *C) {
-	err := os.Unsetenv("TERM")
-	c.Assert(err, IsNil)
+	defer testutil.MockEnv(map[string]string{"TERM": ""})()
 
 	r := main.MockSyslogNew(func(p syslog.Priority, tg string) (io.Writer, error) {
 		c.Fatalf("unexpected call")
