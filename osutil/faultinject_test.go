@@ -45,9 +45,10 @@ func (s *testhelperFaultInjectionSuite) SetUpTest(c *C) {
 	s.sysroot = c.MkDir()
 	restore := osutil.MockInjectSysroot(s.sysroot)
 	s.AddCleanup(restore)
-	oldSnappyTesting := os.Getenv("SNAPPY_TESTING")
-	s.AddCleanup(func() { os.Setenv("SNAPPY_TESTING", oldSnappyTesting) })
-	s.AddCleanup(func() { os.Unsetenv("SNAPD_FAULT_INJECT") })
+	s.AddCleanup(testutil.MockEnv(map[string]string{
+		"SNAPPY_TESTING":    os.Getenv("SNAPPY_TESTING"),
+		"SNAPD_FAULT_INJECT": os.Getenv("SNAPD_FAULT_INJECT"),
+	}))
 }
 
 func (s *testhelperFaultInjectionSuite) TestFaultInject(c *C) {
@@ -56,7 +57,7 @@ func (s *testhelperFaultInjectionSuite) TestFaultInject(c *C) {
 		foreverLoopCalls++
 	})
 	defer restore()
-	os.Setenv("SNAPPY_TESTING", "1")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_TESTING": "1"})()
 	stderrBuf := &bytes.Buffer{}
 	restore = osutil.MockStderr(stderrBuf)
 	defer restore()
@@ -64,7 +65,7 @@ func (s *testhelperFaultInjectionSuite) TestFaultInject(c *C) {
 	sysrqFile := filepath.Join(s.sysroot, "/proc/sysrq-trigger")
 	c.Assert(os.MkdirAll(filepath.Dir(sysrqFile), 0755), IsNil)
 
-	os.Setenv("SNAPD_FAULT_INJECT", "tag:reboot,othertag:panic,funtag:reboot")
+	defer testutil.MockEnv(map[string]string{"SNAPD_FAULT_INJECT": "tag:reboot,othertag:panic,funtag:reboot"})()
 
 	c.Assert(os.WriteFile(sysrqFile, nil, 0644), IsNil)
 	osutil.MaybeInjectFault("tag")
@@ -131,14 +132,14 @@ func (s *testhelperFaultInjectionSuite) TestFaultInject(c *C) {
 
 func (s *testhelperFaultInjectionSuite) TestFaultInjectDisabledNoSnappyTesting(c *C) {
 	// with SNAPPY_TESTING disabled, fault injection is disabled as well
-	c.Assert(os.Unsetenv("SNAPPY_TESTING"), IsNil)
+	defer testutil.MockEnv(map[string]string{"SNAPPY_TESTING": ""})()
 
 	restore := osutil.MockForeverLoop(func() {
 		c.Fatalf("unexpected call")
 	})
 	defer restore()
 	sysrqFile := filepath.Join(s.sysroot, "/proc/sysrq-trigger")
-	os.Setenv("SNAPD_FAULT_INJECT", "tag:reboot,othertag:panic")
+	defer testutil.MockEnv(map[string]string{"SNAPD_FAULT_INJECT": "tag:reboot,othertag:panic"})()
 
 	osutil.MaybeInjectFault("tag")
 	c.Check(sysrqFile, testutil.FileAbsent)
@@ -150,9 +151,9 @@ func (s *testhelperFaultInjectionSuite) TestFaultInjectDisabledNoSnappyTesting(c
 }
 
 func (s *testhelperFaultInjectionSuite) TestFaultInjectDisabledNoTags(c *C) {
-	os.Setenv("SNAPPY_TESTING", "1")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_TESTING": "1"})()
 	// no fault injection tags
-	os.Setenv("SNAPD_FAULT_INJECT", "")
+	defer testutil.MockEnv(map[string]string{"SNAPD_FAULT_INJECT": ""})()
 
 	restore := osutil.MockForeverLoop(func() {
 		c.Fatalf("unexpected call")
@@ -165,9 +166,9 @@ func (s *testhelperFaultInjectionSuite) TestFaultInjectDisabledNoTags(c *C) {
 }
 
 func (s *testhelperFaultInjectionSuite) TestFaultInjectInvalidTags(c *C) {
-	os.Setenv("SNAPPY_TESTING", "1")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_TESTING": "1"})()
 	// no fault injection tags
-	os.Setenv("SNAPD_FAULT_INJECT", "tag:panic,bad/tag:reboot")
+	defer testutil.MockEnv(map[string]string{"SNAPD_FAULT_INJECT": "tag:panic,bad/tag:reboot"})()
 
 	restore := osutil.MockForeverLoop(func() {
 		c.Fatalf("unexpected call")
@@ -184,15 +185,17 @@ func (s *testhelperFaultInjectionSuite) TestFaultInjectInvalidTags(c *C) {
 
 	stderrBuf.Reset()
 	// invalid tag
-	os.Setenv("SNAPD_FAULT_INJECT", "tag::bad,othertag:reboot")
+	restoreEnv := testutil.MockEnv(map[string]string{"SNAPD_FAULT_INJECT": "tag::bad,othertag:reboot"})
 
 	osutil.MaybeInjectFault("tag")
 	c.Check(stderrBuf.String(), Equals, "incorrect fault tag: \"tag::bad\"\n")
+	restoreEnv()
 
 	stderrBuf.Reset()
 	// another invalid tag
-	os.Setenv("SNAPD_FAULT_INJECT", "tag,othertag:reboot")
+	restoreEnv = testutil.MockEnv(map[string]string{"SNAPD_FAULT_INJECT": "tag,othertag:reboot"})
 
 	osutil.MaybeInjectFault("tag")
 	c.Check(stderrBuf.String(), Equals, "")
+	restoreEnv()
 }
