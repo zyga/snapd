@@ -28,6 +28,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/snapcore/snapd/dirs"
+	"github.com/snapcore/snapd/testutil"
 )
 
 // Hook up check.v1 into the "go test" runner
@@ -72,8 +73,7 @@ func makeMockTranslations(c *C, localeDir string) {
 }
 
 type i18nTestSuite struct {
-	origLang       string
-	origLcMessages string
+	restoreLocale func()
 }
 
 var _ = Suite(&i18nTestSuite{})
@@ -87,17 +87,14 @@ func (s *i18nTestSuite) SetUpTest(c *C) {
 	// we use a custom test mo file
 	TEXTDOMAIN = "snappy-test"
 
-	s.origLang = os.Getenv("LANG")
-	s.origLcMessages = os.Getenv("LC_MESSAGES")
+	s.restoreLocale = testutil.MockLocale("en_DK.UTF-8")
 
 	bindTextDomain("snappy-test", localeDir)
-	os.Setenv("LANG", "en_DK.UTF-8")
 	setLocale("")
 }
 
 func (s *i18nTestSuite) TearDownTest(c *C) {
-	os.Setenv("LANG", s.origLang)
-	os.Setenv("LC_MESSAGES", s.origLcMessages)
+	s.restoreLocale()
 }
 
 func (s *i18nTestSuite) TestTranslatedSingular(c *C) {
