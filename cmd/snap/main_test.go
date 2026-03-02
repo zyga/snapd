@@ -376,11 +376,7 @@ func (s *SnapSuite) TestLintDesc(c *C) {
 
 	// LintDesc complains about lowercase description and mentions the locale
 	// that the system is currently in.
-	prevValue := os.Getenv("LC_MESSAGES")
-	os.Setenv("LC_MESSAGES", "en_US")
-	defer func() {
-		os.Setenv("LC_MESSAGES", prevValue)
-	}()
+	defer testutil.MockLocale("en_US")()
 
 	fn := func() {
 		snap.LintDesc("command", "<option>", "description", "")
