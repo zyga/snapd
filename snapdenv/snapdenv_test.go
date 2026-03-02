@@ -20,12 +20,12 @@
 package snapdenv_test
 
 import (
-	"os"
 	"testing"
 
 	. "gopkg.in/check.v1"
 
 	"github.com/snapcore/snapd/snapdenv"
+	"github.com/snapcore/snapd/testutil"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -35,32 +35,23 @@ type snapdenvSuite struct{}
 var _ = Suite(&snapdenvSuite{})
 
 func (s *snapdenvSuite) TestTesting(c *C) {
-	oldTesting := os.Getenv("SNAPPY_TESTING")
-	defer func() {
-		if oldTesting == "" {
-			os.Unsetenv("SNAPPY_TESTING")
-		} else {
-			os.Setenv("SNAPPY_TESTING", oldTesting)
-		}
-	}()
+	defer testutil.MockEnv(map[string]string{"SNAPPY_TESTING": ""})()
 
-	os.Setenv("SNAPPY_TESTING", "1")
-	c.Check(snapdenv.Testing(), Equals, true)
+	{
+		restore := testutil.MockEnv(map[string]string{"SNAPPY_TESTING": "1"})
+		c.Check(snapdenv.Testing(), Equals, true)
+		restore()
+	}
 
-	os.Unsetenv("SNAPPY_TESTING")
-	c.Check(snapdenv.Testing(), Equals, false)
+	{
+		restore := testutil.MockEnv(map[string]string{"SNAPPY_TESTING": ""})
+		c.Check(snapdenv.Testing(), Equals, false)
+		restore()
+	}
 }
 
 func (s *snapdenvSuite) TestMockTesting(c *C) {
-	oldTesting := os.Getenv("SNAPPY_TESTING")
-	defer func() {
-		if oldTesting == "" {
-			os.Unsetenv("SNAPPY_TESTING")
-		} else {
-			os.Setenv("SNAPPY_TESTING", oldTesting)
-		}
-	}()
-	os.Unsetenv("SNAPPY_TESTING")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_TESTING": ""})()
 
 	r := snapdenv.MockTesting(true)
 	defer r()
@@ -72,32 +63,23 @@ func (s *snapdenvSuite) TestMockTesting(c *C) {
 }
 
 func (s *snapdenvSuite) TestUseStagingStore(c *C) {
-	oldUseStagingStore := os.Getenv("SNAPPY_USE_STAGING_STORE")
-	defer func() {
-		if oldUseStagingStore == "" {
-			os.Unsetenv("SNAPPY_USE_STAGING_STORE")
-		} else {
-			os.Setenv("SNAPPY_USE_STAGING_STORE", oldUseStagingStore)
-		}
-	}()
+	defer testutil.MockEnv(map[string]string{"SNAPPY_USE_STAGING_STORE": ""})()
 
-	os.Setenv("SNAPPY_USE_STAGING_STORE", "1")
-	c.Check(snapdenv.UseStagingStore(), Equals, true)
+	{
+		restore := testutil.MockEnv(map[string]string{"SNAPPY_USE_STAGING_STORE": "1"})
+		c.Check(snapdenv.UseStagingStore(), Equals, true)
+		restore()
+	}
 
-	os.Unsetenv("SNAPPY_USE_STAGING_STORE")
-	c.Check(snapdenv.UseStagingStore(), Equals, false)
+	{
+		restore := testutil.MockEnv(map[string]string{"SNAPPY_USE_STAGING_STORE": ""})
+		c.Check(snapdenv.UseStagingStore(), Equals, false)
+		restore()
+	}
 }
 
 func (s *snapdenvSuite) TestMockUseStagingStore(c *C) {
-	oldUseStagingStore := os.Getenv("SNAPPY_USE_STAGING_STORE")
-	defer func() {
-		if oldUseStagingStore == "" {
-			os.Unsetenv("SNAPPY_USE_STAGING_STORE")
-		} else {
-			os.Setenv("SNAPPY_USE_STAGING_STORE", oldUseStagingStore)
-		}
-	}()
-	os.Unsetenv("SNAPPY_USE_STAGING_STORE")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_USE_STAGING_STORE": ""})()
 
 	r := snapdenv.MockUseStagingStore(true)
 	defer r()
@@ -109,32 +91,23 @@ func (s *snapdenvSuite) TestMockUseStagingStore(c *C) {
 }
 
 func (s *snapdenvSuite) TestPreseeding(c *C) {
-	oldPreseeding := os.Getenv("SNAPD_PRESEED")
-	defer func() {
-		if oldPreseeding == "" {
-			os.Unsetenv("SNAPD_PRESEED")
-		} else {
-			os.Setenv("SNAPD_PRESEED", oldPreseeding)
-		}
-	}()
+	defer testutil.MockEnv(map[string]string{"SNAPD_PRESEED": ""})()
 
-	os.Setenv("SNAPD_PRESEED", "1")
-	c.Check(snapdenv.Preseeding(), Equals, true)
+	{
+		restore := testutil.MockEnv(map[string]string{"SNAPD_PRESEED": "1"})
+		c.Check(snapdenv.Preseeding(), Equals, true)
+		restore()
+	}
 
-	os.Unsetenv("SNAPD_PRESEED")
-	c.Check(snapdenv.Preseeding(), Equals, false)
+	{
+		restore := testutil.MockEnv(map[string]string{"SNAPD_PRESEED": ""})
+		c.Check(snapdenv.Preseeding(), Equals, false)
+		restore()
+	}
 }
 
 func (s *snapdenvSuite) TestMockPreseeding(c *C) {
-	oldPreseeding := os.Getenv("SNAPD_PRESEED")
-	defer func() {
-		if oldPreseeding == "" {
-			os.Unsetenv("SNAPD_PRESEED")
-		} else {
-			os.Setenv("SNAPD_PRESEED", oldPreseeding)
-		}
-	}()
-	os.Unsetenv("SNAPD_PRESEED")
+	defer testutil.MockEnv(map[string]string{"SNAPD_PRESEED": ""})()
 
 	r := snapdenv.MockPreseeding(true)
 	defer r()
