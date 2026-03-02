@@ -35,6 +35,7 @@ import (
 	"github.com/snapcore/snapd/advisor"
 	snap "github.com/snapcore/snapd/cmd/snap"
 	"github.com/snapcore/snapd/dirs"
+	"github.com/snapcore/snapd/testutil"
 )
 
 type sillyFinder struct{}
@@ -150,7 +151,7 @@ func (s *SnapSuite) TestAdviseFromAptIntegrationNoAptPackage(c *C) {
 	fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
 	c.Assert(err, IsNil)
 
-	os.Setenv("APT_HOOK_SOCKET", strconv.Itoa(int(fds[1])))
+	defer testutil.MockEnv(map[string]string{"APT_HOOK_SOCKET": strconv.Itoa(int(fds[1]))})()
 	// note we don't close fds[1] ourselves; adviseViaAptHook might, or we might leak it
 	// (we don't close it here to avoid accidentally closing an arbitrary file descriptor that reused the number)
 
