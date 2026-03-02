@@ -170,7 +170,7 @@ func (s *mainSuite) TestLoadAppArmorProfiles(c *C) {
 	// ensure SNAPD_DEBUG is set in the environment so then --quiet
 	// will *not* be included in the apparmor_parser arguments (since
 	// when these test are run in via CI SNAPD_DEBUG is set)
-	os.Setenv("SNAPD_DEBUG", "1")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})()
 	err = snapd_apparmor.LoadAppArmorProfiles()
 	c.Assert(err, IsNil)
 
