@@ -22,13 +22,13 @@ package main_test
 import (
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/jessevdk/go-flags"
 	. "gopkg.in/check.v1"
 
 	"github.com/snapcore/snapd/client"
 	. "github.com/snapcore/snapd/cmd/snap"
+	"github.com/snapcore/snapd/testutil"
 )
 
 func (s *SnapSuite) TestConnectHelp(c *C) {
@@ -290,8 +290,7 @@ func (s *SnapSuite) TestConnectCompletion(c *C) {
 			c.Fatalf("unexpected path %q", r.URL.Path)
 		}
 	})
-	os.Setenv("GO_FLAGS_COMPLETION", "verbose")
-	defer os.Unsetenv("GO_FLAGS_COMPLETION")
+	defer testutil.MockEnv(map[string]string{"GO_FLAGS_COMPLETION": "verbose"})()
 
 	expected := []flags.Completion{}
 	parser := Parser(Client())
