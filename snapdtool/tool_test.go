@@ -446,10 +446,7 @@ func (s *toolSuite) TestExecInSnapdOrCoreSnapBadSelfExe(c *C) {
 }
 
 func (s *toolSuite) TestExecInSnapdOrCoreSnapBailsNoDistroSupport(c *C) {
-	snapReexec := os.Getenv("SNAP_REEXEC")
-	defer os.Setenv("SNAP_REEXEC", snapReexec)
-	err := os.Unsetenv("SNAP_REEXEC")
-	c.Assert(err, IsNil)
+	defer testutil.MockEnv(map[string]string{"SNAP_REEXEC": ""})()
 
 	defer s.mockReExecFor(c, s.snapdPath, "potato", dirs.DefaultDistroLibexecDir)()
 
@@ -473,8 +470,7 @@ func (s *toolSuite) TestExecInSnapdOrCoreSnapNoDouble(c *C) {
 func (s *toolSuite) TestExecInSnapdOrCoreSnapDisabled(c *C) {
 	defer s.mockReExecFor(c, s.snapdPath, "potato", dirs.DefaultDistroLibexecDir)()
 
-	os.Setenv("SNAP_REEXEC", "0")
-	defer os.Unsetenv("SNAP_REEXEC")
+	defer testutil.MockEnv(map[string]string{"SNAP_REEXEC": "0"})()
 
 	snapdtool.ExecInSnapdOrCoreSnap()
 	c.Check(s.execCalled, Equals, 0)
@@ -497,8 +493,7 @@ func (s *toolSuite) testExecInSnapdOrCoreSnapOnUnsupportedDistro(c *C, libexecDi
 	c.Check(s.execCalled, Equals, 0)
 
 	// unless explicitly requested through the environment
-	os.Setenv("SNAP_REEXEC", "1")
-	defer os.Unsetenv("SNAP_REEXEC")
+	restore := testutil.MockEnv(map[string]string{"SNAP_REEXEC": "1"})
 
 	// in which case we do reexec
 	c.Check(snapdtool.ExecInSnapdOrCoreSnap, PanicMatches, `>exec of "[^"]+/potato" in tests<`)
@@ -506,6 +501,7 @@ func (s *toolSuite) testExecInSnapdOrCoreSnapOnUnsupportedDistro(c *C, libexecDi
 	// and reexec uses the correct mount path
 	c.Check(s.lastExecArgv0, Equals, filepath.Join(s.fakeroot, "/var/lib/snapd/snap/snapd/42/usr/lib/snapd/potato"))
 	c.Check(s.lastExecArgv, DeepEquals, os.Args)
+	restore()
 }
 
 func (s *toolSuite) TestExecInSnapdOrCoreSnapOnUnsupportedDistro(c *C) {
@@ -533,19 +529,19 @@ func (s *toolSuite) TestExecInSnapdOrCoreForced(c *C) {
 	c.Check(s.execCalled, Equals, 0)
 
 	// even if explicitly enabled in environment
-	os.Setenv("SNAP_REEXEC", "1")
-	defer os.Unsetenv("SNAP_REEXEC")
+	restore := testutil.MockEnv(map[string]string{"SNAP_REEXEC": "1"})
 
 	snapdtool.ExecInSnapdOrCoreSnap()
 	c.Check(s.execCalled, Equals, 0)
+	restore()
 
 	// unless we force it
-	os.Setenv("SNAP_REEXEC", "force")
-	defer os.Unsetenv("SNAP_REEXEC")
+	restore = testutil.MockEnv(map[string]string{"SNAP_REEXEC": "force"})
 
 	// in which case we do reexec
 	c.Check(snapdtool.ExecInSnapdOrCoreSnap, PanicMatches, `>exec of "[^"]+/potato" in tests<`)
 	c.Check(s.execCalled, Equals, 1)
+	restore()
 }
 
 func (s *toolSuite) TestIsReexecd(c *C) {
@@ -581,21 +577,23 @@ func (s *toolSuite) TestIsReexecd(c *C) {
 }
 
 func (s *toolSuite) TestInReexecEnabled(c *C) {
-	defer os.Unsetenv("SNAP_REEXEC")
-
 	// explicitly disabled
-	os.Setenv("SNAP_REEXEC", "0")
+	restore := testutil.MockEnv(map[string]string{"SNAP_REEXEC": "0"})
 	c.Assert(snapdtool.IsReexecEnabled(), Equals, false)
+	restore()
 	// default to true
-	os.Unsetenv("SNAP_REEXEC")
+	restore = testutil.MockEnv(map[string]string{"SNAP_REEXEC": ""})
 	c.Assert(snapdtool.IsReexecEnabled(), Equals, true)
+	restore()
 	// explicitly enabled
-	os.Setenv("SNAP_REEXEC", "1")
+	restore = testutil.MockEnv(map[string]string{"SNAP_REEXEC": "1"})
 	c.Assert(snapdtool.IsReexecEnabled(), Equals, true)
+	restore()
 
 	// cannot be parsed as bool, but defaults to true
-	os.Setenv("SNAP_REEXEC", "force")
+	restore = testutil.MockEnv(map[string]string{"SNAP_REEXEC": "force"})
 	c.Assert(snapdtool.IsReexecEnabled(), Equals, true)
+	restore()
 }
 
 func (s *toolSuite) TestExeAndRoot(c *C) {
