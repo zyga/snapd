@@ -228,12 +228,12 @@ func (s *HTestSuite) TestSnapRunSnapExecEnv(c *C) {
 	usr, err := user.Current()
 	c.Assert(err, IsNil)
 
-	homeEnv := os.Getenv("HOME")
-	defer os.Setenv("HOME", homeEnv)
-
 	for _, withHomeEnv := range []bool{true, false} {
+		var restoreEnv func()
 		if !withHomeEnv {
-			os.Setenv("HOME", "")
+			restoreEnv = testutil.MockEnv(map[string]string{"HOME": ""})
+		} else {
+			restoreEnv = func() {}
 		}
 
 		env := snapEnv(info, nil, nil)
@@ -257,6 +257,7 @@ func (s *HTestSuite) TestSnapRunSnapExecEnv(c *C) {
 			"SNAP_UID":           fmt.Sprint(sys.Getuid()),
 			"SNAP_EUID":          fmt.Sprint(sys.Geteuid()),
 		})
+		restoreEnv()
 	}
 }
 
@@ -268,15 +269,15 @@ func (s *HTestSuite) TestParallelInstallSnapRunSnapExecEnv(c *C) {
 	usr, err := user.Current()
 	c.Assert(err, IsNil)
 
-	homeEnv := os.Getenv("HOME")
-	defer os.Setenv("HOME", homeEnv)
-
 	// pretend it's snapname_foo
 	info.InstanceKey = "foo"
 
 	for _, withHomeEnv := range []bool{true, false} {
+		var restoreEnv func()
 		if !withHomeEnv {
-			os.Setenv("HOME", "")
+			restoreEnv = testutil.MockEnv(map[string]string{"HOME": ""})
+		} else {
+			restoreEnv = func() {}
 		}
 
 		env := snapEnv(info, nil, nil)
@@ -304,6 +305,7 @@ func (s *HTestSuite) TestParallelInstallSnapRunSnapExecEnv(c *C) {
 			"SNAP_UID":         fmt.Sprint(sys.Getuid()),
 			"SNAP_EUID":        fmt.Sprint(sys.Geteuid()),
 		})
+		restoreEnv()
 	}
 }
 
