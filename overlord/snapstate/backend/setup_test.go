@@ -169,8 +169,7 @@ func (s *setupSuite) TestSetupDoUndoKernel(c *C) {
 	bootloader.Force(bloader)
 
 	// we don't get real mounting
-	os.Setenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS", "1")
-	defer os.Unsetenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_SQUASHFS_UNPACK_FOR_TESTS": "1"})()
 
 	testFiles := [][]string{
 		{"kernel.img", "kernel"},
@@ -213,8 +212,7 @@ func (s *setupSuite) TestSetupDoIdempotent(c *C) {
 	bloader := bootloadertest.Mock("mock", c.MkDir())
 	bootloader.Force(bloader)
 	// we don't get real mounting
-	os.Setenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS", "1")
-	defer os.Unsetenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_SQUASHFS_UNPACK_FOR_TESTS": "1"})()
 
 	testFiles := [][]string{
 		{"kernel.img", "kernel"},
@@ -264,8 +262,7 @@ func (s *setupSuite) TestSetupUndoIdempotent(c *C) {
 	bloader := bootloadertest.Mock("mock", c.MkDir())
 	bootloader.Force(bloader)
 	// we don't get real mounting
-	os.Setenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS", "1")
-	defer os.Unsetenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_SQUASHFS_UNPACK_FOR_TESTS": "1"})()
 
 	testFiles := [][]string{
 		{"kernel.img", "kernel"},
@@ -699,8 +696,7 @@ func (s *setupSuite) TestSetupAndRemoveKernelSnapSetup(c *C) {
 	bootloader.Force(bloader)
 
 	// we don't get real mounting
-	os.Setenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS", "1")
-	defer os.Unsetenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_SQUASHFS_UNPACK_FOR_TESTS": "1"})()
 
 	// Files from the early-mounted snap
 	snapdir := filepath.Join(dirs.SnapMountDir, "kernel/33")
@@ -726,8 +722,7 @@ func (s *setupSuite) TestSetupKernelSnapFailed(c *C) {
 	bootloader.Force(bloader)
 
 	// we don't get real mounting
-	os.Setenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS", "1")
-	defer os.Unsetenv("SNAPPY_SQUASHFS_UNPACK_FOR_TESTS")
+	defer testutil.MockEnv(map[string]string{"SNAPPY_SQUASHFS_UNPACK_FOR_TESTS": "1"})()
 
 	// File from the early-mounted snap
 	snapdir := filepath.Join(dirs.SnapMountDir, "kernel/33")
