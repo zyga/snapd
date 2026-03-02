@@ -115,25 +115,15 @@ func (s *RunSuite) SetUpTest(c *check.C) {
 	// one may be using Go from a snap, which will cause additional SNAP_
 	// environment variables to show up possibly breaking the tests, let's patch
 	// them up
-	droppedEnvs := map[string]string{}
+	maskedEnvs := map[string]string{}
 	for _, e := range env {
 		n := strings.SplitN(e, "=", 2)
 		name := n[0]
 		if strings.HasPrefix(name, "SNAP") {
-			if len(n) > 1 {
-				droppedEnvs[name] = n[1]
-			} else {
-				droppedEnvs[name] = ""
-			}
-			os.Unsetenv(name)
+			maskedEnvs[name] = ""
 		}
 	}
-
-	s.AddCleanup(func() {
-		for n, v := range droppedEnvs {
-			os.Setenv(n, v)
-		}
-	})
+	s.AddCleanup(testutil.MockEnv(maskedEnvs))
 
 	u, err := user.Current()
 	c.Assert(err, check.IsNil)
@@ -250,8 +240,7 @@ func (s *RunSuite) TestSnapRunAppIntegration(c *check.C) {
 	tmpdir := os.Getenv("TMPDIR")
 	if tmpdir == "" {
 		tmpdir = "/var/tmp"
-		os.Setenv("TMPDIR", tmpdir)
-		defer os.Unsetenv("TMPDIR")
+		defer testutil.MockEnv(map[string]string{"TMPDIR": tmpdir})()
 	}
 
 	// mock installed snap
@@ -1110,8 +1099,7 @@ func (s *RunSuite) TestSnapRunClassicAppIntegration(c *check.C) {
 	tmpdir := os.Getenv("TMPDIR")
 	if tmpdir == "" {
 		tmpdir = "/var/tmp"
-		os.Setenv("TMPDIR", tmpdir)
-		defer os.Unsetenv("TMPDIR")
+		defer testutil.MockEnv(map[string]string{"TMPDIR": tmpdir})()
 	}
 
 	// mock installed snap
@@ -1537,13 +1525,12 @@ func (s *RunSuite) TestSnapRunSaneEnvironmentHandling(c *check.C) {
 	defer restorer()
 
 	// set a SNAP{,_*} variable in the environment
-	os.Setenv("SNAP_NAME", "something-else")
-	os.Setenv("SNAP_ARCH", "PDP-7")
-	defer os.Unsetenv("SNAP_NAME")
-	defer os.Unsetenv("SNAP_ARCH")
+	defer testutil.MockEnv(map[string]string{
+		"SNAP_NAME":      "something-else",
+		"SNAP_ARCH":      "PDP-7",
+		"SNAP_THE_WORLD": "YES",
+	})()
 	// but unrelated stuff is ok
-	os.Setenv("SNAP_THE_WORLD", "YES")
-	defer os.Unsetenv("SNAP_THE_WORLD")
 
 	// and ensure those SNAP_ vars get overridden
 	rest, err := snaprun.Parser(snaprun.Client()).ParseArgs([]string{"run", "--", "snapname.app", "--arg1", "arg2"})
@@ -2712,7 +2699,7 @@ func (s *RunSuite) TestSnapRunTrackingFailureBaseMatrix(c *check.C) {
 			return nil
 		})
 
-		os.Setenv("SNAPD_DEBUG", "1")
+		restoreEnv := testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})
 		logbuf, restoreLogger := logger.MockLogger()
 
 		_, err := snaprun.Parser(snaprun.Client()).ParseArgs([]string{"run", "--", snapName + ".app", "--arg1", "arg2"})
@@ -2727,7 +2714,7 @@ func (s *RunSuite) TestSnapRunTrackingFailureBaseMatrix(c *check.C) {
 		}
 
 		restoreLogger()
-		os.Unsetenv("SNAPD_DEBUG")
+		restoreEnv()
 		restoreExec()
 		restoreConfirm()
 		restoreCreate()
@@ -2952,8 +2939,7 @@ func (s *RunSuite) TestSnapRunTrackingFailure(c *check.C) {
 	defer restore()
 
 	// Capture the debug log that is printed by this test.
-	os.Setenv("SNAPD_DEBUG", "1")
-	defer os.Unsetenv("SNAPD_DEBUG")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": "1"})()
 	logbuf, restore := logger.MockLogger()
 	defer restore()
 
@@ -3184,9 +3170,7 @@ func (s *RunSuite) TestSnapRunHookKernelImplicitBase(c *check.C) {
 }
 
 func (s *RunSuite) TestRunGdbserverNoGdbserver(c *check.C) {
-	oldPath := os.Getenv("PATH")
-	os.Setenv("PATH", "/no-path:/really-not")
-	defer os.Setenv("PATH", oldPath)
+	defer testutil.MockEnv(map[string]string{"PATH": "/no-path:/really-not"})()
 
 	defer mockSnapConfine(dirs.DistroLibExecDir)()
 	snaptest.MockSnapCurrent(c, string(mockYamlForNameBase("snapname", "")), &snap.SideInfo{
@@ -3245,12 +3229,7 @@ func (s *RunSuite) TestGetSnapDirOptions(c *check.C) {
 }
 
 func (s *RunSuite) TestRunDebugLog(c *check.C) {
-	oldDebug, isSet := os.LookupEnv("SNAPD_DEBUG")
-	if isSet {
-		defer os.Setenv("SNAPD_DEBUG", oldDebug)
-	} else {
-		defer os.Unsetenv("SNAPD_DEBUG")
-	}
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG": ""})()
 
 	logBuf, r := logger.MockLogger()
 	defer r()
@@ -3683,13 +3662,13 @@ func (s *RunSuite) TestSystemKeyMismatchRetriesExhausted(c *check.C) {
 }
 
 func (s *RunSuite) TestDefaultRetryCount(c *check.C) {
-	defer os.Unsetenv("SNAPD_DEBUG_SYSTEM_KEY_RETRY")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG_SYSTEM_KEY_RETRY": ""})()
 	c.Check(snaprun.GetSystemKeyRetryCount(), check.Equals, 12)
 
-	os.Setenv("SNAPD_DEBUG_SYSTEM_KEY_RETRY", "123")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG_SYSTEM_KEY_RETRY": "123"})()
 	c.Check(snaprun.GetSystemKeyRetryCount(), check.Equals, 123)
 
-	os.Setenv("SNAPD_DEBUG_SYSTEM_KEY_RETRY", "funny")
+	defer testutil.MockEnv(map[string]string{"SNAPD_DEBUG_SYSTEM_KEY_RETRY": "funny"})()
 	// unparsable as int, returns the default value
 	c.Check(snaprun.GetSystemKeyRetryCount(), check.Equals, 12)
 }
