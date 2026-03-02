@@ -66,8 +66,7 @@ type clientSuite struct {
 var _ = Suite(&clientSuite{})
 
 func (cs *clientSuite) SetUpTest(c *C) {
-	os.Setenv(client.TestAuthFileEnvKey, filepath.Join(c.MkDir(), "auth.json"))
-	cs.AddCleanup(func() { os.Unsetenv(client.TestAuthFileEnvKey) })
+	cs.AddCleanup(testutil.MockEnv(map[string]string{client.TestAuthFileEnvKey: filepath.Join(c.MkDir(), "auth.json")}))
 
 	cs.cli = client.New(nil)
 	cs.cli.SetDoer(cs)
@@ -263,8 +262,7 @@ func (cs *clientSuite) TestClientUnderstandsStatusCode(c *C) {
 }
 
 func (cs *clientSuite) TestClientDefaultsToNoAuthorization(c *C) {
-	os.Setenv(client.TestAuthFileEnvKey, filepath.Join(c.MkDir(), "json"))
-	defer os.Unsetenv(client.TestAuthFileEnvKey)
+	defer testutil.MockEnv(map[string]string{client.TestAuthFileEnvKey: filepath.Join(c.MkDir(), "json")})()
 
 	var v string
 	_, _ = cs.cli.Do("GET", "/this", nil, nil, &v, nil)
@@ -274,8 +272,7 @@ func (cs *clientSuite) TestClientDefaultsToNoAuthorization(c *C) {
 }
 
 func (cs *clientSuite) TestClientSetsAuthorization(c *C) {
-	os.Setenv(client.TestAuthFileEnvKey, filepath.Join(c.MkDir(), "json"))
-	defer os.Unsetenv(client.TestAuthFileEnvKey)
+	defer testutil.MockEnv(map[string]string{client.TestAuthFileEnvKey: filepath.Join(c.MkDir(), "json")})()
 
 	mockUserData := client.User{
 		Macaroon:   "macaroon",
@@ -291,8 +288,7 @@ func (cs *clientSuite) TestClientSetsAuthorization(c *C) {
 }
 
 func (cs *clientSuite) TestClientHonorsDisableAuth(c *C) {
-	os.Setenv(client.TestAuthFileEnvKey, filepath.Join(c.MkDir(), "json"))
-	defer os.Unsetenv(client.TestAuthFileEnvKey)
+	defer testutil.MockEnv(map[string]string{client.TestAuthFileEnvKey: filepath.Join(c.MkDir(), "json")})()
 
 	mockUserData := client.User{
 		Macaroon:   "macaroon",
@@ -705,16 +701,7 @@ func (cs *clientSuite) TestClientDebugEnvVar(c *C) {
 	}))
 	defer srv.Close()
 
-	debugValue, ok := os.LookupEnv("SNAP_CLIENT_DEBUG_HTTP")
-	defer func() {
-		if ok {
-			os.Setenv("SNAP_CLIENT_DEBUG_HTTP", debugValue)
-		} else {
-			os.Unsetenv("SNAP_CLIENT_DEBUG_HTTP")
-		}
-	}()
-
-	os.Setenv("SNAP_CLIENT_DEBUG_HTTP", "7")
+	defer testutil.MockEnv(map[string]string{"SNAP_CLIENT_DEBUG_HTTP": "7"})()
 
 	cli := client.New(&client.Config{BaseURL: srv.URL})
 	c.Assert(cli, NotNil)
