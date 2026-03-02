@@ -136,12 +136,7 @@ func (*listenerSuite) TestRegisterOverridePath(c *C) {
 	c.Assert(err, IsNil)
 
 	fakePath := "/a/new/path"
-	err = os.Setenv("PROMPT_NOTIFY_PATH", fakePath)
-	c.Assert(err, IsNil)
-	defer func() {
-		err := os.Unsetenv("PROMPT_NOTIFY_PATH")
-		c.Assert(err, IsNil)
-	}()
+	defer testutil.MockEnv(map[string]string{"PROMPT_NOTIFY_PATH": fakePath})()
 
 	l, err = listener.Register(prompting.NewRequestFromListener)
 	c.Assert(err, IsNil)
