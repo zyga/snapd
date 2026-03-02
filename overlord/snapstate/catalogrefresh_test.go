@@ -265,8 +265,7 @@ func (s *catalogRefreshTestSuite) TestCatalogRefreshSkipWhenTesting(c *C) {
 	restore := snapdenv.MockTesting(true)
 	defer restore()
 	// catalog refresh disabled
-	os.Setenv("SNAPD_CATALOG_REFRESH", "0")
-	defer os.Unsetenv("SNAPD_CATALOG_REFRESH")
+	defer testutil.MockEnv(map[string]string{"SNAPD_CATALOG_REFRESH": "0"})()
 
 	// start with no catalog
 	c.Check(dirs.SnapSectionsFile, testutil.FileAbsent)
@@ -287,7 +286,9 @@ func (s *catalogRefreshTestSuite) TestCatalogRefreshSkipWhenTesting(c *C) {
 	c.Check(dirs.SnapCommandsDB, testutil.FileAbsent)
 
 	// allow the refresh now
-	os.Setenv("SNAPD_CATALOG_REFRESH", "1")
+	restoreEnv := testutil.MockEnv(map[string]string{"SNAPD_CATALOG_REFRESH": "1"})
+ 
+	defer restoreEnv()
 
 	// and reset the next refresh time
 	snapstate.MockCatalogRefreshNextRefresh(cr7, time.Time{})
