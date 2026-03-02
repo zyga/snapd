@@ -504,12 +504,13 @@ func (s *installSuite) TestPreinstallCheckSupported(c *C) {
 		})
 		s.AddCleanup(restore)
 
+		restoreEnv := func() {}
 		if tc.disableByEnvVar {
-			os.Setenv("SNAPD_DISABLE_PREINSTALL_CHECK", "1")
-			defer os.Unsetenv("SNAPD_DISABLE_PREINSTALL_CHECK")
+			restoreEnv = testutil.MockEnv(map[string]string{"SNAPD_DISABLE_PREINSTALL_CHECK": "1"})
 		}
 
 		supported, err := install.PreinstallCheckSupportedWithEnvFallback(modelMock)
+		restoreEnv()
 
 		if tc.expectedError != "" {
 			c.Assert(err, ErrorMatches, tc.expectedError)
