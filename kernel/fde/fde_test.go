@@ -61,11 +61,8 @@ func (s *fdeSuite) SetUpTest(c *C) {
 }
 
 func (s *fdeSuite) TestHasRevealKey(c *C) {
-	oldPath := os.Getenv("PATH")
-	defer func() { os.Setenv("PATH", oldPath) }()
-
 	mockRoot := c.MkDir()
-	os.Setenv("PATH", mockRoot+"/bin")
+	defer testutil.MockEnv(map[string]string{"PATH": mockRoot + "/bin"})()
 	mockBin := mockRoot + "/bin/"
 	err := os.Mkdir(mockBin, 0755)
 	c.Assert(err, IsNil)
