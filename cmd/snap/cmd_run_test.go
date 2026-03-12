@@ -282,6 +282,7 @@ func (s *RunSuite) TestSnapRunAppIntegration(c *check.C) {
 		filepath.Join(dirs.CoreLibExecDir, "snap-exec"),
 		"snapname.app", "--arg1", "arg2"})
 	c.Check(execEnv, testutil.Contains, "SNAP_REVISION=x2")
+	c.Check(execEnv, testutil.Contains, fmt.Sprintf("SNAP_USER=%d:%s", os.Getuid(), os.Getenv("LOGNAME")))
 	c.Check(execEnv, testutil.Contains, fmt.Sprintf("TMPDIR=%s", tmpdir))
 }
 

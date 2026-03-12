@@ -116,6 +116,7 @@ func (ts *HTestSuite) TestBasic(c *C) {
 		"SNAP_REEXEC":        os.Getenv("SNAP_REEXEC"),
 		"SNAP_UID":           fmt.Sprint(sys.Getuid()),
 		"SNAP_EUID":          fmt.Sprint(sys.Geteuid()),
+		"SNAP_USER":          fmt.Sprintf("%d:%s", sys.Getuid(), os.Getenv("LOGNAME")),
 	})
 }
 
@@ -157,6 +158,7 @@ func (ts *HTestSuite) TestBasicWithSources(c *C) {
 		"SNAP_REEXEC":        os.Getenv("SNAP_REEXEC"),
 		"SNAP_UID":           fmt.Sprint(sys.Getuid()),
 		"SNAP_EUID":          fmt.Sprint(sys.Geteuid()),
+		"SNAP_USER":          fmt.Sprintf("%d:%s", sys.Getuid(), os.Getenv("LOGNAME")),
 	})
 }
 
@@ -256,6 +258,7 @@ func (s *HTestSuite) TestSnapRunSnapExecEnv(c *C) {
 			"SNAP_REAL_HOME":     usr.HomeDir,
 			"SNAP_UID":           fmt.Sprint(sys.Getuid()),
 			"SNAP_EUID":          fmt.Sprint(sys.Geteuid()),
+			"SNAP_USER":          fmt.Sprintf("%d:%s", sys.Getuid(), os.Getenv("LOGNAME")),
 		})
 	}
 }
@@ -303,6 +306,7 @@ func (s *HTestSuite) TestParallelInstallSnapRunSnapExecEnv(c *C) {
 			"SNAP_REAL_HOME":   usr.HomeDir,
 			"SNAP_UID":         fmt.Sprint(sys.Getuid()),
 			"SNAP_EUID":        fmt.Sprint(sys.Geteuid()),
+			"SNAP_USER":        fmt.Sprintf("%d:%s", sys.Getuid(), os.Getenv("LOGNAME")),
 		})
 	}
 }

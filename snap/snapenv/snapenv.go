@@ -127,6 +127,7 @@ func basicEnv(info *snap.Info) osutil.Environment {
 		// these two environment variables match what BASH does, but with SNAP prefix.
 		"SNAP_UID":  fmt.Sprint(sys.Getuid()),
 		"SNAP_EUID": fmt.Sprint(sys.Geteuid()),
+		"SNAP_USER": fmt.Sprintf("%d:%s", sys.Getuid(), os.Getenv("LOGNAME")),
 	}
 
 	// Add the ubuntu-save specific environment variable if
