@@ -317,6 +317,10 @@ func (s *motdSuite) TestHandleMotdConfigurationUnsetWritableFileDoesNotExist(c *
 }
 
 func (s *motdSuite) TestHandleMotdConfigurationGetMotdFromSystemReadError(c *C) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	// Mock os.ReadFile(s.readonlyFilePath) to return an error
 	os.Chmod(s.readonlyFilePath, 0000)
 	defer os.Chmod(s.readonlyFilePath, 0444)
@@ -482,6 +486,10 @@ func (s *motdSuite) TestGetMotdFromSystemWritable(c *C) {
 }
 
 func (s *motdSuite) TestGetMotdFromSystemReadError(c *C) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	s.state.Lock()
 	defer s.state.Unlock()
 

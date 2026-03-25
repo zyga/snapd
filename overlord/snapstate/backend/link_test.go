@@ -690,6 +690,10 @@ Exec=bin
 }
 
 func (s *linkCleanupSuite) testLinkCleanupDirOnFail(c *C, dir string) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	c.Assert(os.Chmod(dir, 0555), IsNil)
 	defer os.Chmod(dir, 0755)
 
@@ -767,6 +771,9 @@ func (s *linkCleanupSuite) TestLinkCleansUpDataDirAndSymlinksOnSymlinkFail(c *C)
 }
 
 func (s *linkCleanupSuite) testLinkCleanupFailedSnapdSnapOnCorePastWrappers(c *C, firstInstall bool) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
 	dirs.SetRootDir(c.MkDir())
 	defer dirs.SetRootDir("")
 

@@ -1780,6 +1780,10 @@ TasksAccounting=true
 }
 
 func (s *servicesTestSuite) TestEnsureSnapServiceEnsureError(c *C) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	info := snaptest.MockSnap(c, packageHello, &snap.SideInfo{Revision: snap.R(12)})
 	svcFileDir := filepath.Join(dirs.GlobalRootDir, "/etc/systemd/system")
 

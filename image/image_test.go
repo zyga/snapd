@@ -2078,6 +2078,10 @@ func (s *imageSuite) TestSetupSeedLocalSnapsWithStoreAssertsValidationEnforce(c 
 }
 
 func (s *imageSuite) TestCannotCreateGadgetUnpackDir(c *C) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	fn := filepath.Join(c.MkDir(), "model.assertion")
 	err := os.WriteFile(fn, asserts.Encode(s.model), 0644)
 	c.Assert(err, IsNil)

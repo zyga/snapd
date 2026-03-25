@@ -78,6 +78,10 @@ func (s *apparmorSuite) TestSnapAppFromPidNewKernelPath(c *C) {
 }
 
 func (s *apparmorSuite) TestSnapAppFromPid(c *C) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	d := c.MkDir()
 	restore := apparmor.MockFsRootPath(d)
 	defer restore()

@@ -118,6 +118,10 @@ func (s *mockCommandSuite) TestMockNoShellchecksWhenNotAvailable(c *check.C) {
 }
 
 func (s *mockCommandSuite) TestMockCreateAbsPathDir(c *check.C) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	// this is an absolute path
 	dir := c.MkDir()
 

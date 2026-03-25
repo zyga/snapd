@@ -558,6 +558,10 @@ func (s *copydataSuite) TestCopyDataCopyFailure(c *C) {
 }
 
 func (s *copydataSuite) TestCopyDataPartialFailure(c *C) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	v1 := snaptest.MockSnap(c, helloYaml1, &snap.SideInfo{Revision: snap.R(10)})
 
 	s.populateData(c, snap.R(10))

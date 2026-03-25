@@ -417,6 +417,10 @@ plugs:
 }
 
 func (s *polkitInterfaceSuite) TestSanitizePlugPolicyDirNotWritable(c *C) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	_, plugInfo := mockPolkitPolicyConnectedPlug(c)
 
 	// Actions directory is not writable.
@@ -426,6 +430,9 @@ func (s *polkitInterfaceSuite) TestSanitizePlugPolicyDirNotWritable(c *C) {
 }
 
 func (s *polkitInterfaceSuite) TestSanitizePlugRuleDirNotWritable(c *C) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
 	_, plugInfo := mockPolkitRuleConnectedPlug(c, "hash")
 
 	// Rules directory is not writable.
@@ -552,6 +559,10 @@ func (s *polkitInterfaceSuite) TestStaticInfo(c *C) {
 }
 
 func (s *polkitInterfaceSuite) TestPolkitPoliciesSupported(c *C) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	// From now the actions directory is writable so daemon permissions matter.
 	c.Assert(os.Chmod(dirs.SnapPolkitPolicyDir, 0o700), IsNil)
 	// But not the rules to isolate te StaticInfo checks.
@@ -586,6 +597,10 @@ func (s *polkitInterfaceSuite) TestPolkitPoliciesSupported(c *C) {
 }
 
 func (s *polkitInterfaceSuite) TestPolkitRulesSupported(c *C) {
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	// From now the rules directory is writable so daemon permissions matter.
 	c.Assert(os.Chmod(dirs.SnapPolkitRuleDir, 0o700), IsNil)
 	// But not the actions directory to isolate te StaticInfo checks.

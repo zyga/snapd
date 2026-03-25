@@ -137,6 +137,10 @@ func (s *selinuxSuite) TestIsEnforcingFailOther(c *check.C) {
 	err := os.WriteFile(enforcePath, []byte("not-readable"), 0000)
 	c.Assert(err, check.IsNil)
 
+	if os.Geteuid() == 0 {
+		c.Skip("the test cannot be run by the root user")
+	}
+
 	enforcing, err := selinux.IsEnforcing()
 	c.Assert(err, check.ErrorMatches, "open .*: permission denied")
 	c.Assert(enforcing, check.Equals, false)
