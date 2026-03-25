@@ -3058,8 +3058,8 @@ func (s *seed20Suite) TestLoadAutoImportAssertionGradeDangerousNoAutoImportAsser
 	s.testLoadAutoImportAssertion(c, asserts.ModelDangerous, none, 0644, s.commitTo, fmt.Errorf("*. no such file or directory"))
 }
 
-func (s *seed20Suite) TestLoadAutoImportAssertionGradeDangerousAutoImportAssertionErrCommiter(c *C) {
-	// dangerous grade with broken commiter
+func (s *seed20Suite) TestLoadAutoImportAssertionGradeDangerousAutoImportAssertionErrCommitter(c *C) {
+	// dangerous grade with broken committer
 	err := fmt.Errorf("nope")
 	s.testLoadAutoImportAssertion(c, asserts.ModelDangerous, valid, 0644, func(b *asserts.Batch) error {
 		return err
