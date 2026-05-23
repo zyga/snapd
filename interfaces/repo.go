@@ -1060,6 +1060,42 @@ func (r *Repository) AddAppSet(appSet *SnapAppSet) error {
 		}
 		r.slots[snapName][slotName] = slotInfo
 	}
+
+	// Register virtual plugs/slots for workloads.
+	for wlName, wl := range snapInfo.Workloads {
+		for _, ifaceName := range wl.Plugs {
+			if _, ok := r.ifaces[ifaceName]; !ok {
+				continue
+			}
+			if r.plugs[snapName] == nil {
+				r.plugs[snapName] = make(map[string]*snap.PlugInfo)
+			}
+			r.plugs[snapName][virtualPlugName(wlName, ifaceName)] = &snap.PlugInfo{
+				Name:      virtualPlugName(wlName, ifaceName),
+				Interface: ifaceName,
+				Snap:      snapInfo,
+				Unscoped:  true,
+				Apps:      nil,
+				Attrs:     nil,
+			}
+		}
+		for _, ifaceName := range wl.Slots {
+			if _, ok := r.ifaces[ifaceName]; !ok {
+				continue
+			}
+			if r.slots[snapName] == nil {
+				r.slots[snapName] = make(map[string]*snap.SlotInfo)
+			}
+			r.slots[snapName][virtualSlotName(wlName, ifaceName)] = &snap.SlotInfo{
+				Name:      virtualSlotName(wlName, ifaceName),
+				Interface: ifaceName,
+				Snap:      snapInfo,
+				Unscoped:  true,
+				Apps:      nil,
+				Attrs:     nil,
+			}
+		}
+	}
 	return nil
 }
 
@@ -1234,4 +1270,14 @@ func (r *Repository) AutoConnectCandidatePlugs(slotSnapName, slotName string, po
 		}
 	}
 	return candidates
+}
+
+// virtualPlugName formats the synthetic name for a workload plug.
+func virtualPlugName(workloadName, ifaceName string) string {
+	return fmt.Sprintf("workload.%s.plug.%s", workloadName, ifaceName)
+}
+
+// virtualSlotName formats the synthetic name for a workload slot.
+func virtualSlotName(workloadName, ifaceName string) string {
+	return fmt.Sprintf("workload.%s.slot.%s", workloadName, ifaceName)
 }

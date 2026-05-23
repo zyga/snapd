@@ -1742,7 +1742,138 @@ plugs:
 	})
 }
 
-// Tests for AddSnap and RemoveSnap
+// Tests for Workloads
+
+func (s *RepositorySuite) TestAddAppSetWithWorkloads(c *C) {
+	yaml := `
+name: workloadsnap
+version: 0
+plugs:
+    top-level:
+        interface: interface
+workloads:
+    wl1:
+        plugs:
+            - interface
+        slots:
+            - interface
+    wl2:
+        plugs:
+            - interface`
+	set := ifacetest.MockInfoAndAppSet(c, yaml, nil, nil)
+	err := s.testRepo.AddAppSet(set)
+	c.Assert(err, IsNil)
+
+	// Check virtual plugs are registered
+	wl1Plug := s.testRepo.Plug("workloadsnap", "workload.wl1.plug.interface")
+	c.Assert(wl1Plug, Not(IsNil))
+	c.Assert(wl1Plug.Name, Equals, "workload.wl1.plug.interface")
+	c.Assert(wl1Plug.Interface, Equals, "interface")
+	c.Assert(wl1Plug.Unscoped, Equals, true)
+
+	wl2Plug := s.testRepo.Plug("workloadsnap", "workload.wl2.plug.interface")
+	c.Assert(wl2Plug, Not(IsNil))
+	c.Assert(wl2Plug.Name, Equals, "workload.wl2.plug.interface")
+
+	// Check virtual slots are registered
+	wl1Slot := s.testRepo.Slot("workloadsnap", "workload.wl1.slot.interface")
+	c.Assert(wl1Slot, Not(IsNil))
+	c.Assert(wl1Slot.Name, Equals, "workload.wl1.slot.interface")
+	c.Assert(wl1Slot.Interface, Equals, "interface")
+	c.Assert(wl1Slot.Unscoped, Equals, true)
+
+	// Top-level plug should also be there
+	topLevelPlug := s.testRepo.Plug("workloadsnap", "top-level")
+	c.Assert(topLevelPlug, Not(IsNil))
+}
+
+func (s *RepositorySuite) TestAddAppSetWithWorkloadsUnknownInterface(c *C) {
+	yaml := `
+name: workloadsnap2
+version: 0
+workloads:
+    wl:
+        plugs:
+            - interface
+            - nonexistent`
+	set := ifacetest.MockInfoAndAppSet(c, yaml, nil, nil)
+	err := s.testRepo.AddAppSet(set)
+	c.Assert(err, IsNil)
+
+	// Only the known interface should be registered
+	wlPlug := s.testRepo.Plug("workloadsnap2", "workload.wl.plug.interface")
+	c.Assert(wlPlug, Not(IsNil))
+
+	// The unknown interface should not be registered
+	nonexistentPlug := s.testRepo.Plug("workloadsnap2", "workload.wl.plug.nonexistent")
+	c.Assert(nonexistentPlug, IsNil)
+}
+
+func (s *RepositorySuite) TestRemoveSnapWithWorkloads(c *C) {
+	yaml := `
+name: workloadsnap3
+version: 0
+plugs:
+    top:
+        interface: interface
+workloads:
+    wl:
+        plugs:
+            - interface
+        slots:
+            - interface`
+	set := ifacetest.MockInfoAndAppSet(c, yaml, nil, nil)
+	err := s.testRepo.AddAppSet(set)
+	c.Assert(err, IsNil)
+
+	// Verify plugs/slots exist
+	c.Assert(s.testRepo.Plug("workloadsnap3", "workload.wl.plug.interface"), Not(IsNil))
+	c.Assert(s.testRepo.Slot("workloadsnap3", "workload.wl.slot.interface"), Not(IsNil))
+	c.Assert(s.testRepo.Plug("workloadsnap3", "top"), Not(IsNil))
+
+	err = s.testRepo.RemoveSnap("workloadsnap3")
+	c.Assert(err, IsNil)
+
+	// All plugs/slots should be removed
+	c.Assert(s.testRepo.Plug("workloadsnap3", "workload.wl.plug.interface"), IsNil)
+	c.Assert(s.testRepo.Slot("workloadsnap3", "workload.wl.slot.interface"), IsNil)
+	c.Assert(s.testRepo.Plug("workloadsnap3", "top"), IsNil)
+}
+
+func (s *RepositorySuite) TestSnapSpecificationWithWorkloads(c *C) {
+	var testSecurity SecuritySystem = "test"
+	iface := &ifacetest.TestInterface{
+		InterfaceName: "interface",
+		TestPermanentPlugCallback: func(spec *ifacetest.Specification, plug *snap.PlugInfo) error {
+			// Tag the snippet with the plug name for verification
+			spec.AddSnippet("snippet:" + plug.Name)
+			return nil
+		},
+	}
+	repo := s.emptyRepo
+	backend := &ifacetest.TestSecurityBackend{BackendName: testSecurity}
+	c.Assert(repo.AddBackend(backend), IsNil)
+	c.Assert(repo.AddInterface(iface), IsNil)
+
+	yaml := `
+name: workloadsnap4
+version: 0
+workloads:
+    wl1:
+        plugs:
+            - interface`
+	set := ifacetest.MockInfoAndAppSet(c, yaml, nil, nil)
+	c.Assert(repo.AddAppSet(set), IsNil)
+
+	emptyOpts := interfaces.ConfinementOptions{}
+	spec, err := repo.SnapSpecification(testSecurity, set, emptyOpts)
+	c.Assert(err, IsNil)
+
+	// The virtual workload plug should have contributed a snippet
+	snippets := spec.(*ifacetest.Specification).Snippets
+	c.Assert(snippets, HasLen, 1)
+	c.Assert(snippets[0], Equals, "snippet:workload.wl1.plug.interface")
+}
 
 type AddRemoveSuite struct {
 	testutil.BaseTest
