@@ -128,6 +128,12 @@ func (a *SnapAppSet) SecurityTagsForPlug(plug *snap.PlugInfo) ([]string, error) 
 		return nil, fmt.Errorf("internal error: plug %q is from snap %q, security tags can only be computed for processed target snap: %q", plug.Name, plug.Snap.InstanceName(), a.info.InstanceName())
 	}
 
+	// Virtual workload plugs: return the workload's security tag.
+	if wlName, ok := isWorkloadPlug(a, plug); ok {
+		wl := a.info.Workloads[wlName]
+		return []string{wl.SecurityTag()}, nil
+	}
+
 	apps := a.info.AppsForPlug(plug)
 	hooks := a.info.HooksForPlug(plug)
 
@@ -162,6 +168,12 @@ func (a *SnapAppSet) SecurityTagsForConnectedSlot(slot *ConnectedSlot) ([]string
 func (a *SnapAppSet) SecurityTagsForSlot(slot *snap.SlotInfo) ([]string, error) {
 	if slot.Snap.InstanceName() != a.info.InstanceName() {
 		return nil, fmt.Errorf("internal error: slot %q is from snap %q, security tags can only be computed for processed target snap: %q", slot.Name, slot.Snap.InstanceName(), a.info.InstanceName())
+	}
+
+	// Virtual workload slots: return the workload's security tag.
+	if wlName, ok := isWorkloadSlot(a, slot); ok {
+		wl := a.info.Workloads[wlName]
+		return []string{wl.SecurityTag()}, nil
 	}
 
 	apps := a.info.AppsForSlot(slot)
@@ -199,7 +211,50 @@ func (a *SnapAppSet) Runnables() []snap.Runnable {
 		}
 	}
 
+	// Add workload runnables.
+	for _, wl := range a.info.Workloads {
+		runnables = append(runnables, wl.Runnable())
+	}
+
 	return runnables
+}
+
+// isWorkloadPlug returns the workload name if the plug is a virtual workload plug.
+func isWorkloadPlug(a *SnapAppSet, plug *snap.PlugInfo) (workloadName string, ok bool) {
+	const prefix = "workload."
+	if !strings.HasPrefix(plug.Name, prefix) {
+		return "", false
+	}
+	// Format: workload.<name>.plug.<iface>
+	rest := plug.Name[len(prefix):]
+	dot := strings.Index(rest, ".plug.")
+	if dot < 0 {
+		return "", false
+	}
+	wlName := rest[:dot]
+	// Verify it exists in the info's workloads
+	if _, ok := a.info.Workloads[wlName]; !ok {
+		return "", false
+	}
+	return wlName, true
+}
+
+// isWorkloadSlot returns the workload name if the slot is a virtual workload slot.
+func isWorkloadSlot(a *SnapAppSet, slot *snap.SlotInfo) (workloadName string, ok bool) {
+	const prefix = "workload."
+	if !strings.HasPrefix(slot.Name, prefix) {
+		return "", false
+	}
+	rest := slot.Name[len(prefix):]
+	dot := strings.Index(rest, ".slot.")
+	if dot < 0 {
+		return "", false
+	}
+	wlName := rest[:dot]
+	if _, ok := a.info.Workloads[wlName]; !ok {
+		return "", false
+	}
+	return wlName, true
 }
 
 // labelExpr returns the specification of the apparmor label describing the

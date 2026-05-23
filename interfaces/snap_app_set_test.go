@@ -604,3 +604,159 @@ func mockAppSetAndConnectedSlot(c *C, yaml string, compYamls []string, si *snap.
 
 	return appSet, interfaces.NewConnectedSlot(slotInfo, appSet, nil, nil)
 }
+
+func (s *snapAppSetSuite) TestRunnablesIncludesWorkloads(c *C) {
+	const yaml = `name: name
+version: 1
+apps:
+  app1:
+workloads:
+  wl1:
+  wl2:`
+	info := snaptest.MockInfo(c, yaml, nil)
+	set, err := interfaces.NewSnapAppSet(info, nil)
+	c.Assert(err, IsNil)
+
+	runnables := set.Runnables()
+	c.Assert(runnables, HasLen, 3) // app1 + 2 workloads
+
+	// Check workload runnables are present
+	var workloadNames []string
+	for _, r := range runnables {
+		if r.CommandName == "wl1" {
+			c.Assert(r.SecurityTag, Equals, "snap.name.workload.wl1")
+			workloadNames = append(workloadNames, r.CommandName)
+		}
+		if r.CommandName == "wl2" {
+			c.Assert(r.SecurityTag, Equals, "snap.name.workload.wl2")
+			workloadNames = append(workloadNames, r.CommandName)
+		}
+	}
+	c.Assert(workloadNames, DeepEquals, []string{"wl1", "wl2"})
+}
+
+func (s *snapAppSetSuite) TestRunnablesEmptyWorkloads(c *C) {
+	const yaml = `name: name
+version: 1
+apps:
+  app1:`
+	info := snaptest.MockInfo(c, yaml, nil)
+	set, err := interfaces.NewSnapAppSet(info, nil)
+	c.Assert(err, IsNil)
+
+	runnables := set.Runnables()
+	c.Assert(runnables, HasLen, 1) // only app1
+}
+
+func (s *snapAppSetSuite) TestRunnablesWithStaticWorkload(c *C) {
+	const yaml = `name: name
+version: 1
+apps:
+  app1:
+workloads:
+  wl:
+    static: true
+    instance-count: 1`
+	info := snaptest.MockInfo(c, yaml, nil)
+	set, err := interfaces.NewSnapAppSet(info, nil)
+	c.Assert(err, IsNil)
+
+	runnables := set.Runnables()
+	c.Assert(runnables, HasLen, 2) // app1 + wl
+}
+
+func (s *snapAppSetSuite) TestSecurityTagsForPlugWorkload(c *C) {
+	// Create a virtual workload plug manually (as AddAppSet would create it)
+	info := snaptest.MockInfo(c, `name: name
+version: 1
+workloads:
+  restricted:`, nil)
+	set, err := interfaces.NewSnapAppSet(info, nil)
+	c.Assert(err, IsNil)
+
+	// Create virtual workload plug directly
+	virtualPlug := &snap.PlugInfo{
+		Name:      "workload.restricted.plug.network",
+		Interface: "network",
+		Snap:      info,
+		Unscoped:  true,
+	}
+
+	tags, err := set.SecurityTagsForPlug(virtualPlug)
+	c.Assert(err, IsNil)
+	c.Assert(tags, DeepEquals, []string{"snap.name.workload.restricted"})
+}
+
+func (s *snapAppSetSuite) TestSecurityTagsForSlotWorkload(c *C) {
+	info := snaptest.MockInfo(c, `name: name
+version: 1
+workloads:
+  restricted:`, nil)
+	set, err := interfaces.NewSnapAppSet(info, nil)
+	c.Assert(err, IsNil)
+
+	// Create virtual workload slot directly
+	virtualSlot := &snap.SlotInfo{
+		Name:      "workload.restricted.slot.network",
+		Interface: "network",
+		Snap:      info,
+		Unscoped:  true,
+	}
+
+	tags, err := set.SecurityTagsForSlot(virtualSlot)
+	c.Assert(err, IsNil)
+	c.Assert(tags, DeepEquals, []string{"snap.name.workload.restricted"})
+}
+
+func (s *snapAppSetSuite) TestSecurityTagsForPlugWorkloadWithInstanceKey(c *C) {
+	info := snaptest.MockInfo(c, `name: name
+version: 1
+workloads:
+  restricted:`, nil)
+	info.InstanceKey = "beta"
+	set, err := interfaces.NewSnapAppSet(info, nil)
+	c.Assert(err, IsNil)
+
+	virtualPlug := &snap.PlugInfo{
+		Name:      "workload.restricted.plug.network",
+		Interface: "network",
+		Snap:      info,
+		Unscoped:  true,
+	}
+
+	tags, err := set.SecurityTagsForPlug(virtualPlug)
+	c.Assert(err, IsNil)
+	c.Assert(tags, DeepEquals, []string{"snap.name_beta.workload.restricted"})
+}
+
+func (s *snapAppSetSuite) TestSecurityTagsForPlugRegularPlug(c *C) {
+	const yaml = `name: name
+version: 1
+apps:
+  app1:
+    plugs: [my-plug]
+plugs:
+  my-plug:`
+	set := mockAppSet(c, yaml, nil, nil)
+	plug := set.Info().Plugs["my-plug"]
+
+	tags, err := set.SecurityTagsForPlug(plug)
+	c.Assert(err, IsNil)
+	c.Assert(tags, DeepEquals, []string{"snap.name.app1"})
+}
+
+func (s *snapAppSetSuite) TestSecurityTagsForSlotRegularSlot(c *C) {
+	const yaml = `name: name
+version: 1
+apps:
+  app1:
+    slots: [my-slot]
+slots:
+  my-slot:`
+	set := mockAppSet(c, yaml, nil, nil)
+	slot := set.Info().Slots["my-slot"]
+
+	tags, err := set.SecurityTagsForSlot(slot)
+	c.Assert(err, IsNil)
+	c.Assert(tags, DeepEquals, []string{"snap.name.app1"})
+}
