@@ -23,6 +23,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	. "github.com/snapcore/snapd/interfaces"
+	"github.com/snapcore/snapd/testutil"
 )
 
 type NamingSuite struct{}
@@ -33,5 +34,12 @@ func (s *NamingSuite) TestSecurityTagGlob(c *C) {
 	c.Check(SecurityTagGlobs("http"), DeepEquals, []string{
 		"snap.http.*",
 		"snap.http+*.hook.*",
+		"snap.http.workload.*",
 	})
+}
+
+func (s *NamingSuite) TestSecurityTagGlobsIncludesWorkloads(c *C) {
+	globs := SecurityTagGlobs("my-snap")
+	c.Assert(globs, HasLen, 3)
+	c.Assert(globs, testutil.Contains, "snap.my-snap.workload.*")
 }

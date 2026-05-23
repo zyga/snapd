@@ -29,5 +29,6 @@ func SecurityTagGlobs(snapName string) []string {
 	return []string{
 		snap.AppSecurityTag(snapName, "*"),
 		snap.ComponentHookSecurityTag(snapName, "*", "*"),
+		snap.WorkloadSecurityTag(snapName, "*"),
 	}
 }
