@@ -235,6 +235,7 @@ func (s *snapSeccompSuite) SetUpSuite(c *C) {
 		}
 		if output, err := cmd.CombinedOutput(); err != nil {
 			fmt.Printf("cannot build multi-lib syscall runner: %v\n%s", err, output)
+			s.canCheckCompatArch = false
 		}
 	}
 }
