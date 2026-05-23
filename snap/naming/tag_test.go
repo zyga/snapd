@@ -152,3 +152,94 @@ func (s *tagSuite) TestParseHookSecurityTag(c *C) {
 	c.Assert(err, ErrorMatches, `"snap.pkg.app" is not a hook security tag`)
 	c.Assert(tag, IsNil)
 }
+
+func (s *tagSuite) TestParseWorkloadSecurityTag(c *C) {
+	// Invalid security tags cannot be parsed.
+	tag, err := naming.ParseWorkloadSecurityTag("potato")
+	c.Assert(err, ErrorMatches, "invalid security tag")
+	c.Assert(tag, IsNil)
+
+	// Static workload security tags can be parsed.
+	tag, err = naming.ParseWorkloadSecurityTag("snap.foo.workload.restricted")
+	c.Assert(err, IsNil)
+	wtag, ok := tag.(naming.WorkloadSecurityTag)
+	c.Assert(ok, Equals, true)
+	c.Check(wtag.String(), Equals, "snap.foo.workload.restricted")
+	c.Check(wtag.InstanceName(), Equals, "foo")
+	c.Check(wtag.WorkloadName(), Equals, "restricted")
+	c.Check(wtag.WorkloadInstance(), Equals, "")
+
+	// Workload instance security tags can be parsed (underscore separator).
+	tag, err = naming.ParseWorkloadSecurityTag("snap.foo.workload.restricted_inst1")
+	c.Assert(err, IsNil)
+	wtag = tag.(naming.WorkloadSecurityTag)
+	c.Check(wtag.String(), Equals, "snap.foo.workload.restricted_inst1")
+	c.Check(wtag.WorkloadName(), Equals, "restricted")
+	c.Check(wtag.WorkloadInstance(), Equals, "inst1")
+
+	// Non-workload security tags are not workload security tags.
+	tag, err = naming.ParseWorkloadSecurityTag("snap.pkg.app")
+	c.Assert(err, ErrorMatches, `"snap.pkg.app" is not a workload security tag`)
+	c.Assert(tag, IsNil)
+
+	tag, err = naming.ParseWorkloadSecurityTag("snap.pkg.hook.configure")
+	c.Assert(err, ErrorMatches, `"snap.pkg.hook.configure" is not a workload security tag`)
+	c.Assert(tag, IsNil)
+}
+
+func (s *tagSuite) TestParseWorkloadSecurityTagParallelInstall(c *C) {
+	// Parallel install static workload.
+	tag, err := naming.ParseWorkloadSecurityTag("snap.foo_bar.workload.container")
+	c.Assert(err, IsNil)
+	wtag := tag.(naming.WorkloadSecurityTag)
+	c.Check(wtag.String(), Equals, "snap.foo_bar.workload.container")
+	c.Check(wtag.InstanceName(), Equals, "foo_bar")
+	c.Check(wtag.WorkloadName(), Equals, "container")
+	c.Check(wtag.WorkloadInstance(), Equals, "")
+
+	// Parallel install workload instance.
+	tag, err = naming.ParseWorkloadSecurityTag("snap.foo_bar.workload.container_inst1")
+	c.Assert(err, IsNil)
+	wtag = tag.(naming.WorkloadSecurityTag)
+	c.Check(wtag.String(), Equals, "snap.foo_bar.workload.container_inst1")
+	c.Check(wtag.InstanceName(), Equals, "foo_bar")
+	c.Check(wtag.WorkloadName(), Equals, "container")
+	c.Check(wtag.WorkloadInstance(), Equals, "inst1")
+}
+
+func (s *tagSuite) TestParseWorkloadSecurityTagInvalid(c *C) {
+	invalidTags := []string{
+		// workload name must be valid
+		"snap.foo.workload.bad name",
+		"snap.foo.workload.-invalid",
+		"snap.foo.workload.",
+		// workload instance name must be valid
+		"snap.foo.workload.-bad_inst1",
+		"snap.foo.workload.name.-bad",
+		// empty parts
+		"snap.foo.workload._inst1",
+		"snap.foo.workload.name_",
+	}
+	for _, tag := range invalidTags {
+		_, err := naming.ParseSecurityTag(tag)
+		c.Assert(err, NotNil, Commentf("tag %q", tag))
+	}
+}
+
+func (s *tagSuite) TestParseSecurityTagWorkloadFromParseSecurityTag(c *C) {
+	// ParseSecurityTag should also parse workload tags.
+	tag, err := naming.ParseSecurityTag("snap.foo.workload.restricted")
+	c.Assert(err, IsNil)
+	wtag, ok := tag.(naming.WorkloadSecurityTag)
+	c.Assert(ok, Equals, true)
+	c.Check(wtag.String(), Equals, "snap.foo.workload.restricted")
+	c.Check(wtag.WorkloadName(), Equals, "restricted")
+
+	// Workload instance from ParseSecurityTag
+	tag, err = naming.ParseSecurityTag("snap.foo.workload.restricted_inst1")
+	c.Assert(err, IsNil)
+	wtag = tag.(naming.WorkloadSecurityTag)
+	c.Check(wtag.String(), Equals, "snap.foo.workload.restricted_inst1")
+	c.Check(wtag.WorkloadName(), Equals, "restricted")
+	c.Check(wtag.WorkloadInstance(), Equals, "inst1")
+}

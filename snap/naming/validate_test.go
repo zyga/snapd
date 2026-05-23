@@ -612,3 +612,29 @@ func (s *ValidateSuite) TestValidateAssumesISAArch(c *C) {
 		}
 	}
 }
+
+func (s *ValidateSuite) TestValidateWorkloadName(c *C) {
+	validNames := []string{
+		"foo", "foo1", "a1", "a",
+		"my-workload", "ABC123", "test-123", "restricted",
+		"a1-b2-c3", "foo123", "123abc",
+	}
+	for _, name := range validNames {
+		c.Assert(naming.ValidateWorkload(name), IsNil, Commentf("name %q", name))
+	}
+
+	invalidNames := []string{
+		"",
+		"-invalid",
+		"invalid-",
+		"bad name",
+		"bad:name",
+		"bad/name",
+		"bad@name",
+		"bad!name",
+		"日本語",
+	}
+	for _, name := range invalidNames {
+		c.Assert(naming.ValidateWorkload(name), NotNil, Commentf("name %q", name))
+	}
+}

@@ -73,6 +73,14 @@ func ValidateInstance(instanceName string) error {
 	if err := ValidateSnap(storeName); err != nil {
 		return err
 	}
+	if err := ValidateInstanceKey(instanceKey); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ValidateInstanceKey checks if a string can be used as a snap instance key.
+func ValidateInstanceKey(instanceKey string) error {
 	if !validInstanceKey.MatchString(instanceKey) {
 		return fmt.Errorf("invalid instance key: %q", instanceKey)
 	}
@@ -155,6 +163,19 @@ var ValidApp = regexp.MustCompile("^[a-zA-Z0-9](?:-?[a-zA-Z0-9])*$")
 func ValidateApp(n string) error {
 	if !ValidApp.MatchString(n) {
 		return fmt.Errorf("invalid app name: %q", n)
+	}
+	return nil
+}
+
+// ValidWorkload is a regular expression describing a valid workload name.
+// Workload names follow the same rules as application names.
+var ValidWorkload = regexp.MustCompile("^[a-zA-Z0-9](?:-?[a-zA-Z0-9])*$")
+
+// ValidateWorkload checks if a string is a valid workload name.
+// Workload names use the same constraints as application names.
+func ValidateWorkload(n string) error {
+	if !ValidWorkload.MatchString(n) {
+		return fmt.Errorf("invalid workload name: %q", n)
 	}
 	return nil
 }
