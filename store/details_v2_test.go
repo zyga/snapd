@@ -379,6 +379,7 @@ func (s *detailsV2Suite) TestInfoFromStoreSnap(c *C) {
 		SnapProvenance: "prov",
 		// empty
 		BadInterfaces:   map[string]string{},
+		Workloads:       map[string]*snap.WorkloadInfo{},
 		SystemUsernames: map[string]*snap.SystemUsernameInfo{},
 		OriginalLinks:   map[string][]string{},
 		LegacyAliases:   map[string]*snap.AppInfo{},
