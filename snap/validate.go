@@ -212,6 +212,27 @@ func ValidateHook(hook *HookInfo) error {
 	return nil
 }
 
+// ValidateWorkload validates the content of the given WorkloadInfo
+func ValidateWorkload(wl *WorkloadInfo) error {
+	if err := naming.ValidateWorkload(wl.Name); err != nil {
+		return fmt.Errorf("cannot have %q as workload name - use letters, digits, and dash as separator", wl.Name)
+	}
+
+	// Validate workload instance key (same as snap instance key)
+	if wl.InstanceKey != "" {
+		if err := naming.ValidateInstanceKey(wl.InstanceKey); err != nil {
+			return err
+		}
+	}
+
+	// Validate static flag and instance count relationship
+	if wl.Static && wl.InstanceCount == 0 {
+		return fmt.Errorf("static workload must specify instance-count greater than 0")
+	}
+
+	return nil
+}
+
 // ValidateAlias checks if a string can be used as an alias name.
 func ValidateAlias(alias string) error {
 	return naming.ValidateAlias(alias)
@@ -488,6 +509,13 @@ func Validate(info *Info) error {
 	if license := info.License; license != "" {
 		if err := ValidateLicense(license); err != nil {
 			return err
+		}
+	}
+
+	// validate workloads
+	for _, wl := range info.Workloads {
+		if err := ValidateWorkload(wl); err != nil {
+			return fmt.Errorf("invalid definition of workload %q: %v", wl.Name, err)
 		}
 	}
 
@@ -878,6 +906,11 @@ var commandChainContentWhitelist = regexp.MustCompile(`^[A-Za-z0-9/._#:$-]*$`)
 // ValidAppName tells whether a string is a valid application name.
 func ValidAppName(n string) bool {
 	return naming.ValidateApp(n) == nil
+}
+
+// ValidWorkloadName tells whether a string is a valid workload name.
+func ValidWorkloadName(n string) bool {
+	return naming.ValidateWorkload(n) == nil
 }
 
 // ValidateApp verifies the content in the app info.

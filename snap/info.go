@@ -243,6 +243,16 @@ func HookSecurityTag(snapName, hookName string) string {
 	return ScopedSecurityTag(snapName, "hook", hookName)
 }
 
+// WorkloadSecurityTag returns the workload-specific security tag.
+func WorkloadSecurityTag(snapInstance, workloadName string) string {
+	return fmt.Sprintf("snap.%s.workload.%s", snapInstance, workloadName)
+}
+
+// WorkloadInstanceSecurityTag returns the workload instance-specific security tag.
+func WorkloadInstanceSecurityTag(snapInstance, workloadName, workloadInstance string) string {
+	return fmt.Sprintf("snap.%s.workload.%s_%s", snapInstance, workloadName, workloadInstance)
+}
+
 // NoneSecurityTag returns the security tag for interfaces that
 // are not associated to an app or hook in the snap.
 func NoneSecurityTag(snapName, uniqueName string) string {
@@ -399,6 +409,7 @@ type Info struct {
 	Hooks            map[string]*HookInfo
 	Plugs            map[string]*PlugInfo
 	Slots            map[string]*SlotInfo
+	Workloads        map[string]*WorkloadInfo
 
 	Components map[string]*Component
 
@@ -1441,6 +1452,35 @@ func (hook *HookInfo) Runnable() Runnable {
 	return Runnable{
 		CommandName: fmt.Sprintf("%s+%s.hook.%s", hook.Snap.SnapName(), hook.Component.Name, hook.Name),
 		SecurityTag: hook.SecurityTag(),
+	}
+}
+
+// WorkloadInfo provides information about a workload.
+type WorkloadInfo struct {
+	Snap *Info
+
+	Name          string
+	InstanceKey   string
+	Environment   strutil.OrderedMap
+	Plugs         []string
+	Slots         []string
+	Static        bool
+	InstanceCount int
+}
+
+// SecurityTag returns workload-specific security tag.
+func (w *WorkloadInfo) SecurityTag() string {
+	if w.InstanceKey != "" {
+		return WorkloadInstanceSecurityTag(w.Snap.InstanceName(), w.Name, w.InstanceKey)
+	}
+	return WorkloadSecurityTag(w.Snap.InstanceName(), w.Name)
+}
+
+// Runnable returns a Runnable for this workload.
+func (w *WorkloadInfo) Runnable() Runnable {
+	return Runnable{
+		CommandName: w.Name,
+		SecurityTag: w.SecurityTag(),
 	}
 }
 

@@ -2886,3 +2886,66 @@ slots:
 	err = Validate(info)
 	c.Check(err, ErrorMatches, strings.Join(expectedErrs, "\n"))
 }
+
+func (s *ValidateSuite) TestValidateWorkloadsValid(c *C) {
+	info, err := InfoFromSnapYaml([]byte(`name: foo
+version: 1.0
+workloads:
+  my-workload:
+    plugs:
+      - network
+  a:
+  ABC123:
+`))
+	c.Assert(err, IsNil)
+	c.Assert(Validate(info), IsNil)
+}
+
+func (s *ValidateSuite) TestValidateWorkloadInvalidName(c *C) {
+	info, err := InfoFromSnapYaml([]byte(`name: foo
+version: 1.0
+workloads:
+  bad-workload!:
+    plugs:
+      - network
+`))
+	c.Assert(err, IsNil)
+	err = Validate(info)
+	c.Check(err, ErrorMatches, `invalid definition of workload "bad-workload!": cannot have "bad-workload!" as workload name - use letters, digits, and dash as separator`)
+}
+
+func (s *ValidateSuite) TestValidateWorkloadEmptyName(c *C) {
+	_, err := InfoFromSnapYaml([]byte(`name: foo
+version: 1.0
+workloads:
+  "":
+`))
+	c.Assert(err, IsNil)
+}
+
+func (s *ValidateSuite) TestValidateWorkloadDashNames(c *C) {
+	info, err := InfoFromSnapYaml([]byte(`name: foo
+version: 1.0
+workloads:
+  my-workload:
+  test-123:
+  a:
+  ABC123:
+`))
+	c.Assert(err, IsNil)
+	c.Assert(Validate(info), IsNil)
+}
+
+func (s *ValidateSuite) TestValidateWorkloadInvalidNamePatterns(c *C) {
+	invalidNames := []string{"-invalid", "invalid-", "bad name", "bad:name"}
+	for _, name := range invalidNames {
+		info, err := InfoFromSnapYaml([]byte(fmt.Sprintf(`name: foo
+version: 1.0
+workloads:
+  %s:
+`, name)))
+		c.Assert(err, IsNil)
+		err = Validate(info)
+		c.Check(err, NotNil, Commentf("workload name %q", name))
+	}
+}
