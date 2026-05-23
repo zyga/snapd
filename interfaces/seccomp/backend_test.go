@@ -1087,3 +1087,142 @@ func (s *backendSuite) TestParallelCompileRemovesFirst(c *C) {
 	err = seccomp.ParallelCompile(&m, []string{"profile-001"})
 	c.Assert(err, ErrorMatches, "remove .*/profile-001.bin2: permission denied")
 }
+
+func (s *backendSuite) TestSetupWorkloads(c *C) {
+	s.Iface.SecCompPermanentPlugCallback = func(spec *seccomp.Specification, plug *snap.PlugInfo) error {
+		spec.AddSnippet("snippet:" + plug.Name)
+		return nil
+	}
+	s.AddCleanup(func() {
+		s.Iface.SecCompPermanentPlugCallback = nil
+	})
+
+	yaml := `name: test-snap
+version: 1.0
+confinement: strict
+base: core22
+workloads:
+  restricted:
+    plugs:
+      - iface
+apps:
+  myapp:
+    command: bin/app`
+
+	snapInfo := s.InstallSnap(c, interfaces.ConfinementOptions{}, "", yaml, 1)
+
+	// Verify app profile exists
+	myappSrc := filepath.Join(dirs.SnapSeccompDir, "snap.test-snap.myapp.src")
+	_, err := os.Stat(myappSrc)
+	c.Assert(err, IsNil)
+
+	// Verify workload profile exists
+	workloadSrc := filepath.Join(dirs.SnapSeccompDir, "snap.test-snap.workload.restricted.src")
+	_, err = os.Stat(workloadSrc)
+	c.Assert(err, IsNil)
+
+	// Verify workload seccomp profile contains the snippet
+	c.Assert(workloadSrc, testutil.FileContains, "snippet:workload.restricted.plug.iface")
+
+	// Verify app profile doesn't contain the snippet
+	c.Assert(myappSrc, Not(testutil.FileContains), "snippet:")
+
+	s.RemoveSnap(c, snapInfo)
+}
+
+func (s *backendSuite) TestSetupWorkloadsMultiple(c *C) {
+	s.Iface.SecCompPermanentPlugCallback = func(spec *seccomp.Specification, plug *snap.PlugInfo) error {
+		spec.AddSnippet("snippet:" + plug.Name)
+		return nil
+	}
+	s.AddCleanup(func() {
+		s.Iface.SecCompPermanentPlugCallback = nil
+	})
+
+	yaml := `name: test-snap
+version: 1.0
+confinement: strict
+base: core22
+workloads:
+  restricted:
+    plugs:
+      - iface
+  hardware:
+    plugs:
+      - iface`
+
+	snapInfo := s.InstallSnap(c, interfaces.ConfinementOptions{}, "", yaml, 1)
+
+	// Verify both workload profiles exist
+	restrictedSrc := filepath.Join(dirs.SnapSeccompDir, "snap.test-snap.workload.restricted.src")
+	_, err := os.Stat(restrictedSrc)
+	c.Assert(err, IsNil)
+
+	hardwareSrc := filepath.Join(dirs.SnapSeccompDir, "snap.test-snap.workload.hardware.src")
+	_, err = os.Stat(hardwareSrc)
+	c.Assert(err, IsNil)
+
+	// Verify each workload has its own snippet
+	c.Assert(restrictedSrc, testutil.FileContains, "snippet:workload.restricted.plug.iface")
+	c.Assert(hardwareSrc, testutil.FileContains, "snippet:workload.hardware.plug.iface")
+
+	// Verify workloads don't share snippets
+	c.Assert(restrictedSrc, Not(testutil.FileContains), "workload.hardware")
+
+	s.RemoveSnap(c, snapInfo)
+}
+
+func (s *backendSuite) TestSetupWorkloadsEmpty(c *C) {
+	yaml := `name: test-snap
+version: 1.0
+confinement: strict
+base: core22
+workloads:
+  empty:
+apps:
+  myapp:
+    command: bin/app`
+
+	snapInfo := s.InstallSnap(c, interfaces.ConfinementOptions{}, "", yaml, 1)
+
+	// Empty workload should still have a profile
+	workloadSrc := filepath.Join(dirs.SnapSeccompDir, "snap.test-snap.workload.empty.src")
+	_, err := os.Stat(workloadSrc)
+	c.Assert(err, IsNil)
+
+	s.RemoveSnap(c, snapInfo)
+}
+
+func (s *backendSuite) TestSetupWorkloadsParallelInstall(c *C) {
+	s.Iface.SecCompPermanentPlugCallback = func(spec *seccomp.Specification, plug *snap.PlugInfo) error {
+		spec.AddSnippet("snippet:" + plug.Name)
+		return nil
+	}
+	s.AddCleanup(func() {
+		s.Iface.SecCompPermanentPlugCallback = nil
+	})
+
+	yaml := `name: test-snap
+version: 1.0
+confinement: strict
+base: core22
+workloads:
+  restricted:
+    plugs:
+      - iface
+apps:
+  myapp:
+    command: bin/app`
+
+	snapInfo := s.InstallSnap(c, interfaces.ConfinementOptions{}, "test-snap_beta", yaml, 1)
+
+	// Verify workload profile with parallel install suffix exists
+	workloadSrc := filepath.Join(dirs.SnapSeccompDir, "snap.test-snap_beta.workload.restricted.src")
+	_, err := os.Stat(workloadSrc)
+	c.Assert(err, IsNil)
+
+	// Verify it contains the snippet
+	c.Assert(workloadSrc, testutil.FileContains, "snippet:workload.restricted.plug.iface")
+
+	s.RemoveSnap(c, snapInfo)
+}
