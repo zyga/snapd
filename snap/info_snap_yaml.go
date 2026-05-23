@@ -57,6 +57,7 @@ type snapYaml struct {
 	SystemUsernames map[string]any           `yaml:"system-usernames,omitempty"`
 	Links           map[string][]string      `yaml:"links,omitempty"`
 	Components      map[string]componentYaml `yaml:"components,omitempty"`
+	Workloads       map[string]workloadYaml  `yaml:"workloads,omitempty"`
 
 	// TypoLayouts is used to detect the use of the incorrect plural form of "layout"
 	TypoLayouts typoDetector `yaml:"layouts,omitempty"`
@@ -139,6 +140,14 @@ type layoutYaml struct {
 type socketsYaml struct {
 	ListenStream string      `yaml:"listen-stream,omitempty"`
 	SocketMode   os.FileMode `yaml:"socket-mode,omitempty"`
+}
+
+type workloadYaml struct {
+	Environment   strutil.OrderedMap `yaml:"environment,omitempty"`
+	Plugs         []string           `yaml:"plugs,omitempty"`
+	Slots         []string           `yaml:"slots,omitempty"`
+	Static        bool               `yaml:"static,omitempty"`
+	InstanceCount int                `yaml:"instance-count,omitempty"`
 }
 
 // InfoFromSnapYaml creates a new info based on the given snap.yaml data
@@ -248,6 +257,9 @@ func infoFromSnapYaml(yamlData []byte, strk *scopedTracker) (*Info, error) {
 		return nil, err
 	}
 
+	// Collect workloads
+	setWorkloadsFromSnapYaml(y, snap)
+
 	if err := setLinksFromSnapYaml(y, snap); err != nil {
 		return nil, err
 	}
@@ -307,6 +319,7 @@ func infoSkeletonFromSnapYaml(y snapYaml) *Info {
 		Hooks:               make(map[string]*HookInfo),
 		Plugs:               make(map[string]*PlugInfo),
 		Slots:               make(map[string]*SlotInfo),
+		Workloads:           make(map[string]*WorkloadInfo),
 		Environment:         y.Environment,
 		SystemUsernames:     make(map[string]*SystemUsernameInfo),
 		OriginalLinks:       make(map[string][]string),
@@ -836,5 +849,25 @@ func convertToUsernamesData(user string, data any) (scope string, attrs map[stri
 	default:
 		err := fmt.Errorf("system username %q has malformed definition (found %T)", user, data)
 		return "", nil, err
+	}
+}
+
+func setWorkloadsFromSnapYaml(y snapYaml, snap *Info) {
+	if len(y.Workloads) == 0 {
+		return
+	}
+
+	snap.Workloads = make(map[string]*WorkloadInfo, len(y.Workloads))
+	for name, data := range y.Workloads {
+		workload := &WorkloadInfo{
+			Snap:          snap,
+			Name:          name,
+			Environment:   data.Environment,
+			Plugs:         data.Plugs,
+			Slots:         data.Slots,
+			Static:        data.Static,
+			InstanceCount: data.InstanceCount,
+		}
+		snap.Workloads[name] = workload
 	}
 }

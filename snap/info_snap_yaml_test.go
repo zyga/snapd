@@ -2407,3 +2407,99 @@ components:
 	c.Assert(err.Error(), Equals, `component hooks cannot have slots`)
 	c.Assert(info, IsNil)
 }
+
+func (s *YamlSuite) TestUnmarshalWorkloads(c *C) {
+	info, err := snap.InfoFromSnapYaml([]byte(`name: foo
+version: 1.0
+workloads:
+  restricted:
+    plugs:
+      - network
+      - removable-media
+    environment:
+      LD_PRELOAD: /snap/foo/current/lib/filter.so
+  hardware:
+    plugs:
+      - gpio
+      - serial-port
+`))
+	c.Assert(err, IsNil)
+	c.Assert(info.Workloads, HasLen, 2)
+
+	restricted := info.Workloads["restricted"]
+	c.Assert(restricted, NotNil)
+	c.Check(restricted.Name, Equals, "restricted")
+	c.Check(restricted.Snap, Equals, info)
+	c.Check(restricted.Plugs, DeepEquals, []string{"network", "removable-media"})
+	c.Check(restricted.Environment.Get("LD_PRELOAD"), Equals, "/snap/foo/current/lib/filter.so")
+
+	hardware := info.Workloads["hardware"]
+	c.Check(hardware.Name, Equals, "hardware")
+	c.Check(hardware.Plugs, DeepEquals, []string{"gpio", "serial-port"})
+}
+
+func (s *YamlSuite) TestUnmarshalWorkloadsEmpty(c *C) {
+	info, err := snap.InfoFromSnapYaml([]byte(`name: foo
+version: 1.0`))
+	c.Assert(err, IsNil)
+	c.Check(info.Workloads, HasLen, 0)
+}
+
+func (s *YamlSuite) TestUnmarshalWorkloadsWithApp(c *C) {
+	info, err := snap.InfoFromSnapYaml([]byte(`name: foo
+version: 1.0
+workloads:
+  restricted:
+    plugs:
+      - network
+apps:
+  myapp:
+    command: bin/app
+`))
+	c.Assert(err, IsNil)
+	c.Assert(info.Workloads["restricted"], NotNil)
+	c.Check(info.Workloads["restricted"].Plugs, DeepEquals, []string{"network"})
+}
+
+func (s *YamlSuite) TestUnmarshalWorkloadsWithSlots(c *C) {
+	info, err := snap.InfoFromSnapYaml([]byte(`name: foo
+version: 1.0
+workloads:
+  restricted:
+    plugs:
+      - network
+    slots:
+      - restricted-slot
+slots:
+  restricted-slot:
+    interface: my-interface
+`))
+	c.Assert(err, IsNil)
+	c.Assert(info.Workloads["restricted"], NotNil)
+	c.Check(info.Workloads["restricted"].Plugs, DeepEquals, []string{"network"})
+	c.Check(info.Workloads["restricted"].Slots, DeepEquals, []string{"restricted-slot"})
+}
+
+func (s *YamlSuite) TestUnmarshalWorkloadsStaticFlag(c *C) {
+	info, err := snap.InfoFromSnapYaml([]byte(`name: foo
+version: 1.0
+workloads:
+  restricted:
+    static: true
+`))
+	c.Assert(err, IsNil)
+	c.Assert(info.Workloads["restricted"], NotNil)
+	c.Check(info.Workloads["restricted"].Static, Equals, true)
+}
+
+func (s *YamlSuite) TestUnmarshalWorkloadsEmptyPlugsSlots(c *C) {
+	info, err := snap.InfoFromSnapYaml([]byte(`name: foo
+version: 1.0
+workloads:
+  restricted:
+`))
+	c.Assert(err, IsNil)
+	c.Assert(info.Workloads["restricted"], NotNil)
+	c.Check(info.Workloads["restricted"].Name, Equals, "restricted")
+	c.Check(info.Workloads["restricted"].Plugs, HasLen, 0)
+}
