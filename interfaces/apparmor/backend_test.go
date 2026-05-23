@@ -2685,7 +2685,7 @@ func (s *backendSuite) TestCasperOverlaySnippets(c *C) {
 
 func (s *backendSuite) TestProfileGlobs(c *C) {
 	globs := apparmor.ProfileGlobs("foo")
-	c.Assert(globs, DeepEquals, []string{"snap.foo.*", "snap.foo+*.hook.*", "snap-update-ns.foo"})
+	c.Assert(globs, DeepEquals, []string{"snap.foo.*", "snap.foo+*.hook.*", "snap.foo.workload.*", "snap-update-ns.foo"})
 }
 
 func (s *backendSuite) TestNsProfile(c *C) {
@@ -3270,4 +3270,145 @@ func (s *backendSuite) TestKernelModulesAndFwRule(c *C) {
   /var/snap/mykernel/*/{modules,firmware}/{,**} r,`)
 		s.RemoveSnap(c, snapInfo)
 	}
+}
+
+func (s *backendSuite) TestSetupWorkloads(c *C) {
+	// Set up the test interface to add permanent plug snippets for workload testing
+	s.Iface.AppArmorPermanentPlugCallback = func(spec *apparmor.Specification, plug *snap.PlugInfo) error {
+		spec.AddSnippet("permanent plug snippet for " + plug.Name)
+		return nil
+	}
+	s.AddCleanup(func() {
+		s.Iface.AppArmorPermanentPlugCallback = nil
+	})
+
+	yaml := `name: test-snap
+version: 1.0
+confinement: strict
+base: core22
+workloads:
+  restricted:
+    plugs:
+      - iface
+apps:
+  myapp:
+    command: bin/app`
+
+	snapInfo := s.InstallSnap(c, interfaces.ConfinementOptions{}, "", yaml, 1)
+
+	// Verify app profile exists
+	myappProfile := filepath.Join(dirs.SnapAppArmorDir, "snap.test-snap.myapp")
+	_, err := os.Stat(myappProfile)
+	c.Assert(err, IsNil)
+
+	// Verify workload profile exists
+	workloadProfile := filepath.Join(dirs.SnapAppArmorDir, "snap.test-snap.workload.restricted")
+	_, err = os.Stat(workloadProfile)
+	c.Assert(err, IsNil)
+
+	// Verify workload profile contains the snippet
+	c.Assert(workloadProfile, testutil.FileContains, "permanent plug snippet for workload.restricted.plug.iface")
+
+	// Verify app profile doesn't contain the snippet
+	c.Assert(myappProfile, Not(testutil.FileContains), "permanent plug snippet")
+
+	s.RemoveSnap(c, snapInfo)
+}
+
+func (s *backendSuite) TestSetupWorkloadsMultiple(c *C) {
+	// Set up the test interface to add permanent plug snippets
+	s.Iface.AppArmorPermanentPlugCallback = func(spec *apparmor.Specification, plug *snap.PlugInfo) error {
+		spec.AddSnippet("snippet:" + plug.Name)
+		return nil
+	}
+	s.AddCleanup(func() {
+		s.Iface.AppArmorPermanentPlugCallback = nil
+	})
+
+	yaml := `name: test-snap
+version: 1.0
+confinement: strict
+base: core22
+workloads:
+  restricted:
+    plugs:
+      - iface
+  hardware:
+    plugs:
+      - iface`
+
+	snapInfo := s.InstallSnap(c, interfaces.ConfinementOptions{}, "", yaml, 1)
+
+	// Verify both workload profiles exist
+	restrictedProfile := filepath.Join(dirs.SnapAppArmorDir, "snap.test-snap.workload.restricted")
+	_, err := os.Stat(restrictedProfile)
+	c.Assert(err, IsNil)
+
+	hardwareProfile := filepath.Join(dirs.SnapAppArmorDir, "snap.test-snap.workload.hardware")
+	_, err = os.Stat(hardwareProfile)
+	c.Assert(err, IsNil)
+
+	// Verify each workload has its own snippet
+	c.Assert(restrictedProfile, testutil.FileContains, "snippet:workload.restricted.plug.iface")
+	c.Assert(hardwareProfile, testutil.FileContains, "snippet:workload.hardware.plug.iface")
+
+	// Verify workloads don't share snippets
+	c.Assert(restrictedProfile, Not(testutil.FileContains), "workload.hardware")
+
+	s.RemoveSnap(c, snapInfo)
+}
+
+func (s *backendSuite) TestSetupWorkloadsEmpty(c *C) {
+	yaml := `name: test-snap
+version: 1.0
+confinement: strict
+base: core22
+workloads:
+  empty:
+apps:
+  myapp:
+    command: bin/app`
+
+	snapInfo := s.InstallSnap(c, interfaces.ConfinementOptions{}, "", yaml, 1)
+
+	// Empty workload should still have a profile (with base template only)
+	workloadProfile := filepath.Join(dirs.SnapAppArmorDir, "snap.test-snap.workload.empty")
+	_, err := os.Stat(workloadProfile)
+	c.Assert(err, IsNil)
+
+	s.RemoveSnap(c, snapInfo)
+}
+
+func (s *backendSuite) TestSetupWorkloadsParallelInstall(c *C) {
+	s.Iface.AppArmorPermanentPlugCallback = func(spec *apparmor.Specification, plug *snap.PlugInfo) error {
+		spec.AddSnippet("snippet:" + plug.Name)
+		return nil
+	}
+	s.AddCleanup(func() {
+		s.Iface.AppArmorPermanentPlugCallback = nil
+	})
+
+	yaml := `name: test-snap
+version: 1.0
+confinement: strict
+base: core22
+workloads:
+  restricted:
+    plugs:
+      - iface
+apps:
+  myapp:
+    command: bin/app`
+
+	snapInfo := s.InstallSnap(c, interfaces.ConfinementOptions{}, "test-snap_beta", yaml, 1)
+
+	// Verify workload profile with parallel install suffix exists
+	workloadProfile := filepath.Join(dirs.SnapAppArmorDir, "snap.test-snap_beta.workload.restricted")
+	_, err := os.Stat(workloadProfile)
+	c.Assert(err, IsNil)
+
+	// Verify it contains the snippet
+	c.Assert(workloadProfile, testutil.FileContains, "snippet:workload.restricted.plug.iface")
+
+	s.RemoveSnap(c, snapInfo)
 }
