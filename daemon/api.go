@@ -59,6 +59,7 @@ var api = []*Command{
 	buyCmd,
 	readyToBuyCmd,
 	snapctlCmd,
+	snapctlExecCmd,
 	usersCmd,
 	sectionsCmd,
 	categoriesCmd,
