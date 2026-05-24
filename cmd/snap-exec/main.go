@@ -45,8 +45,10 @@ var osReadlink = os.Readlink
 
 // commandline args
 var opts struct {
-	Command string `long:"command" description:"use a different command like {stop,post-stop} from the app"`
-	Hook    string `long:"hook" description:"hook to run" hidden:"yes"`
+	Command    string `long:"command" description:"use a different command like {stop,post-stop} from the app"`
+	Hook       string `long:"hook" description:"hook to run" hidden:"yes"`
+	Workload   bool   `long:"workload" description:"run as a workload (applies workload security tag and environment)"`
+	WorkloadID string `long:"workload-id" description:"workload instance ID for parallel workloads" hidden:"yes"`
 }
 
 func init() {
@@ -97,6 +99,10 @@ func run() error {
 	// Now actually handle the dispatching
 	if opts.Hook != "" {
 		return execHook(snapTarget, revision, opts.Hook)
+	}
+
+	if opts.Workload {
+		return execWorkload(snapTarget, revision, extraArgs)
 	}
 
 	return execApp(snapTarget, revision, opts.Command, extraArgs)
@@ -254,6 +260,66 @@ func execApp(snapTarget, revision, command string, args []string) error {
 		return fmt.Errorf("cannot exec %q: %s", fullCmd[0], err)
 	}
 	// this is never reached except in tests
+	return nil
+}
+
+func execWorkload(snapTarget, revision string, args []string) error {
+	if strings.ContainsRune(snapTarget, '+') {
+		return fmt.Errorf("snap-exec cannot run a workload component without a hook specified (use --hook)")
+	}
+
+	rev, err := snap.ParseRevision(revision)
+	if err != nil {
+		return fmt.Errorf("cannot parse revision %q: %s", revision, err)
+	}
+
+	snapName, workloadName := snap.SplitSnapApp(snapTarget)
+	info, err := snap.ReadInfo(snapName, &snap.SideInfo{
+		Revision: rev,
+	})
+	if err != nil {
+		return fmt.Errorf("cannot read info for %q: %s", snapName, err)
+	}
+
+	// Look up the workload by name
+	workload := info.Workloads[workloadName]
+	if workload == nil {
+		return fmt.Errorf("cannot find workload %q in %q", workloadName, snapName)
+	}
+
+	// Apply workload-specific environment variables
+	env, err := osutil.OSEnvironment()
+	if err != nil {
+		return err
+	}
+	for _, eenv := range workload.EnvChain() {
+		env.ExtendWithExpanded(eenv)
+	}
+
+	// Set workload-specific environment variables
+	env["SNAP_WORKLOAD"] = workload.Name
+	if workload.InstanceKey != "" {
+		env["SNAP_WORKLOAD_INSTANCE"] = workload.InstanceKey
+	}
+
+	// The workload executable is typically the snap's main binary or a helper
+	// For workloads, we use the snap's command as the default
+	cmd := info.Apps[workloadName]
+	if cmd == nil {
+		// If no app with the workload name exists, use the snap's mount directory
+		// and let the workload specify its own command
+		return fmt.Errorf("workload %q has no associated command in %q", workloadName, snapName)
+	}
+
+	// Build command chain
+	workloadPath := filepath.Join(info.MountDir(), cmd.Command)
+	fullCmd := append(absoluteCommandChain(info.MountDir(), cmd.CommandChain), workloadPath)
+	fullCmd = append(fullCmd, args...)
+
+	logger.StartupStageTimestamp("snap-exec to workload")
+	if err := syscallExec(fullCmd[0], fullCmd, env.ForExec()); err != nil {
+		return fmt.Errorf("cannot exec workload %q: %s", workloadName, err)
+	}
 	return nil
 }
 
