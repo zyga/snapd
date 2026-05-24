@@ -482,6 +482,12 @@ func SnapExportLibDirUnder(rootdir string) string {
 	return filepath.Join(SnapdStateDir(rootdir), "lib")
 }
 
+// SnapdSnapctlExecDir returns the path to the snapctl exec state dir.
+// This directory is used to store transient state files for workload executions.
+func SnapdSnapctlExecDir() string {
+	return filepath.Join(SnapRunDir, "snapd", "snapctl-exec")
+}
+
 // AddRootDirCallback registers a callback for whenever the global root
 // directory (set by SetRootDir) is changed to enable updates to variables in
 // other packages that depend on its location.
