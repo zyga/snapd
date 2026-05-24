@@ -35,17 +35,17 @@ bool sc_security_tag_validate(const char *security_tag, const char *snap_instanc
     }
     const char *whitelist_re =
         "^snap\\.([a-z0-9](-?[a-z0-9])*(_[a-z0-9]{1,10})?)(\\.[a-zA-Z0-9](-?[a-zA-Z0-9])*|(\\+([a-z0-9](-?[a-z0-9])*))?"
-        "\\.hook\\.[a-z](-?[a-z0-9])*)$";
+        "\\.hook\\.[a-z](-?[a-z0-9])*|\\.workload\\.([a-z0-9](-?[a-z0-9])*)*)$";
     regex_t re;
     if (regcomp(&re, whitelist_re, REG_EXTENDED) != 0) die("can not compile regex %s", whitelist_re);
 
     // first capture is for verifying the full security tag, second capture
     // for verifying the snap_name is correct for this security tag, eighth capture
     // for verifying the component_name is correct for this security tag. the
-    // expression currently contains 9 capture groups, but we only care about these 3,
-    // which unfortunately are not within the first 3 submatches, but rather group 1,
-    // 2, and 7, so for completeness capture all the groups.
-    enum { num_matches = 9 };
+  // expression currently contains 10 capture groups, but we only care about these 3,
+        // which unfortunately are not within the first 3 submatches, but rather group 1,
+        // 2, and 7, so for completeness capture all the groups.
+    enum { num_matches = 10 };
     regmatch_t matches[num_matches];
     if (num_matches != re.re_nsub) {
         die("internal error: all regex capture groups not fully accounted for");

@@ -133,6 +133,14 @@ bool sc_security_tag_validate(const char *security_tag, const char *snap_name, c
 bool sc_is_hook_security_tag(const char *security_tag);
 
 /**
+ * Check if the security tag is a workload security tag.
+ *
+ * Workload security tags have the format: snap.<instance>.workload.<name>
+ * where <name> contains only lowercase letters, digits, dashes and underscores.
+ **/
+bool sc_is_workload_security_tag(const char *security_tag);
+
+/**
  * Convert security tag to the expected cgroup name. The security tag must have
  * been validated before passing it as a parameter. See SecurityTagToUnitName()
  * in systemd/escape.go.
