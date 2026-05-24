@@ -292,7 +292,7 @@ func execWorkload(snapTarget, revision string, args []string) error {
 	if err != nil {
 		return err
 	}
-	for _, eenv := range workload.EnvChain() {
+for _, eenv := range workload.EnvChain() {
 		env.ExtendWithExpanded(eenv)
 	}
 
