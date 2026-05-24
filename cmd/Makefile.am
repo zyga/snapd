@@ -251,6 +251,50 @@ decode-mount-opts/decode-mount-opts$(EXEEXT): $(decode_mount_opts_decode_mount_o
 decode-mount-opts/decode-mount-opts$(EXEEXT): LIBS += -Wl,-Bstatic $(decode_mount_opts_decode_mount_opts_STATIC) -Wl,-Bdynamic
 
 ##
+## snap-confine-workload
+##
+
+libexec_PROGRAMS += snap-confine/snap-confine-workload
+
+snap_confine_workload_snap_confine_workload_SOURCES = \
+	snap-confine/snap-confine-workload.c
+
+snap_confine_workload_snap_confine_workload_CFLAGS = $(AM_CFLAGS) -DLIBEXECDIR=\"$(libexecdir)\" $(SANITIZE_CFLAGS)
+snap_confine_workload_snap_confine_workload_LDFLAGS = $(AM_LDFLAGS) $(SANITIZE_LDFLAGS)
+snap_confine_workload_snap_confine_workload_LDADD = libsnap-confine-private.a
+
+snap_confine_workload_snap_confine_workload_CFLAGS += $(LIBUDEV_CFLAGS)
+snap_confine_workload_snap_confine_workload_extra_libs = $(LIBUDEV_LIBS) -ldl
+
+if STATIC_LIBCAP
+snap_confine_workload_snap_confine_workload_extra_libs += -lcap
+endif
+
+if APPARMOR
+snap_confine_workload_snap_confine_workload_CFLAGS += $(APPARMOR_CFLAGS)
+if STATIC_LIBAPPARMOR
+snap_confine_workload_snap_confine_workload_extra_libs += $(shell $(PKG_CONFIG) --static --libs libapparmor)
+else
+snap_confine_workload_snap_confine_workload_extra_libs += $(APPARMOR_LIBS)
+endif
+endif
+
+if SELINUX
+snap_confine_workload_snap_confine_workload_CFLAGS += $(SELINUX_CFLAGS)
+if STATIC_LIBSELINUX
+snap_confine_workload_snap_confine_workload_extra_libs += $(shell $(PKG_CONFIG) --static --libs libselinux)
+else
+snap_confine_workload_snap_confine_workload_extra_libs += $(SELINUX_LIBS)
+endif
+endif
+
+snap-confine/snap-confine-workload$(EXEEXT): $(snap_confine_workload_snap_confine_workload_OBJECTS) $(snap_confine_workload_snap_confine_workload_DEPENDENCIES) $(EXTRA_snap_confine_workload_snap_confine_workload_DEPENDENCIES) libsnap-confine-private/$(am__dirstamp)
+	@rm -f snap-confine/snap-confine-workload$(EXEEXT)
+	$(AM_V_CCLD)$(snap_confine_workload_snap_confine_workload_LINK) $(snap_confine_workload_snap_confine_workload_OBJECTS) $(snap_confine_workload_snap_confine_workload_LDADD) $(LIBS)
+
+snap-confine/snap-confine-workload$(EXEEXT): LIBS += -Wl,-Bstatic $(snap_confine_workload_snap_confine_workload_extra_libs) -Wl,-Bdynamic -pthread
+
+##
 ## snap-confine
 ##
 
