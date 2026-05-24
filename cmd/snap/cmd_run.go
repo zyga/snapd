@@ -82,6 +82,9 @@ type cmdRun struct {
 	Revision    string `short:"r" default:"unset" hidden:"yes"`
 	Shell       bool   `long:"shell" `
 	DebugLog    bool   `long:"debug-log"`
+	Workload    bool   `long:"workload" hidden:"yes"`
+	// WorkloadName specifies which workload profile to use (e.g. "network" or "camera")
+	WorkloadName string `long:"workload-name" hidden:"yes"`
 	Positionals struct {
 		SnapName SnapAndApp `hidden:"yes" required:"yes" positional-arg-name:"<NAME-OF-SNAP>.<NAME-OF-APP> [<SNAP-APP-ARG>...]"`
 	} `positional-args:"yes" required:"yes" hidden:"yes"`
@@ -1568,6 +1571,11 @@ func (x *cmdRun) runSnapConfine(info *snap.Info, runner runnable, beforeExec fun
 		return err
 	}
 
+	// Check for workload mode
+	if x.Workload {
+		return x.runWorkload(info, args)
+	}
+
 	snapConfine, err := snapdHelperPath("snap-confine")
 	if err != nil {
 		return err
@@ -1923,5 +1931,64 @@ func getSnapDirOptions(snap string) (*dirs.SnapDirOptions, error) {
 }
 
 var cgroupCreateTransientScopeForTracking = cgroup.CreateTransientScopeForTracking
-var cgroupConfirmSystemdServiceTracking = cgroup.ConfirmSystemdServiceTracking
-var cgroupConfirmSystemdAppTracking = cgroup.ConfirmSystemdAppTracking
+	var cgroupConfirmSystemdServiceTracking = cgroup.ConfirmSystemdServiceTracking
+	var cgroupConfirmSystemdAppTracking = cgroup.ConfirmSystemdAppTracking
+
+func (x *cmdRun) runWorkload(info *snap.Info, args []string) error {
+	// Validate workload name was specified
+	if x.WorkloadName == "" {
+		return fmt.Errorf("internal error: workload mode requires --workload-name")
+	}
+
+	// Get the snap instance name
+	snapInstance := info.InstanceName()
+
+	// Build the workload security tag: snap.<instance>.workload.<name>
+	securityTag := fmt.Sprintf("snap.%s.workload.%s", snapInstance, x.WorkloadName)
+
+	// Find snap-confine-workload
+	snapConfineWorkload, err := snapdHelperPath("snap-confine-workload")
+	if err != nil {
+		return err
+	}
+	if !osutil.FileExists(snapConfineWorkload) {
+		return fmt.Errorf("missing snap-confine-workload: try updating your core/snapd package")
+	}
+
+	logger.Debugf("executing snap-confine-workload from %s", snapConfineWorkload)
+
+	// Build command: snap-confine-workload <security-tag> <executable> [args...]
+	cmd := []string{snapConfineWorkload, securityTag}
+	cmd = append(cmd, x.Positionals.SnapName.FullName())
+	cmd = append(cmd, args...)
+
+	// Set up environment
+	env, err := osutil.OSEnvironment()
+	if err != nil {
+		return err
+	}
+
+	// Set SNAP_INSTANCE_NAME for workload security tag validation
+	env["SNAP_INSTANCE_NAME"] = snapInstance
+
+	// Apply snap environment extensions
+	opts, err := getSnapDirOptions(snapInstance)
+	if err != nil {
+		return fmt.Errorf("cannot get snap dir options: %w", err)
+	}
+	snapenv.ExtendEnvForRun(env, info, nil, opts)
+
+	// Guarantee that XDG_RUNTIME_DIR exists
+	if xdgRuntimeDir, ok := env["XDG_RUNTIME_DIR"]; ok {
+		if err = os.Mkdir(xdgRuntimeDir, 0700); err != nil {
+			if !errors.Is(err, os.ErrExist) && !errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("cannot create XDG_RUNTIME_DIR folder %q: %w", xdgRuntimeDir, err)
+			}
+		}
+	}
+
+	logger.Debugf("workload security tag: %s", securityTag)
+	logger.Debugf("workload command: %v", cmd)
+
+	return syscallExec(cmd[0], cmd, env.ForExec())
+}
