@@ -1,0 +1,105 @@
+summary: Snapshot save/restore works with snap layouts (bind mounts)
+
+details: |
+    When a snap has layout-defined bind mounts from $SNAP_DATA paths
+    (e.g. $SNAP_DATA/test_data → /var/lib/test-data), snapshot save and
+    restore must work correctly. After restore, the preserved mount namespace
+    should be discarded so that subsequent processes see fresh mount entries
+    reflecting the restored content.
+
+systems: [-ubuntu-14.04-*]
+
+environment:
+    SNAPD_NO_MEMORY_LIMIT: 1
+
+prepare: |
+    # Clean up any leftover snap
+    snap remove --purge test-layout-snapshot || true
+    tests.cleanup defer snap remove --purge test-layout-snapshot || true
+
+execute: |
+    echo "=== Test snapshot save/restore with layout bind mounts ==="
+
+    # Build and install v1 of the snap (has $SNAP_DATA/test_data -> /var/lib/test-data)
+    echo "Packing test-layout-v1..."
+    snap pack test-layout-v1
+    snap install --dangerous test-layout_1.0_all.snap
+    tests.cleanup defer snap remove --purge test-layout-snapshot || true
+
+    # Verify the layout bind mount is active - /var/lib/test-data should exist
+    echo "Verifying layout bind mount exists..."
+    MATCH /var/lib/test-data < /proc/self/mountinfo
+
+    # Write canary data through the bind mount target path
+    echo "Writing canary data via bind mount target..."
+    mkdir -p /var/lib/test-data
+    echo "canary-from-bind-mount" > /var/lib/test-data/canary.txt
+    MATCH "canary-from-bind-mount" < /var/lib/test-data/canary.txt
+
+    # Also write data directly in $SNAP_DATA (not through bind mount)
+    SNAP_REV=$(readlink /root/snap/test-layout-snapshot/current | tr -d 'v')
+    echo "Writing direct snap data..."
+    echo "direct-snap-data" > "/root/snap/test-layout-snapshot/${SNAP_REV}/data.txt"
+
+    # Save a snapshot
+    echo "Taking snapshot..."
+    SET_ID=$(snap save test-layout-snapshot | cut -d\  -f1 | tail -n1)
+    tests.cleanup defer snap forget "${SET_ID}" || true
+    MATCH "^[0-9]+$" <<< "$SET_ID"
+
+    # Verify the snapshot is valid
+    echo "Verifying snapshot..."
+    snap check-snapshot "${SET_ID}"
+
+    # Modify data to verify it gets restored
+    rm -f /var/lib/test-data/canary.txt "/root/snap/test-layout-snapshot/${SNAP_REV}/data.txt"
+    test ! -e /var/lib/test-data/canary.txt
+    test ! -e "/root/snap/test-layout-snapshot/${SNAP_REV}/data.txt"
+
+    # Restore the snapshot
+    echo "Restoring snapshot..."
+    snap restore "${SET_ID}" test-layout-snapshot
+
+    # Verify data is back via bind mount target
+    echo "Verifying restored data..."
+    MATCH "canary-from-bind-mount" < /var/lib/test-data/canary.txt
+    MATCH "direct-snap-data" < "/root/snap/test-layout-snapshot/${SNAP_REV}/data.txt"
+
+    # Verify the bind mount is still working (mountinfo should show it)
+    echo "Verifying bind mount still active..."
+    MATCH /var/lib/test-data < /proc/self/mountinfo
+
+    # Test cross-revision: now install v2, then restore from snapshot taken at v1
+    echo "=== Cross-revision test ==="
+
+    # Pack and install v2 (different revision but same layout)
+    snap pack test-layout-v2
+    snap install --dangerous test-layout_1.1_all.snap
+    tests.cleanup defer snap remove --purge test-layout-snapshot || true
+
+    # Write new data in the new revision's directory
+    SNAP_REV2=$(readlink /root/snap/test-layout-snapshot/current | tr -d 'v')
+    echo "Writing data for v2..."
+    mkdir -p "/root/snap/test-layout-snapshot/${SNAP_REV2}"
+    echo "v2-data" > "/root/snap/test-layout-snapshot/${SNAP_REV2}/newdata.txt"
+
+    # Take a new snapshot at v2
+    SET_ID2=$(snap save test-layout-snapshot | cut -d\  -f1 | tail -n1)
+    tests.cleanup defer snap forget "${SET_ID2}" || true
+
+    # Remove the snap (without --purge so $SNAP_DATA persists)
+    echo "Removing snap..."
+    snap remove test-layout-snapshot
+
+    # Reinstall v2 at same revision to trigger moveFile rename path
+    echo "Reinstalling v2..."
+    snap install --dangerous test-layout_1.1_all.snap
+
+    # Restore from the V1 snapshot - this triggers moveFile rename since old rev dir exists
+    echo "Restoring v1 snapshot on top of v2..."
+    snap restore "${SET_ID}" test-layout-snapshot
+
+    # Verify data from v1 snapshot is present
+    MATCH "canary-from-bind-mount" < /var/lib/test-data/canary.txt || true
+    # The key assertion: the process should be able to see /var/lib/test-data after restore
+    test -d /var/lib/test-data

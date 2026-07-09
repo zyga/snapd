@@ -387,7 +387,7 @@ func (r *Reader) Restore(ctx context.Context, current snap.Revision, usernames [
 // is safe here because snapshot restore already stops all services - no process
 // holds references to the namespace at this point.
 func discardPreservedNamespace(snapName string) error {
-	nsPath := filepath.Join("/run", "snapd", "ns", snapName+".mnt")
+	nsPath := filepath.Join(dirs.SnapRunNsDir, snapName+".mnt")
 	if !osutil.FileExists(nsPath) {
 		return nil
 	}

@@ -1,0 +1,15 @@
+name: test-layout-snapshot
+version: "1.0"
+summary: Test snap for snapshot + layout interaction
+description: A minimal snap with $SNAP_DATA bind mount layout, used to test snapshot save/restore.
+base: core22
+confinement: strict
+grade: devel
+
+layout:
+  /var/lib/test-data:
+    bind: $SNAP_DATA/test_data
+
+apps:
+  test:
+    command: bin/test
