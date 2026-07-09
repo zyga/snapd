@@ -519,3 +519,109 @@ func (s *snapshotSuite) TestRevertRestartsEachDirsMountsIndependently(c *C) {
 	c.Check(logbuf.String(), testutil.Contains, dir1)
 	c.Check(logbuf.String(), testutil.Contains, dir2)
 }
+
+func (s *snapshotSuite) TestIsLayoutMount(c *C) {
+	for _, tc := range []struct {
+		opts    map[string]string
+		comment string
+		expect  bool
+	}{
+		{map[string]string{}, "no options at all", false},
+		{map[string]string{"rw": "", "relatime": ""}, "regular mount options only", false},
+		{map[string]string{"x-snapd.origin": "layout"}, "layout origin, layout value", true},
+		{map[string]string{"x-snapd.origin": "mount-control"}, "snapctl origin, not layout", false},
+		{map[string]string{"rw": "", "relatime": "", "x-snapd.origin": "layout"}, "mixed options with layout", true},
+	} {
+		c.Check(backend.IsLayoutMount(&osutil.MountInfoEntry{
+			MountOptions: tc.opts,
+		}), Equals, tc.expect, Commentf(tc.comment))
+	}
+}
+
+func (s *snapshotSuite) TestRestoreSkipsLayoutOriginMounts(c *C)	 {
+	// A non-snapctl mount under the snap revision data dir that also carries
+	// x-snapd.origin=layout should be silently skipped, not reported as unknown.
+	si := snap.MinimalPlaceInfo("hello-snap", snap.R(42))
+	mountPoint := filepath.Join(si.DataDir(), "user-target")
+
+	layoutLine := fmt.Sprintf("100 1 8:1 / %s rw,relatime,x-snapd.origin=layout - tmpfs tmpfs rw\n", mountPoint)
+	// sysd reports no mount-control mounts (ListMountUnitsResult empty default);
+	// only a layout-originated bind mount is present.
+	defer osutil.MockMountInfo(layoutLine)()
+
+	shr := saveAndOpenSnapshot(c)
+	defer shr.Close()
+
+	rs, err := shr.Restore(context.TODO(), snap.R(0), nil, logger.Debugf, nil)
+	c.Assert(err, IsNil)
+	rs.Cleanup()
+
+	// ListMountUnits was still called (once per dir processed by Restore).
+	c.Assert(s.sysd.ListMountUnitsCalls, HasLen, 4)
+	expListMountUnitsParams := systemdtest.ParamsForListMountUnits{SnapName: "hello-snap", Origin: "mount-control"}
+	for _, call := range s.sysd.ListMountUnitsCalls {
+		c.Check(call, DeepEquals, expListMountUnitsParams)
+	}
+	// No Stop/Start since layout mounts are skipped.
+	c.Check(s.sysd.StopCalls, HasLen, 0)
+	c.Check(s.sysd.StartCalls, HasLen, 0)
+}
+
+func (s *snapshotSuite) TestRevertSkipsLayoutOriginMounts(c *C) {
+	// A Created dir with only a layout-originated bind mount present.
+	// Revert should proceed past it (skip), not abort or log "unknown mount".
+	dir1 := filepath.Join(s.root, "var/snap/mysnap/x1")
+	mountPoint := filepath.Join(dir1, "user-target")
+	c.Assert(os.MkdirAll(dir1, 0755), IsNil)
+
+	layoutLine := fmt.Sprintf("100 1 8:1 / %s rw,relatime,x-snapd.origin=layout - tmpfs tmpfs rw\n", mountPoint)
+	defer osutil.MockMountInfo(layoutLine)()
+
+	logbuf, restoreLogger := logger.MockLogger()
+	defer restoreLogger()
+
+	rs := &backend.RestoreState{
+		Snap:    "mysnap",
+		Created: []string{dir1},
+	}
+	rs.Revert()
+
+	// Layout mounts are skipped silently; no error log about unknown mount.
+	c.Check(strings.Contains(logbuf.String(), "unknown mount"), Equals, false)
+	// No Stop/Start since layout mounts have no systemd unit.
+	c.Check(s.sysd.StopCalls, HasLen, 0)
+	c.Check(s.sysd.StartCalls, HasLen, 0)
+}
+
+func (s *snapshotSuite) TestRestoreSkipsLayoutMountMixedWithSnapctl(c *C) {
+	// One snapctl mount and one layout-originated bind mount under the same dir.
+	// Restore should stop/start only the snapctl mount; skip the layout one.
+	si := snap.MinimalPlaceInfo("hello-snap", snap.R(42))
+	snapctlMP := filepath.Join(si.DataDir(), "target")
+	layoutMP := filepath.Join(si.DataDir(), "user-target")
+	unitName := makeMountUnitFile(c, snapctlMP)
+
+	s.sysd.ListMountUnitsResult = systemdtest.ResultForListMountUnits{
+		MountPoints: []string{snapctlMP},
+	}
+
+	snapctlLine := fmt.Sprintf("100 1 8:1 / %s rw,relatime - tmpfs tmpfs rw\n", snapctlMP)
+	layoutLine := fmt.Sprintf("101 1 8:1 / %s rw,relatime,x-snapd.origin=layout - tmpfs tmpfs rw\n", layoutMP)
+	defer osutil.MockMountInfo(snapctlLine + layoutLine)()
+
+	shr := saveAndOpenSnapshot(c)
+	defer shr.Close()
+
+	rs, err := shr.Restore(context.TODO(), snap.R(0), nil, logger.Debugf, nil)
+	c.Assert(err, IsNil)
+	rs.Cleanup()
+
+	expListMountUnitsParams := systemdtest.ParamsForListMountUnits{SnapName: "hello-snap", Origin: "mount-control"}
+	c.Check(s.sysd.ListMountUnitsCalls, DeepEquals, []systemdtest.ParamsForListMountUnits{
+		expListMountUnitsParams, expListMountUnitsParams, expListMountUnitsParams, expListMountUnitsParams,
+	})
+	c.Assert(s.sysd.StopCalls, HasLen, 1)
+	c.Check(s.sysd.StopCalls[0], DeepEquals, []string{unitName})
+	c.Assert(s.sysd.StartCalls, HasLen, 1)
+	c.Check(s.sysd.StartCalls[0], DeepEquals, []string{unitName})
+}

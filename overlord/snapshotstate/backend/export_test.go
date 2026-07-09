@@ -44,6 +44,8 @@ var (
 	AddSnapDirToZip = addSnapDirToZip
 
 	IsPathAtOrUnderDir = isPathAtOrUnderDir
+
+	IsLayoutMount      = isLayoutMount
 )
 
 func MockIsTesting(newIsTesting bool) func() {

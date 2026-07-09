@@ -53,6 +53,12 @@ func listMountsAtOrUnder(snapName, baseDir string) (snapctlMPs, nonSnapctlMPs []
 		if !isPathAtOrUnderDir(mp, baseDir) {
 			continue
 		}
+		// Layout bind mounts (created by snap-update-ns with x-snapd.origin=layout)
+		// are kernel-level and have no systemd unit. Skip them so they don't appear
+		// as "unknown" nonSnapctl mounts that would block the rename.
+		if isLayoutMount(entry) {
+			continue
+		}
 		if mcMounts[mp] {
 			snapctlMPs = append(snapctlMPs, mp)
 		} else {
@@ -92,6 +98,13 @@ func startMountUnits(units []string) error {
 	}
 	sysd := systemd.New(systemd.SystemMode, nil)
 	return sysd.Start(units)
+}
+
+// isLayoutMount reports whether the given mountinfo entry was created by layout
+// bind mounts (snap-update-ns). These are kernel-level bind mounts with no
+// associated systemd unit file.
+func isLayoutMount(entry *osutil.MountInfoEntry) bool {
+	return entry.MountOptions["x-snapd.origin"] == "layout"
 }
 
 func isPathAtOrUnderDir(path, dir string) bool {

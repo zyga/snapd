@@ -28,6 +28,7 @@ import (
 	"hash"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -41,6 +42,7 @@ import (
 	"github.com/snapcore/snapd/osutil/sys"
 	"github.com/snapcore/snapd/snap"
 	"github.com/snapcore/snapd/strutil"
+	"github.com/snapcore/snapd/snapdtool"
 )
 
 // ExtractFnameSetID can be passed to Open() to have set ID inferred from
@@ -378,6 +380,32 @@ func (r *Reader) Restore(ctx context.Context, current snap.Revision, usernames [
 	return rs, nil
 }
 
+// discardPreservedNamespace removes a preserved mount namespace for the given
+// snap, if one exists. This is needed before renaming away $SNAP_DATA/<rev>
+// during snapshot restore, because layout bind mounts (e.g., $SNAP_DATA/root ->
+// /root) would otherwise become stale in the preserved namespace. The discard
+// is safe here because snapshot restore already stops all services - no process
+// holds references to the namespace at this point.
+func discardPreservedNamespace(snapName string) error {
+	nsPath := filepath.Join("/run", "snapd", "ns", snapName+".mnt")
+	if !osutil.FileExists(nsPath) {
+		return nil
+	}
+	toolPath, err := snapdtool.InternalToolPath("snap-discard-ns")
+	if err != nil {
+		return fmt.Errorf("cannot determine path to snap-discard-ns: %v", err)
+	}
+	out, err := exec.Command(toolPath, snapName).CombinedOutput()
+	if err != nil {
+		msg := string(out)
+		if msg == "" {
+			msg = err.Error()
+		}
+		return fmt.Errorf("cannot discard preserved mount namespace of %q: %s", snapName, msg)
+	}
+	return nil
+}
+
 // moveFile moves file from the sourceDir to the targetDir. Directories moved
 // and created are registered in the RestoreState.
 func moveFile(rs *RestoreState, file, sourceDir, targetDir string) error {
@@ -394,6 +422,13 @@ func moveFile(rs *RestoreState, file, sourceDir, targetDir string) error {
 		return err
 	}
 	if exists {
+		// Discard any preserved mount namespace before renaming away $SNAP_DATA/<rev>.
+		// Layout bind mounts (e.g., $SNAP_DATA/root → /root) become stale when their
+		// source directory is renamed, so we need a fresh namespace on next process start.
+		if err := discardPreservedNamespace(rs.Snap); err != nil {
+			logger.Noticef("cannot discard preserved mount namespace of snap %q before restore: %v", rs.Snap, err)
+		}
+
 		// Handle mounts under dst before renaming it.
 		// * snapctl mounts are stopped and restarted after moveFile returns
 		//   (i.e., once the src data has been moved).
