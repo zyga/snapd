@@ -79,20 +79,20 @@ func DistroSupportsReExec() bool {
 // version of core that do not yet have it.
 func candidateVersionNewer(coreOrSnapdPath string) (bool, error) {
 	infoDir := filepath.Join(coreOrSnapdPath, filepath.Join(dirs.CoreLibExecDir))
-	ver, _, err := SnapdVersionFromInfoFile(infoDir)
+	info, err := ReadInfoFile(infoDir)
 	if err != nil {
 		logger.Noticef("%v", err)
 		return false, err
 	}
 
-	// > 0 means our Version is bigger than the version of snapd in core
 	fullVer := FullVersion()
-	res, err := strutil.VersionCompare(fullVer, ver)
+	// > 0 means our FullVersion is bigger than the version of snapd in core
+	res, err := strutil.VersionCompare(fullVer, info.FullVersion)
 	if err != nil {
-		return false, fmt.Errorf("cannot version compare %q and %q: %v", fullVer, ver, err)
+		return false, fmt.Errorf("cannot version compare %q and %q: %v", fullVer, info.FullVersion, err)
 	}
 	if res > 0 {
-		logger.Debugf("snap (at %q) is older (%q) than distribution package (%q) according to the info file (%q)", coreOrSnapdPath, ver, fullVer, filepath.Join(infoDir, "info"))
+		logger.Debugf("snap (at %q) is older (%q) than distribution package (%q) according to the info file (%q)", coreOrSnapdPath, info.FullVersion, fullVer, filepath.Join(infoDir, "info"))
 		return false, nil
 	}
 	return true, nil
