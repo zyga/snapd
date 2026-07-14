@@ -3015,15 +3015,20 @@ func (m *DeviceManager) loadSystemAndEssentialSnaps(wantedSystemLabel string, ty
 			}
 		}
 		if typ == snap.TypeSnapd || typ == snap.TypeKernel {
-			snapdVersion, _, err := snap.SnapdInfoFromSnapFile(snapf, typ)
+			info, err := snap.SnapdInfoFromSnapFile(snapf, typ)
 			if err != nil {
 				return nil, err
 			}
 			switch typ {
 			case snap.TypeSnapd:
-				systemSnapdVersions.SnapdVersion = snapdVersion
+				systemSnapdVersions.SnapdVersion = info.FullVersion
 			case snap.TypeKernel:
-				systemSnapdVersions.SnapdInitramfsVersion = snapdVersion
+				// some old kernel snaps do not carry /snapd-info;
+				// SnapdInfoFromSnapFile returns (nil, nil) for those,
+				// which is intentional and not an error condition.
+				if info != nil {
+					systemSnapdVersions.SnapdInitramfsVersion = info.FullVersion
+				}
 			}
 		}
 		seedSnaps[typ] = snapForMode

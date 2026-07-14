@@ -1154,12 +1154,12 @@ func (m *SnapManager) ensureVulnerableSnapRemoved(name string) error {
 	for _, si := range snapSt.Sequence.SideInfos() {
 		// check this version
 		s := snap.Info{SideInfo: *si}
-		ver, _, err := snapdtool.SnapdVersionFromInfoFile(filepath.Join(s.MountDir(), dirs.CoreLibExecDir))
+		info, err := snapdtool.ReadInfoFile(filepath.Join(s.MountDir(), dirs.CoreLibExecDir))
 		if err != nil {
 			return err
 		}
-		// res is < 0 if "ver" is lower than "2.57.6"
-		res, err := strutil.VersionCompare(ver, "2.57.6")
+		// res is < 0 if "info.FullVersion" is lower than "2.57.6"
+		res, err := strutil.VersionCompare(info.FullVersion, "2.57.6")
 		if err != nil {
 			return err
 		}

@@ -181,7 +181,7 @@ const snapdPreseedResetReexec = `2.59`
 func chooseTargetSnapdVersion() (*targetSnapdInfo, error) {
 	// read snapd version from the mounted core/snapd snap
 	snapdInfoDir := filepath.Join(snapdMountPath, dirs.CoreLibExecDir)
-	verFromSnap, _, err := snapdtool.SnapdVersionFromInfoFile(snapdInfoDir)
+	infoFromSnap, err := snapdtool.ReadInfoFile(snapdInfoDir)
 	if err != nil {
 		return nil, err
 	}
@@ -189,12 +189,12 @@ func chooseTargetSnapdVersion() (*targetSnapdInfo, error) {
 	// read snapd version from the main fs under chroot (snapd from the deb);
 	// assumes running under chroot already.
 	hostInfoDir := filepath.Join(dirs.GlobalRootDir, dirs.CoreLibExecDir)
-	verFromDeb, _, err := snapdtool.SnapdVersionFromInfoFile(hostInfoDir)
+	infoFromDeb, err := snapdtool.ReadInfoFile(hostInfoDir)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := strutil.VersionCompare(verFromSnap, verFromDeb)
+	res, err := strutil.VersionCompare(infoFromSnap.FullVersion, infoFromDeb.FullVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -202,12 +202,12 @@ func chooseTargetSnapdVersion() (*targetSnapdInfo, error) {
 	var whichVer, snapdPath, preseedPath string
 	if res < 0 {
 		// snapd from the deb under chroot is the candidate to run
-		whichVer = verFromDeb
+		whichVer = infoFromDeb.FullVersion
 		snapdPath = filepath.Join(dirs.GlobalRootDir, dirs.CoreLibExecDir, "snapd")
 		preseedPath = filepath.Join(dirs.GlobalRootDir, dirs.CoreLibExecDir, "snap-preseed")
 	} else {
 		// snapd from the mounted core/snapd snap is the candidate to run
-		whichVer = verFromSnap
+		whichVer = infoFromSnap.FullVersion
 		snapdPath = filepath.Join(snapdMountPath, dirs.CoreLibExecDir, "snapd")
 		preseedPath = filepath.Join(snapdMountPath, dirs.CoreLibExecDir, "snap-preseed")
 	}
@@ -529,13 +529,13 @@ func getSnapdVersion(rootDir, label string) (string, error) {
 	defer cleanup()
 
 	snapdInfoDir := filepath.Join(rootDir, snapdMountPath, dirs.CoreLibExecDir)
-	ver, _, err := snapdtool.SnapdVersionFromInfoFile(snapdInfoDir)
+	info, err := snapdtool.ReadInfoFile(snapdInfoDir)
 
 	if err != nil {
 		return "", err
 	}
 
-	return ver, nil
+	return info.FullVersion, nil
 }
 
 func prepareClassicChroot(preseedChroot string, reset bool, label string) (*targetSnapdInfo, func(), error) {

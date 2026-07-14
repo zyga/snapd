@@ -30,7 +30,8 @@ import (
 
 // SnapdVersionFromInfoFile returns the snapd version read from the info file in
 // the given dir, as well as any other key/value pairs/flags in the file.
-// See ParseInfoFile for more format details.
+// Deprecated: Use ReadInfoFile instead for access to decomposed version fields.
+// See ParseInfoFileForInfo for more format details.
 func SnapdVersionFromInfoFile(dir string) (version string, flags map[string]string, err error) {
 	infoPath := filepath.Join(dir, "info")
 	f, err := os.Open(infoPath)
@@ -39,12 +40,17 @@ func SnapdVersionFromInfoFile(dir string) (version string, flags map[string]stri
 	}
 	defer f.Close()
 
-	return ParseInfoFile(f, fmt.Sprintf("%q", infoPath))
+	info, err := ParseInfoFileForInfo(f, fmt.Sprintf("%q", infoPath))
+	if err != nil {
+		return "", nil, err
+	}
+	return info.FullVersion, info.Flags, nil
 }
 
 // ParseInfoFile parses the "info" file provided via an io.Reader. It returns
 // the snapd version read from the info file, as well as any other key/value
 // pairs/flags in the file.
+// Deprecated: Use ParseInfoFileForInfo instead for access to decomposed version fields.
 // whence is used to construct error messages as "... info file %s".
 // The format of the "info" file are lines with "KEY=VALUE" with the typical key
 // being just VERSION. The file is produced by mkversion.sh and normally
@@ -54,33 +60,11 @@ func SnapdVersionFromInfoFile(dir string) (version string, flags map[string]stri
 // traditional linux package of snapd supports re-exec into the version in the
 // snapd or core snaps.
 func ParseInfoFile(f io.Reader, whence string) (version string, flags map[string]string, err error) {
-	flags = map[string]string{}
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "VERSION=") {
-			version = strings.TrimPrefix(line, "VERSION=")
-		} else {
-			keyVal := strings.SplitN(line, "=", 2)
-			if len(keyVal) != 2 {
-				// potentially malformed line, just skip it
-				continue
-			}
-
-			flags[keyVal[0]] = keyVal[1]
-		}
+	info, err := ParseInfoFileForInfo(f, whence)
+	if err != nil {
+		return "", nil, err
 	}
-
-	if err := scanner.Err(); err != nil {
-		return "", nil, fmt.Errorf("error reading snapd info file %s: %v", whence, err)
-	}
-
-	if version == "" {
-		return "", nil, fmt.Errorf("cannot find version in snapd info file %s", whence)
-	}
-
-	return version, flags, nil
+	return info.FullVersion, info.Flags, nil
 }
 
 // InfoFile represents the parsed contents of a snapd "info" file. The info

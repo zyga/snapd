@@ -1817,23 +1817,23 @@ func (w *Writer) VerifySnapBootstrapCompatibility() error {
 		return nil
 	}
 
-	kernelVersion, _, err := snap.SnapdInfoFromSnapFile(squashfs.New(kernelSnap.Path), snap.TypeKernel)
+	kernelInfo, err := snap.SnapdInfoFromSnapFile(squashfs.New(kernelSnap.Path), snap.TypeKernel)
 	if err != nil {
 		return fmt.Errorf("error while reading snapd-info from kernel snap: %w", err)
 	}
-	snapdVersion, _, err := snap.SnapdInfoFromSnapFile(squashfs.New(snapdSnap.Path), snap.TypeSnapd)
+	snapdInfo, err := snap.SnapdInfoFromSnapFile(squashfs.New(snapdSnap.Path), snap.TypeSnapd)
 	if err != nil {
 		return fmt.Errorf("error while reading snapd-info from snapd snap: %w", err)
 	}
 
-	res, err := strutil.VersionCompare(snapdVersion, "2.68")
+	res, err := strutil.VersionCompare(snapdInfo.FullVersion, "2.68")
 	if err != nil {
-		return fmt.Errorf("could not parse version %s: %w", snapdVersion, err)
+		return fmt.Errorf("could not parse version %s: %w", snapdInfo.FullVersion, err)
 	}
 	if res >= 0 {
-		res, err = strutil.VersionCompare(kernelVersion, "2.68")
+		res, err = strutil.VersionCompare(kernelInfo.FullVersion, "2.68")
 		if err != nil {
-			return fmt.Errorf("could not parse version %s: %w", kernelVersion, err)
+			return fmt.Errorf("could not parse version %s: %w", kernelInfo.FullVersion, err)
 		}
 		if res < 0 {
 			return fmt.Errorf("snapd 2.68+ is not compatible with a kernel containing snapd prior to 2.68")
