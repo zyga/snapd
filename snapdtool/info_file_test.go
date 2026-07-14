@@ -69,6 +69,59 @@ func (s *infoFileSuite) TestInfoVersionFlags(c *C) {
 	c.Assert(flags, DeepEquals, map[string]string{"FOO": "BAR"})
 }
 
+func (s *infoFileSuite) TestReadInfoFileVersionHappy(c *C) {
+	top := c.MkDir()
+	infoFile := filepath.Join(top, "info")
+	c.Assert(os.WriteFile(infoFile, []byte("VERSION=1.2.3"), 0644), IsNil)
+
+	info, err := snapdtool.ReadInfoFile(top)
+	c.Assert(err, IsNil)
+	c.Check(info.FullVersion, Equals, "1.2.3")
+	c.Check(info.UpstreamVersion, Equals, "1.2.3")
+	c.Check(info.DownstreamVersionSuffix, Equals, "")
+	c.Assert(info.Flags, HasLen, 0)
+}
+
+func (s *infoFileSuite) TestReadInfoFileVersionFlags(c *C) {
+	top := c.MkDir()
+	infoFile := filepath.Join(top, "info")
+	c.Assert(os.WriteFile(infoFile, []byte("VERSION=1.2.3\nFOO=BAR"), 0644), IsNil)
+
+	info, err := snapdtool.ReadInfoFile(top)
+	c.Assert(err, IsNil)
+	c.Check(info.FullVersion, Equals, "1.2.3")
+	c.Check(info.UpstreamVersion, Equals, "1.2.3")
+	c.Check(info.DownstreamVersionSuffix, Equals, "")
+	c.Assert(info.Flags, DeepEquals, map[string]string{"FOO": "BAR"})
+}
+
+func (s *infoFileSuite) TestReadInfoFileVersionDecomposed(c *C) {
+	top := c.MkDir()
+	infoFile := filepath.Join(top, "info")
+	c.Assert(os.WriteFile(infoFile, []byte("VERSION=2.75.2~0.fc42\nUPSTREAM_VERSION=2.75.2\nDOWNSTREAM_VERSION_SUFFIX=~0.fc42\nFOO=BAR"), 0644), IsNil)
+
+	info, err := snapdtool.ReadInfoFile(top)
+	c.Assert(err, IsNil)
+	c.Check(info.FullVersion, Equals, "2.75.2~0.fc42")
+	c.Check(info.UpstreamVersion, Equals, "2.75.2")
+	c.Check(info.DownstreamVersionSuffix, Equals, "~0.fc42")
+	c.Assert(info.Flags, DeepEquals, map[string]string{"FOO": "BAR"})
+}
+
+func (s *infoFileSuite) TestReadInfoFileVersionNoSuchDir(c *C) {
+	_, err := snapdtool.ReadInfoFile("/non-existing-dir")
+	c.Assert(err, ErrorMatches, `cannot open snapd info file "/non-existing-dir/info":.*`)
+}
+
+func (s *infoFileSuite) TestReadInfoFileVersionNoData(c *C) {
+	top := c.MkDir()
+	infoFile := filepath.Join(top, "info")
+	c.Assert(os.WriteFile(infoFile, []byte("foo"), 0644), IsNil)
+
+	_, err := snapdtool.ReadInfoFile(top)
+	c.Assert(err, ErrorMatches, fmt.Sprintf(`cannot find version in snapd info file %q`, infoFile))
+}
+
 type versionSuite struct{}
 
 var _ = Suite(&versionSuite{})
