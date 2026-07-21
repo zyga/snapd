@@ -21,7 +21,17 @@
 #include <stddef.h>
 
 /**
- * Apply a given bpf program as a seccomp system call filter.
+ * sc_apply_seccomp_filter applies a given BPF program as a seccomp syscall
+ * filter to the calling process.
+ *
+ * The function first tries the modern seccomp(2) syscall with
+ * SECCOMP_FILTER_FLAG_LOG. If that fails (e.g., on older kernels), it falls
+ * back to prctl(PR_SET_SECCOMP, ...).
+ *
+ * NO_NEW_PRIVS is intentionally not set because it interferes with AppArmor
+ * exec transitions for certain snapd interfaces. The calling process should
+ * already have appropriate capabilities (CAP_SYS_ADMIN) and be confined by an
+ * AppArmor profile that blocks ptrace.
  **/
 void sc_apply_seccomp_filter(struct sock_fprog *prog);
 

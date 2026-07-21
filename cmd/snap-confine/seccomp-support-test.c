@@ -15,8 +15,8 @@
  *
  */
 
-#include "seccomp-support.c"
-#include "seccomp-support-ext.c"
+#include "../libsnap-confine-private/seccomp-support.c"
+#include "../libsnap-confine-private/seccomp-support-ext.c"
 
 #include <glib.h>
 #include <glib/gstdio.h>

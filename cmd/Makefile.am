@@ -144,6 +144,10 @@ libsnap_confine_private_a_SOURCES = \
 	libsnap-confine-private/panic.h \
 	libsnap-confine-private/privs.c \
 	libsnap-confine-private/privs.h \
+	libsnap-confine-private/seccomp-support-ext.c \
+	libsnap-confine-private/seccomp-support-ext.h \
+	libsnap-confine-private/seccomp-support.c \
+	libsnap-confine-private/seccomp-support.h \
 	libsnap-confine-private/secure-getenv.c \
 	libsnap-confine-private/secure-getenv.h \
 	libsnap-confine-private/snap-dir.c \
@@ -156,6 +160,7 @@ libsnap_confine_private_a_SOURCES = \
 	libsnap-confine-private/tool.h \
 	libsnap-confine-private/utils.c \
 	libsnap-confine-private/utils.h
+
 if ENABLE_BPF
 libsnap_confine_private_a_SOURCES += \
 	libsnap-confine-private/bpf-support.c \
@@ -163,9 +168,30 @@ libsnap_confine_private_a_SOURCES += \
 endif
 libsnap_confine_private_a_CFLAGS = $(AM_CFLAGS) $(VENDOR_BPF_HEADERS_CFLAGS) $(SANITIZE_CFLAGS)
 
+# selinux-support is compiled into the library so that any consumer (not just
+# snap-confine) can call sc_selinux_set_snap_execcon(). Linking against
+# libselinux itself is NOT done here: automake would fold _LIBADD into the
+# "ar" command used to build this noinst_LIBRARIES archive, which is wrong for
+# a static library and breaks --enable-static-libselinux builds (the -lselinux
+# flag ends up outside the -Wl,-Bstatic/-Bdynamic wrapping used by consumer
+# binaries, so the linker tries dynamic resolution and fails when only a
+# static libselinux.a is installed). Instead, each consumer binary that
+# actually calls into selinux-support.o (currently only snap-confine) is
+# responsible for linking -lselinux itself, the same way it already handles
+# -lapparmor and -lcap.
+if SELINUX
+libsnap_confine_private_a_SOURCES += \
+	libsnap-confine-private/selinux-support.c \
+	libsnap-confine-private/selinux-support.h
+libsnap_confine_private_a_CFLAGS += $(SELINUX_CFLAGS)
+endif  # SELINUX
+
 noinst_LIBRARIES += libsnap-confine-private-debug.a
 libsnap_confine_private_debug_a_SOURCES = $(libsnap_confine_private_a_SOURCES)
 libsnap_confine_private_debug_a_CFLAGS = $(AM_CFLAGS) $(VENDOR_BPF_HEADERS_CFLAGS) $(SANITIZE_CFLAGS) -DSNAP_CONFINE_DEBUG_BUILD=1
+if SELINUX
+libsnap_confine_private_debug_a_CFLAGS += $(SELINUX_CFLAGS)
+endif  # SELINUX
 
 if WITH_UNIT_TESTS
 
@@ -276,10 +302,6 @@ snap_confine_snap_confine_SOURCES = \
 	snap-confine/ns-support.h \
 	snap-confine/group-policy.c \
 	snap-confine/group-policy.h \
-	snap-confine/seccomp-support-ext.c \
-	snap-confine/seccomp-support-ext.h \
-	snap-confine/seccomp-support.c \
-	snap-confine/seccomp-support.h \
 	snap-confine/snap-confine-args.c \
 	snap-confine/snap-confine-args.h \
 	snap-confine/snap-confine-invocation.c \
@@ -331,10 +353,11 @@ endif  # STATIC_LIBAPPARMOR
 endif  # APPARMOR
 
 if SELINUX
-snap_confine_snap_confine_SOURCES += \
-	snap-confine/selinux-support.c \
-	snap-confine/selinux-support.h
-snap_confine_snap_confine_CFLAGS += $(SELINUX_CFLAGS)
+# selinux-support.{c,h} now live in libsnap-confine-private and are compiled
+# into libsnap-confine-private.a (see above). snap-confine still needs to
+# link against libselinux itself since it is the consumer that actually
+# calls sc_selinux_set_snap_execcon() (pulling selinux-support.o out of the
+# static archive at link time).
 if STATIC_LIBSELINUX
 snap_confine_snap_confine_STATIC += $(shell $(PKG_CONFIG) --static --libs libselinux)
 else

@@ -21,8 +21,8 @@
 
 /**
  * sc_apply_seccomp_profile_for_security_tag applies a seccomp profile to the
- * current process. The filter is loaded from a pre-compiled bpf bytecode
- * stored in "/var/lib/snap/seccomp/bpf" using the security tag and the
+ * current process. The filter is loaded from a pre-compiled BPF bytecode
+ * stored in "/var/lib/snapd/seccomp/bpf" using the security tag and the
  * extension ".bin2". All components along that path must be owned by root and
  * cannot be writable by UNIX _other_.
  *
@@ -30,7 +30,7 @@
  * For applications it is the string "snap.${SNAP_INSTANCE_NAME}.${app}".
  * For hooks it is "snap.${SNAP_INSTANCE_NAME}.hook.{hook_name}".
  *
- * Profiles must be present in the file-system. If a profile is not present
+ * Profiles must be present in the filesystem. If a profile is not present
  * then several attempts are made, each coupled with a sleep period. Up 3600
  * seconds may elapse before the function gives up. Unless
  * $SNAP_CONFINE_MAX_PROFILE_WAIT environment variable dictates otherwise, the
@@ -40,11 +40,15 @@
  * the former case the profile is applied to the current process using
  * sc_apply_seccomp_filter. In the latter case no action takes place.
  *
- * The return value indicates if the process uses confinement or runs under the
- * special non-confining "@unrestricted" profile.
+ * The return value indicates if the process uses confinement (true) or runs under the
+ * special non-confining "@unrestricted" profile (false).
  **/
 bool sc_apply_seccomp_profile_for_security_tag(const char *security_tag);
 
+/**
+ * sc_apply_global_seccomp_profile applies a global seccomp policy that is not
+ * derived from any security tag. Used for snap-confine's own confinement layer.
+ **/
 void sc_apply_global_seccomp_profile(void);
 
 #endif

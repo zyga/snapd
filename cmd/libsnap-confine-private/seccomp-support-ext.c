@@ -28,7 +28,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "../libsnap-confine-private/utils.h"
+#include "utils.h"
 
 #ifndef SECCOMP_FILTER_FLAG_LOG
 #define SECCOMP_FILTER_FLAG_LOG 2

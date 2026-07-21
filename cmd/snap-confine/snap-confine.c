@@ -51,17 +51,17 @@
 #include "../libsnap-confine-private/string-utils.h"
 #include "../libsnap-confine-private/tool.h"
 #include "../libsnap-confine-private/utils.h"
+#include "../libsnap-confine-private/seccomp-support.h"
 #include "cookie-support.h"
 #include "group-policy.h"
 #include "mount-support.h"
 #include "ns-support.h"
-#include "seccomp-support.h"
 #include "snap-confine-args.h"
 #include "snap-confine-invocation.h"
 #include "udev-support.h"
 #include "user-support.h"
 #ifdef HAVE_SELINUX
-#include "selinux-support.h"
+#include "../libsnap-confine-private/selinux-support.h"
 #endif
 
 // sc_maybe_fixup_permissions fixes incorrect permissions

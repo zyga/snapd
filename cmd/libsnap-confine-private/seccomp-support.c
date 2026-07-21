@@ -33,10 +33,10 @@
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 
-#include "../libsnap-confine-private/cleanup-funcs.h"
-#include "../libsnap-confine-private/secure-getenv.h"
-#include "../libsnap-confine-private/string-utils.h"
-#include "../libsnap-confine-private/utils.h"
+#include "cleanup-funcs.h"
+#include "secure-getenv.h"
+#include "string-utils.h"
+#include "utils.h"
 
 #include "seccomp-support-ext.h"
 

@@ -20,9 +20,9 @@
 #include <selinux/context.h>
 #include <selinux/selinux.h>
 
-#include "../libsnap-confine-private/cleanup-funcs.h"
-#include "../libsnap-confine-private/string-utils.h"
-#include "../libsnap-confine-private/utils.h"
+#include "cleanup-funcs.h"
+#include "string-utils.h"
+#include "utils.h"
 
 static void sc_freecon(char **ctx) {
     if (ctx != NULL && *ctx != NULL) {

@@ -18,9 +18,19 @@
 #define SNAP_CONFINE_SELINUX_SUPPORT_H
 
 /**
- * Set security context for the snap
+ * sc_selinux_set_snap_execcon sets up SELinux context transition for the snap.
  *
- * Sets up SELinux context transition to unconfined_service_t.
+ * When the current process is running under the snappy_confine_t domain (as
+ * entered via snap-confine's AppArmor profile on SELinux systems), this
+ * function configures setexeccon() to transition to unconfined_service_t on
+ * the next exec() call. This allows the actual workload binary to run without
+ * being constrained by snap-confine's SELinux domain, which has no full policy
+ * coverage for services or hooks running inside snaps.
+ *
+ * Returns 0 on success. If SELinux is not enabled, returns 0 as a no-op.
+ * On error, calls die() with a descriptive message.
+ *
+ * Available only when compiled with HAVE_SELINUX (requires --with-selinux).
  **/
 int sc_selinux_set_snap_execcon(void);
 
