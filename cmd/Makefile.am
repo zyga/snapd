@@ -28,6 +28,7 @@ endif
 subdirs = \
 		  libsnap-confine-private \
 		  snap-confine \
+		  snap-container-workload \
 		  snap-device-helper \
 		  snap-discard-ns \
 		  snap-gdb-shim \
@@ -540,6 +541,48 @@ snap-discard-ns/snap-discard-ns$(EXEEXT): $(snap_discard_ns_snap_discard_ns_OBJE
 	$(AM_V_CCLD)$(snap_discard_ns_snap_discard_ns_LINK) $(snap_discard_ns_snap_discard_ns_OBJECTS) $(snap_discard_ns_snap_discard_ns_LDADD) $(LIBS)
 
 snap-discard-ns/snap-discard-ns$(EXEEXT): LIBS += -Wl,-Bstatic $(snap_discard_ns_snap_discard_ns_STATIC) -Wl,-Bdynamic -pthread
+
+##
+## snap-container-workload
+##
+
+libexec_PROGRAMS += snap-container-workload/snap-container-workload
+
+snap_container_workload_snap_container_workload_SOURCES = \
+	snap-container-workload/snap-container-workload.c
+snap_container_workload_snap_container_workload_CFLAGS = $(AM_CFLAGS) $(SANITIZE_CFLAGS)
+snap_container_workload_snap_container_workload_LDFLAGS = $(AM_LDFLAGS) $(SANITIZE_LDFLAGS)
+snap_container_workload_snap_container_workload_LDADD = libsnap-confine-private.a
+snap_container_workload_snap_container_workload_extra_libs =
+snap_container_workload_snap_container_workload_STATIC =
+if STATIC_LIBCAP
+snap_container_workload_snap_container_workload_STATIC += -lcap
+else
+snap_container_workload_snap_container_workload_extra_libs += -lcap
+endif  # STATIC_LIBCAP
+if APPARMOR
+snap_container_workload_snap_container_workload_CFLAGS += $(APPARMOR_CFLAGS)
+if STATIC_LIBAPPARMOR
+snap_container_workload_snap_container_workload_STATIC += $(shell $(PKG_CONFIG) --static --libs libapparmor)
+else
+snap_container_workload_snap_container_workload_extra_libs += $(APPARMOR_LIBS)
+endif  # STATIC_LIBAPPARMOR
+endif  # APPARMOR
+if SELINUX
+if STATIC_LIBSELINUX
+snap_container_workload_snap_container_workload_STATIC += $(shell $(PKG_CONFIG) --static --libs libselinux)
+else
+snap_container_workload_snap_container_workload_extra_libs += $(SELINUX_LIBS)
+endif  # STATIC_LIBSELINUX
+endif  # SELINUX
+snap_container_workload_snap_container_workload_LDADD += $(snap_container_workload_snap_container_workload_extra_libs)
+
+# Use a hacked rule if we're doing static build. This allows us to inject the LIBS += .. rule below.
+snap-container-workload/snap-container-workload$(EXEEXT): $(snap_container_workload_snap_container_workload_OBJECTS) $(snap_container_workload_snap_container_workload_DEPENDENCIES) $(EXTRA_snap_container_workload_snap_container_workload_DEPENDENCIES) snap-container-workload/$(am__dirstamp)
+	@rm -f snap-container-workload/snap-container-workload$(EXEEXT)
+	$(AM_V_CCLD)$(snap_container_workload_snap_container_workload_LINK) $(snap_container_workload_snap_container_workload_OBJECTS) $(snap_container_workload_snap_container_workload_LDADD) $(LIBS)
+
+snap-container-workload/snap-container-workload$(EXEEXT): LIBS += -Wl,-Bstatic $(snap_container_workload_snap_container_workload_STATIC) -Wl,-Bdynamic -pthread
 
 ##
 ## system-shutdown
