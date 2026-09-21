@@ -24,11 +24,11 @@
 
 struct sc_args {
     // The security tag that the application is intended to run with
-    char *security_tag;
+    char *__null_terminated security_tag;
     // The executable that should be invoked
-    char *executable;
+    char *__null_terminated executable;
     // Name of the base snap to use.
-    char *base_snap;
+    char *__null_terminated base_snap;
 
     // Flag indicating that --version was passed on command line.
     bool is_version_query;
@@ -45,8 +45,11 @@ struct sc_args *sc_nonfatal_parse_args(int *argcp, char ***argvp, sc_error **err
         goto out;
     }
     // Use dereferenced versions of argcp and argvp for convenience.
+    // The caller's argument vector holds argc non-NULL, NUL-terminated
+    // strings; adopt that view of it here.
     int argc = *argcp;
-    char **const argv = *argvp;
+    char *__null_terminated *__counted_by(argc) const argv =
+        __unsafe_forge_bidi_indexable(char *__null_terminated *, *argvp, argc * sizeof(char *));
 
     if (argc == 0 || argv == NULL) {
         err = sc_error_init(SC_ARGS_DOMAIN, 0, "cannot parse arguments, argc is zero or argv is NULL");
@@ -159,7 +162,7 @@ done:
 out:
     // Don't return anything in case of an error.
     if (err != NULL) {
-        sc_cleanup_args(&args);
+        sc_cleanup_args((struct sc_args **)(void *)&args);
     }
     // Forward the error and return
     sc_error_forward(errorp, err);
@@ -197,21 +200,21 @@ bool sc_args_is_classic_confinement(const struct sc_args *args) {
     return args->is_classic_confinement;
 }
 
-const char *sc_args_security_tag(const struct sc_args *args) {
+const char *__null_terminated sc_args_security_tag(const struct sc_args *args) {
     if (args == NULL) {
         die("cannot obtain security tag from NULL argument parser");
     }
     return args->security_tag;
 }
 
-const char *sc_args_executable(const struct sc_args *args) {
+const char *__null_terminated sc_args_executable(const struct sc_args *args) {
     if (args == NULL) {
         die("cannot obtain executable from NULL argument parser");
     }
     return args->executable;
 }
 
-const char *sc_args_base_snap(const struct sc_args *args) {
+const char *__null_terminated sc_args_base_snap(const struct sc_args *args) {
     if (args == NULL) {
         die("cannot obtain base snap name from NULL argument parser");
     }

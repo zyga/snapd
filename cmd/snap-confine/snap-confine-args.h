@@ -20,6 +20,7 @@
 
 #include <stdbool.h>
 
+#include "../libsnap-confine-private/bounds-safety.h"
 #include "../libsnap-confine-private/error.h"
 
 /**
@@ -95,7 +96,7 @@ bool sc_args_is_classic_confinement(const struct sc_args *args);
  * The return value must not be freed(). It is bound to the lifetime of
  * the argument parser.
  **/
-const char *sc_args_security_tag(const struct sc_args *args);
+const char *__null_terminated sc_args_security_tag(const struct sc_args *args);
 
 /**
  * Get the executable name passed to snap-confine.
@@ -106,7 +107,7 @@ const char *sc_args_security_tag(const struct sc_args *args);
  * The return value must not be freed(). It is bound to the lifetime of
  * the argument parser.
  **/
-const char *sc_args_executable(const struct sc_args *args);
+const char *__null_terminated sc_args_executable(const struct sc_args *args);
 
 /**
  * Get the name of the base snap to use.
@@ -114,6 +115,6 @@ const char *sc_args_executable(const struct sc_args *args);
  * The return value must not be freed(). It is bound to the lifetime of
  * the argument parser.
  **/
-const char *sc_args_base_snap(const struct sc_args *args);
+const char *__null_terminated sc_args_base_snap(const struct sc_args *args);
 
 #endif

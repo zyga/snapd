@@ -20,6 +20,7 @@
 
 #include <stdbool.h>
 
+#include "../libsnap-confine-private/bounds-safety.h"
 #include "snap-confine-args.h"
 
 /**
@@ -29,17 +30,19 @@
  **/
 typedef struct sc_invocation {
     /* Things declared by the system. */
-    char *snap_instance; /* snap instance name (<snap>_<key>) */
-    char *snap_name;     /* snap name (without instance key) */
-    char *snap_component;
-    char *orig_base_snap_name;
-    char *security_tag;
-    char *executable;
+    char *__null_terminated snap_instance; /* snap instance name (<snap>_<key>) */
+    char *__null_terminated snap_name;     /* snap name (without instance key) */
+    char *__null_terminated snap_component;
+    char *__null_terminated orig_base_snap_name;
+    char *__null_terminated security_tag;
+    char *__null_terminated executable;
     bool classic_confinement;
     /* Things derived at runtime. */
-    char *base_snap_name;
-    char *rootfs_dir;
-    char **homedirs;
+    char *__null_terminated base_snap_name;
+    char *__null_terminated rootfs_dir;
+    /* Vector of num_homedirs directory strings, plus a terminating NULL.
+     * All elements are heap allocated and owned by this struct. */
+    char *__unsafe_indexable *__unsafe_indexable homedirs;
     int num_homedirs;
     bool is_normal_mode;
 } sc_invocation;
@@ -51,8 +54,8 @@ typedef struct sc_invocation {
  * environment value (SNAP_INSTANCE_NAME). All input is untrusted and is
  * validated internally.
  **/
-void sc_init_invocation(sc_invocation *inv, const struct sc_args *args, const char *snap_instance,
-                        const char *component_name);
+void sc_init_invocation(sc_invocation *inv, const struct sc_args *args, const char *__null_terminated snap_instance,
+                        const char *__null_terminated component_name);
 
 /**
  * sc_cleanup_invocation is a cleanup function for sc_invocation.
@@ -62,7 +65,7 @@ void sc_init_invocation(sc_invocation *inv, const struct sc_args *args, const ch
  *
  * This function is designed to be used with SC_CLEANUP(sc_cleanup_invocation).
  **/
-void sc_cleanup_invocation(sc_invocation *inv);
+void sc_cleanup_invocation(sc_invocation *__unsafe_indexable inv);
 
 /**
  * sc_check_rootfs_dir checks the rootfs_dir and applies potential fall-backs.

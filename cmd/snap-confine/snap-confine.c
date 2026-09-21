@@ -188,7 +188,7 @@ static void sc_restore_process_state(const sc_preserved_process_state *proc_stat
     ssize_t nread;
     /* If the original working directory cannot be used for whatever reason then
      * move the process to a special void directory. */
-    const char *sc_void_dir = "/var/lib/snapd/void";
+    const char *__null_terminated sc_void_dir = "/var/lib/snapd/void";
     int void_dir_fd SC_CLEANUP(sc_cleanup_close) = -1;
 
     sc_must_snprintf(fd_path, sizeof fd_path, "/proc/self/fd/%d", proc_state->orig_cwd_fd);
@@ -273,7 +273,7 @@ the_void:
     debug("the process has been placed in the special void directory");
 }
 
-static void log_startup_stage(const char *stage) {
+static void log_startup_stage(const char *__null_terminated stage) {
     if (!sc_is_debug_enabled()) {
         return;
     }
@@ -286,7 +286,7 @@ static void log_startup_stage(const char *stage) {
 /**
  *  sc_cleanup_preserved_process_state releases system resources.
  **/
-static void sc_cleanup_preserved_process_state(sc_preserved_process_state *proc_state) {
+static void sc_cleanup_preserved_process_state(sc_preserved_process_state *__unsafe_indexable proc_state) {
     sc_cleanup_close(&proc_state->orig_cwd_fd);
 }
 
@@ -303,22 +303,23 @@ static const cap_value_t snap_confine_caps_extra_cgroup_v1[] = {
     CAP_SETGID,  // to create the freezer cgroup
 };
 
-int main(int argc, char **argv) {
-    sc_error *err = NULL;
+int main(int argc, char *__unsafe_indexable *__unsafe_indexable argv) {
+    sc_error *__unsafe_indexable err = NULL;
 
     log_startup_stage("snap-confine enter");
     sc_debug_capabilities("caps at startup");
 
     // Use our super-defensive parser to figure out what we've been asked to do.
-    struct sc_args *args SC_CLEANUP(sc_cleanup_args) = NULL;
+    struct sc_args *__single args = NULL;
     sc_preserved_process_state proc_state SC_CLEANUP(sc_cleanup_preserved_process_state) = {.orig_umask = 0,
                                                                                             .orig_cwd_fd = -1};
-    args = sc_nonfatal_parse_args(&argc, &argv, &err);
-    sc_die_on_error(err);
+    args = sc_nonfatal_parse_args(&argc, (char * * __single * __single)(void *)&argv, (sc_error **)(void *)&err);
+    sc_die_on_error(__unsafe_forge_single(sc_error *, err));
 
     // We've been asked to print the version string so let's just do that.
     if (sc_args_is_version_query(args)) {
         printf("%s %s\n", PACKAGE, PACKAGE_VERSION);
+        sc_cleanup_args(&args);
         return 0;
     }
 
@@ -326,13 +327,15 @@ int main(int argc, char **argv) {
      * information about what needs to be invoked and how. The data comes
      * from either the environment or from command line arguments */
     sc_invocation SC_CLEANUP(sc_cleanup_invocation) invocation;
-    const char *snap_instance_name_env = getenv("SNAP_INSTANCE_NAME");
+    const char *__null_terminated snap_instance_name_env =
+        __unsafe_forge_null_terminated(const char *, getenv("SNAP_INSTANCE_NAME"));
     if (snap_instance_name_env == NULL) {
         die("SNAP_INSTANCE_NAME is not set");
     }
     // SNAP_COMPONENT_NAME might not be set by the environment, so callers
     // should be prepared to handle NULL.
-    const char *snap_component_name_env = getenv("SNAP_COMPONENT_NAME");
+    const char *__null_terminated snap_component_name_env =
+        __unsafe_forge_null_terminated(const char *, getenv("SNAP_COMPONENT_NAME"));
 
     // Who are we?
     uid_t real_uid, effective_uid, saved_uid;
@@ -398,13 +401,14 @@ int main(int argc, char **argv) {
      */
 
     /* Set of caps for executing privileged operations. */
-    cap_t caps_privileged SC_CLEANUP(sc_cleanup_cap_t) = cap_get_proc();
+    cap_t __unsafe_indexable caps_privileged SC_CLEANUP(sc_cleanup_cap_t) = cap_get_proc();
     if (caps_privileged == NULL) {
         die("cannot obtain current caps");
     }
 
     /* Assert all our expected capabilities are permitted */
-    sc_cap_assert_permitted(caps_privileged, snap_confine_caps, SC_ARRAY_SIZE(snap_confine_caps),
+    sc_cap_assert_permitted(__unsafe_forge_single(cap_t, caps_privileged), snap_confine_caps,
+                            SC_ARRAY_SIZE(snap_confine_caps),
                             "snap-confine is packaged without necessary permissions and cannot continue\n");
 
     if (cap_set_flag(caps_privileged, CAP_EFFECTIVE, SC_ARRAY_SIZE(snap_confine_caps), snap_confine_caps, CAP_SET) !=
@@ -426,7 +430,7 @@ int main(int argc, char **argv) {
         CAP_DAC_OVERRIDE,
     };
 
-    cap_t caps_no_effective SC_CLEANUP(sc_cleanup_cap_t) = cap_init();
+    cap_t __unsafe_indexable caps_no_effective SC_CLEANUP(sc_cleanup_cap_t) = cap_init();
     if (caps_no_effective == NULL) {
         die("cannot copy caps");
     }
@@ -456,7 +460,8 @@ int main(int argc, char **argv) {
          * the freezer. Do an early check if packaging contains those
          * permissions or if we bail out early with a clear error message. */
         sc_cap_assert_permitted(
-            caps_privileged, snap_confine_caps_extra_cgroup_v1, SC_ARRAY_SIZE(snap_confine_caps_extra_cgroup_v1),
+            __unsafe_forge_single(cap_t, caps_privileged), snap_confine_caps_extra_cgroup_v1,
+            SC_ARRAY_SIZE(snap_confine_caps_extra_cgroup_v1),
             "snap-confine is packaged without permissions necessary to operate on legacy cgroup-v1 systems\n");
     }
 
@@ -477,27 +482,30 @@ int main(int argc, char **argv) {
      * snaps to members of a specific local group. Note we need to keep elevated
      * privileges as the code peeks into pid 1 root filesystem to locate
      * snap-confine */
-    sc_assert_host_local_group_policy(AT_FDCWD, &err);
-    sc_die_on_error(err);
+    sc_assert_host_local_group_policy(AT_FDCWD, (sc_error **)(void *)&err);
+    sc_die_on_error(__unsafe_forge_single(sc_error *, err));
 
     // Figure out what is the SNAP_MOUNT_DIR in practice.
-    sc_probe_snap_mount_dir_from_pid_1_mount_ns(AT_FDCWD, &err);
-    sc_die_on_error(err);
+    sc_probe_snap_mount_dir_from_pid_1_mount_ns(AT_FDCWD, (sc_error **)(void *)&err);
+    sc_die_on_error(__unsafe_forge_single(sc_error *, err));
 
     debug("SNAP_MOUNT_DIR (probed): %s", sc_snap_mount_dir(NULL));
 
     sc_init_invocation(&invocation, args, snap_instance_name_env, snap_component_name_env);
+    // The invocation object holds copies of everything the argument parser
+    // produced; the parser is no longer needed.
+    sc_cleanup_args(&args);
 
     // Remember certain properties of the process that are clobbered by
     // snap-confine during execution. Those are restored just before calling
     // execv.
     sc_preserve_and_sanitize_process_state(&proc_state);
 
-    char *snap_context SC_CLEANUP(sc_cleanup_string) = NULL;
+    char *__unsafe_indexable snap_context SC_CLEANUP(sc_cleanup_string) = NULL;
     // Do no get snap context value if running a hook (we don't want to overwrite hook's SNAP_COOKIE)
     if (!sc_is_hook_security_tag(invocation.security_tag)) {
-        sc_error *err SC_CLEANUP(sc_cleanup_error) = NULL;
-        snap_context = sc_cookie_get_from_snapd(invocation.snap_instance, &err);
+        sc_error *__unsafe_indexable err SC_CLEANUP(sc_cleanup_error) = NULL;
+        snap_context = sc_cookie_get_from_snapd(invocation.snap_instance, (sc_error **)(void *)&err);
         /* While the cookie is normally present due to various protection
          * mechanisms ensuring its creation from snapd, we are not considering
          * it a critical error for snap-confine in the case it is absent. When
@@ -590,7 +598,7 @@ int main(int argc, char **argv) {
     debug("drop caps as non-root? %s", is_regular_user ? "yes" : "no");
 
     /* only SYS_ADMIN in effective, keep permitted set unchanged */
-    cap_t cap_only_sys_admin SC_CLEANUP(sc_cleanup_cap_t) = cap_dup(caps_no_effective);
+    cap_t __unsafe_indexable cap_only_sys_admin SC_CLEANUP(sc_cleanup_cap_t) = cap_dup(caps_no_effective);
     static const cap_value_t only_sys_admin_caps[] = {
         CAP_SYS_ADMIN, /* seccomp */
     };
@@ -614,7 +622,7 @@ int main(int argc, char **argv) {
         debug("dropping all capabilities for user");
 
         /* drop all permissions we had as a regular user */
-        cap_t cap_dropped SC_CLEANUP(sc_cleanup_cap_t) = cap_init();
+        cap_t __unsafe_indexable cap_dropped SC_CLEANUP(sc_cleanup_cap_t) = cap_init();
         if (cap_dropped == NULL) {
             die("cannot allocate capabilities");
         }
@@ -632,7 +640,7 @@ int main(int argc, char **argv) {
         static const cap_value_t only_dac_override_caps[] = {
             CAP_DAC_OVERRIDE,
         };
-        cap_t cap_only_dac_override SC_CLEANUP(sc_cleanup_cap_t) = cap_init();
+        cap_t __unsafe_indexable cap_only_dac_override SC_CLEANUP(sc_cleanup_cap_t) = cap_init();
         if (cap_only_dac_override == NULL) {
             die("cannot allocate only DAC caps for root");
         }
@@ -650,7 +658,7 @@ int main(int argc, char **argv) {
     sc_debug_capabilities("before exec to application");
 
     // and exec the new executable
-    argv[0] = (char *)invocation.executable;
+    argv[0] = __unsafe_forge_null_terminated(char *, invocation.executable);
     debug("execv(%s, %s...)", invocation.executable, argv[0]);
     for (int i = 1; i < argc; ++i) {
         debug(" argv[%i] = %s", i, argv[i]);
@@ -732,32 +740,34 @@ static void sc_get_device_cgroup_setup(const sc_invocation *inv, struct sc_devic
     sc_must_snprintf(info_path, sizeof info_path, "/var/lib/snapd/cgroup/snap.%s.device", inv->snap_instance);
 
     /* TODO allow overriding timeout through env? */
-    if (!sc_wait_for_file(info_path, DEVICES_FILE_MAX_WAIT)) {
+    if (!sc_wait_for_file(__unsafe_forge_null_terminated(const char *, &info_path[0]), DEVICES_FILE_MAX_WAIT)) {
         /* don't die explicitly here, we'll die when trying to open the file
          * (unless it shows up) */
         debug("timeout waiting for devices file at %s", info_path);
     }
 
-    FILE *stream SC_CLEANUP(sc_cleanup_file) = NULL;
+    FILE *__unsafe_indexable stream SC_CLEANUP(sc_cleanup_file) = NULL;
     stream = fopen(info_path, "r");
     if (stream == NULL) {
         die("cannot open %s", info_path);
     }
 
-    sc_error *err SC_CLEANUP(sc_cleanup_error) = NULL;
-    char *self_managed_value SC_CLEANUP(sc_cleanup_string) = NULL;
-    if (sc_infofile_get_key(stream, "self-managed", &self_managed_value, &err) < 0) {
-        sc_die_on_error(err);
+    sc_error *__unsafe_indexable err SC_CLEANUP(sc_cleanup_error) = NULL;
+    char *__unsafe_indexable self_managed_value SC_CLEANUP(sc_cleanup_string) = NULL;
+    if (sc_infofile_get_key(__unsafe_forge_single(FILE *, stream), "self-managed", (char **)(void *)&self_managed_value,
+                            (sc_error **)(void *)&err) < 0) {
+        sc_die_on_error(__unsafe_forge_single(sc_error *, err));
     }
     rewind(stream);
 
-    char *non_strict_value SC_CLEANUP(sc_cleanup_string) = NULL;
-    if (sc_infofile_get_key(stream, "non-strict", &non_strict_value, &err) < 0) {
-        sc_die_on_error(err);
+    char *__unsafe_indexable non_strict_value SC_CLEANUP(sc_cleanup_string) = NULL;
+    if (sc_infofile_get_key(__unsafe_forge_single(FILE *, stream), "non-strict", (char **)(void *)&non_strict_value,
+                            (sc_error **)(void *)&err) < 0) {
+        sc_die_on_error(__unsafe_forge_single(sc_error *, err));
     }
 
-    devsetup->self_managed = sc_streq(self_managed_value, "true");
-    devsetup->non_strict = sc_streq(non_strict_value, "true");
+    devsetup->self_managed = sc_streq(__unsafe_forge_null_terminated(const char *, self_managed_value), "true");
+    devsetup->non_strict = sc_streq(__unsafe_forge_null_terminated(const char *, non_strict_value), "true");
 }
 
 static sc_device_cgroup_mode device_cgroup_mode_for_snap(sc_invocation *inv) {
@@ -810,7 +820,7 @@ static void enter_non_classic_execution_environment(sc_invocation *inv, struct s
     }
 
     debug("initializing mount namespace: %s", inv->snap_instance);
-    struct sc_mount_ns *group = NULL;
+    struct sc_mount_ns *__single group = NULL;
     group = sc_open_mount_ns(inv->snap_instance);
 
     // Init and check rootfs_dir, apply any fallback behaviors.
@@ -972,7 +982,7 @@ static void enter_non_classic_execution_environment(sc_invocation *inv, struct s
             if (prctl(PR_SET_KEEPCAPS, 1) < 0) {
                 die("cannot set PR_SET_KEEPCAPS 1");
             }
-            cap_t c SC_CLEANUP(sc_cleanup_cap_t) = cap_get_proc();
+            cap_t __unsafe_indexable c SC_CLEANUP(sc_cleanup_cap_t) = cap_get_proc();
             if (c == NULL) {
                 die("cannot obtain current caps");
             }
@@ -1010,7 +1020,7 @@ static void enter_non_classic_execution_environment(sc_invocation *inv, struct s
         }
         /* We no longer need CAP_SETUID or CAP_SETGID in the permitted set.
          * Let's drop them as a hardening measure. */
-        cap_t c SC_CLEANUP(sc_cleanup_cap_t) = cap_get_proc();
+        cap_t __unsafe_indexable c SC_CLEANUP(sc_cleanup_cap_t) = cap_get_proc();
         if (c == NULL) {
             die("cannot obtain current caps");
         }
