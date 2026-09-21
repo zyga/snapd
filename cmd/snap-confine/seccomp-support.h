@@ -19,6 +19,8 @@
 
 #include <stdbool.h>
 
+#include "../libsnap-confine-private/bounds-safety.h"
+
 /**
  * sc_apply_seccomp_profile_for_security_tag applies a seccomp profile to the
  * current process. The filter is loaded from a pre-compiled bpf bytecode
@@ -43,7 +45,7 @@
  * The return value indicates if the process uses confinement or runs under the
  * special non-confining "@unrestricted" profile.
  **/
-bool sc_apply_seccomp_profile_for_security_tag(const char *security_tag);
+bool sc_apply_seccomp_profile_for_security_tag(const char *__null_terminated security_tag);
 
 void sc_apply_global_seccomp_profile(void);
 

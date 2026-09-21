@@ -18,6 +18,7 @@
 #ifndef SNAP_CONFINE_CONTEXT_SUPPORT_H
 #define SNAP_CONFINE_CONTEXT_SUPPORT_H
 
+#include "../libsnap-confine-private/bounds-safety.h"
 #include "../libsnap-confine-private/error.h"
 
 /**
@@ -29,6 +30,6 @@
  * If the file cannot be read then an error is returned in errorp and
  * the function returns NULL.
  **/
-char *sc_cookie_get_from_snapd(const char *snap_name, struct sc_error **errorp);
+char *__null_terminated sc_cookie_get_from_snapd(const char *__null_terminated snap_name, struct sc_error **errorp);
 
 #endif

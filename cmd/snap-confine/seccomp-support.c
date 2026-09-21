@@ -70,7 +70,7 @@ struct __attribute__((__packed__)) sc_seccomp_file_header {
 
 static_assert(sizeof(struct sc_seccomp_file_header) == 128, "unexpected struct size");
 
-static void validate_path_has_strict_perms(const char *path) {
+static void validate_path_has_strict_perms(const char *__null_terminated path) {
     struct stat stat_buf;
     if (stat(path, &stat_buf) < 0) {
         die("cannot stat %s", path);
@@ -86,17 +86,17 @@ static void validate_path_has_strict_perms(const char *path) {
     }
 }
 
-static void validate_bpfpath_is_safe(const char *path) {
+static void validate_bpfpath_is_safe(const char *__null_terminated path) {
     if (path == NULL || strlen(path) == 0 || path[0] != '/') {
         die("valid_bpfpath_is_safe needs an absolute path as input");
     }
     // strtok_r() modifies its first argument, so work on a copy
-    char *tokenized SC_CLEANUP(sc_cleanup_string) = NULL;
-    tokenized = sc_strdup(path);
+    char *__unsafe_indexable tokenized SC_CLEANUP(sc_cleanup_string) = NULL;
+    tokenized = __unsafe_forge_null_terminated(char *, sc_strdup(path));
     // allocate a string large enough to hold path, and initialize it to
     // '/'
     size_t checked_path_size = strlen(path) + 1;
-    char *checked_path SC_CLEANUP(sc_cleanup_string) = NULL;
+    char *__unsafe_indexable checked_path SC_CLEANUP(sc_cleanup_string) = NULL;
     checked_path = calloc(checked_path_size, 1);
     if (checked_path == NULL) {
         die("cannot allocate memory for checked_path");
@@ -106,35 +106,40 @@ static void validate_bpfpath_is_safe(const char *path) {
     checked_path[1] = '\0';
 
     // validate '/'
-    validate_path_has_strict_perms(checked_path);
+    validate_path_has_strict_perms(__unsafe_forge_null_terminated(const char *, checked_path));
 
     // strtok_r needs a pointer to keep track of where it is in the
     // string.
-    char *buf_saveptr = NULL;
+    char *__unsafe_indexable buf_saveptr = NULL;
 
     // reconstruct the path from '/' down to profile_name
-    char *buf_token = strtok_r(tokenized, "/", &buf_saveptr);
+    char *__unsafe_indexable buf_token = strtok_r(tokenized, "/", &buf_saveptr);
     while (buf_token != NULL) {
-        char *prev SC_CLEANUP(sc_cleanup_string) = NULL;
-        prev = sc_strdup(checked_path);  // needed by vsnprintf in sc_must_snprintf
+        char *__unsafe_indexable prev SC_CLEANUP(sc_cleanup_string) = NULL;
+        // prev is needed by vsnprintf in sc_must_snprintf
+        prev = __unsafe_forge_null_terminated(char *,
+                                              sc_strdup(__unsafe_forge_null_terminated(const char *, checked_path)));
         // append '<buf_token>' if checked_path is '/', otherwise '/<buf_token>'
         if (strlen(checked_path) == 1) {
-            sc_must_snprintf(checked_path, checked_path_size, "%s%s", prev, buf_token);
+            sc_must_snprintf(__unsafe_forge_bidi_indexable(char *, checked_path, checked_path_size), checked_path_size,
+                             "%s%s", prev, buf_token);
         } else {
-            sc_must_snprintf(checked_path, checked_path_size, "%s/%s", prev, buf_token);
+            sc_must_snprintf(__unsafe_forge_bidi_indexable(char *, checked_path, checked_path_size), checked_path_size,
+                             "%s/%s", prev, buf_token);
         }
-        validate_path_has_strict_perms(checked_path);
+        validate_path_has_strict_perms(__unsafe_forge_null_terminated(const char *, checked_path));
 
         buf_token = strtok_r(NULL, "/", &buf_saveptr);
     }
 }
 
-static void sc_cleanup_sock_fprog(struct sock_fprog *prog) {
+static void sc_cleanup_sock_fprog(struct sock_fprog *__unsafe_indexable prog) {
     free(prog->filter);
     prog->filter = NULL;
 }
 
-static void sc_must_read_filter_from_file(FILE *file, uint32_t len_bytes, char *what, struct sock_fprog *prog) {
+static void sc_must_read_filter_from_file(FILE *__unsafe_indexable file, uint32_t len_bytes,
+                                          char *__null_terminated what, struct sock_fprog *prog) {
     if (len_bytes == 0) {
         die("%s filter may only be empty in unrestricted profiles", what);
     }
@@ -155,7 +160,8 @@ static void sc_must_read_filter_from_file(FILE *file, uint32_t len_bytes, char *
     }
 }
 
-static void sc_must_read_and_validate_header_from_file(FILE *file, const char *profile_path,
+static void sc_must_read_and_validate_header_from_file(FILE *__unsafe_indexable file,
+                                                       const char *__null_terminated profile_path,
                                                        struct sc_seccomp_file_header *hdr) {
     if (file == NULL) {
         die("cannot open seccomp filter %s", profile_path);
@@ -195,7 +201,7 @@ static void sc_must_read_and_validate_header_from_file(FILE *file, const char *p
     }
 }
 
-bool sc_apply_seccomp_profile_for_security_tag(const char *security_tag) {
+bool sc_apply_seccomp_profile_for_security_tag(const char *__null_terminated security_tag) {
     debug("loading bpf program for security tag %s", security_tag);
 
     char profile_path[PATH_MAX] = {0};
@@ -209,9 +215,9 @@ bool sc_apply_seccomp_profile_for_security_tag(const char *security_tag) {
     // snapd so for such snaps, the profiles may not be generated
     // yet
     long max_wait = 120;
-    const char *MAX_PROFILE_WAIT = getenv("SNAP_CONFINE_MAX_PROFILE_WAIT");
+    const char *__unsafe_indexable MAX_PROFILE_WAIT = getenv("SNAP_CONFINE_MAX_PROFILE_WAIT");
     if (MAX_PROFILE_WAIT != NULL) {
-        char *endptr = NULL;
+        char *__unsafe_indexable endptr = NULL;
         errno = 0;
         long env_max_wait = strtol(MAX_PROFILE_WAIT, &endptr, 10);
         if (errno != 0 || MAX_PROFILE_WAIT == endptr || *endptr != '\0' || env_max_wait <= 0) {
@@ -223,7 +229,7 @@ bool sc_apply_seccomp_profile_for_security_tag(const char *security_tag) {
         max_wait = 3600;
     }
 
-    if (!sc_wait_for_file(profile_path, max_wait)) {
+    if (!sc_wait_for_file(__unsafe_forge_null_terminated(const char *, &profile_path[0]), max_wait)) {
         /* log but proceed, we'll die a bit later */
         debug("timeout waiting for seccomp binary profile file at %s", profile_path);
     }
@@ -233,14 +239,15 @@ bool sc_apply_seccomp_profile_for_security_tag(const char *security_tag) {
     // 'other' writable to avoid possibility of privilege
     // escalation via bpf program load when paths are incorrectly
     // set on the system.
-    validate_bpfpath_is_safe(profile_path);
+    validate_bpfpath_is_safe(__unsafe_forge_null_terminated(const char *, &profile_path[0]));
 
     //  when we stop supporting 14.04 we could just use hdr = {0}
     struct sc_seccomp_file_header hdr;
     memset(&hdr, 0, sizeof hdr);
-    FILE *file SC_CLEANUP(sc_cleanup_file) = fopen(profile_path, "rb");
+    FILE *__unsafe_indexable file SC_CLEANUP(sc_cleanup_file) = fopen(profile_path, "rb");
 
-    sc_must_read_and_validate_header_from_file(file, profile_path, &hdr);
+    sc_must_read_and_validate_header_from_file(file, __unsafe_forge_null_terminated(const char *, &profile_path[0]),
+                                               &hdr);
     if (hdr.unrestricted & 0x1) {
         return false;
     }

@@ -37,10 +37,10 @@
  **/
 static const char *sc_cookie_dir = SC_COOKIE_DIR;
 
-char *sc_cookie_get_from_snapd(const char *snap_name, struct sc_error **errorp) {
+char *__null_terminated sc_cookie_get_from_snapd(const char *__null_terminated snap_name, struct sc_error **errorp) {
     char context_path[PATH_MAX] = {0};
     struct sc_error *err = NULL;
-    char *context = NULL;
+    char *__unsafe_indexable context = NULL;
 
     sc_must_snprintf(context_path, sizeof(context_path), "%s/snap.%s", sc_cookie_dir, snap_name);
     int fd SC_CLEANUP(sc_cleanup_close) = -1;
@@ -63,5 +63,5 @@ char *sc_cookie_get_from_snapd(const char *snap_name, struct sc_error **errorp) 
 
 out:
     sc_error_forward(errorp, err);
-    return context;
+    return __unsafe_forge_null_terminated(char *, context);
 }

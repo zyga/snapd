@@ -25,7 +25,7 @@
 #include "../libsnap-confine-private/utils.h"
 
 void setup_user_data(void) {
-    const char *user_data = getenv("SNAP_USER_DATA");
+    const char *__null_terminated user_data = __unsafe_forge_null_terminated(const char *, getenv("SNAP_USER_DATA"));
 
     if (user_data == NULL) return;
 

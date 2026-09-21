@@ -18,6 +18,8 @@
 #ifndef SNAP_CONFINE_UDEV_SUPPORT_H
 #define SNAP_CONFINE_UDEV_SUPPORT_H
 
+#include "../libsnap-confine-private/bounds-safety.h"
+
 typedef enum {
     /* Require device cgroup, even if no devices are assigned to the snap */
     SC_DEVICE_CGROUP_MODE_REQUIRED = 0x0,
@@ -26,6 +28,6 @@ typedef enum {
     SC_DEVICE_CGROUP_MODE_OPTIONAL = 0x1,
 } sc_device_cgroup_mode;
 
-void sc_setup_device_cgroup(const char *security_tag, sc_device_cgroup_mode mode);
+void sc_setup_device_cgroup(const char *__null_terminated security_tag, sc_device_cgroup_mode mode);
 
 #endif

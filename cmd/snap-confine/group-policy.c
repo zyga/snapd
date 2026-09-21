@@ -23,12 +23,13 @@
 
 #include "group-policy.h"
 
+#include "../libsnap-confine-private/bounds-safety.h"
 #include "../libsnap-confine-private/cleanup-funcs.h"
 #include "../libsnap-confine-private/string-utils.h"
 #include "../libsnap-confine-private/tools-dir.h"
 #include "../libsnap-confine-private/utils.h"
 
-static void sc_cleanup_gid_ts(gid_t **groups) {
+static void sc_cleanup_gid_ts(gid_t * __unsafe_indexable * __unsafe_indexable groups) {
     if (groups != NULL && *groups != NULL) {
         free(*groups);
         *groups = NULL;
@@ -75,12 +76,13 @@ static bool sc_fstatat_host_snap_confine(int root_fd, struct stat *buf, sc_error
 }
 
 /* lower level API to facilitate testing */
-static bool _sc_assert_host_local_group_policy(int root_fd, gid_t real_gid, gid_t *groups, size_t groups_cnt,
+static bool _sc_assert_host_local_group_policy(int root_fd, gid_t real_gid,
+                                               gid_t *__counted_by_or_null(groups_cnt) groups, size_t groups_cnt,
                                                sc_error **errorp) {
     struct stat buf;
     sc_error *err = NULL;
 
-    if (!sc_fstatat_host_snap_confine(root_fd, &buf, &err)) {
+    if (!sc_fstatat_host_snap_confine(root_fd, &buf, (sc_error **)(void *)&err)) {
         sc_error_forward(errorp, err);
         return false;
     }
@@ -126,7 +128,7 @@ bool sc_assert_host_local_group_policy(int root_fd, sc_error **errorp) {
         return false;
     }
 
-    gid_t *groups SC_CLEANUP(sc_cleanup_gid_ts) = NULL;
+    gid_t *__unsafe_indexable groups SC_CLEANUP(sc_cleanup_gid_ts) = NULL;
 
     if (cnt > 0) {
         groups = calloc(cnt, sizeof(gid_t));
@@ -141,5 +143,6 @@ bool sc_assert_host_local_group_policy(int root_fd, sc_error **errorp) {
         }
     }
 
-    return _sc_assert_host_local_group_policy(root_fd, real_gid, groups, cnt, errorp);
+    return _sc_assert_host_local_group_policy(
+        root_fd, real_gid, __unsafe_forge_bidi_indexable(gid_t *, groups, cnt * sizeof(gid_t)), cnt, errorp);
 }

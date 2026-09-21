@@ -145,8 +145,8 @@ static void sc_udev_allow_dev_net_tun(sc_device_cgroup *cgroup) {
  * tags corresponding to snap applications. Here we interrogate udev and allow
  * access to all assigned devices.
  **/
-static void sc_udev_allow_assigned_device(sc_device_cgroup *cgroup, struct udev_device *device) {
-    const char *path = udev_device_get_syspath(device);
+static void sc_udev_allow_assigned_device(sc_device_cgroup *cgroup, struct udev_device *__unsafe_indexable device) {
+    const char *__unsafe_indexable path = udev_device_get_syspath(device);
     dev_t devnum = udev_device_get_devnum(device);
     unsigned int major = major(devnum);
     unsigned int minor = minor(devnum);
@@ -160,7 +160,7 @@ static void sc_udev_allow_assigned_device(sc_device_cgroup *cgroup, struct udev_
     }
     /* devnode is bound to the lifetime of the device and we cannot release
      * it separately. */
-    const char *devnode = udev_device_get_devnode(device);
+    const char *__unsafe_indexable devnode = udev_device_get_devnode(device);
     if (devnode == NULL) {
         debug("cannot find /dev node from udev device");
         return;
@@ -186,22 +186,22 @@ static void sc_udev_setup_acls_common(sc_device_cgroup *cgroup) {
     sc_udev_allow_dev_net_tun(cgroup);
 }
 
-static char *sc_security_to_udev_tag(const char *security_tag) {
-    char *udev_tag = sc_strdup(security_tag);
-    for (char *c = strchr(udev_tag, '.'); c != NULL; c = strchr(c, '.')) {
+static char *__null_terminated sc_security_to_udev_tag(const char *__null_terminated security_tag) {
+    char *__unsafe_indexable udev_tag = __unsafe_forge_null_terminated(char *, sc_strdup(security_tag));
+    for (char *__unsafe_indexable c = strchr(udev_tag, '.'); c != NULL; c = strchr(c, '.')) {
         *c = '_';
     }
-    return udev_tag;
+    return __unsafe_forge_null_terminated(char *, udev_tag);
 }
 
-static void sc_cleanup_udev(struct udev **udev) {
+static void sc_cleanup_udev(struct udev * __unsafe_indexable * __unsafe_indexable udev) {
     if (udev != NULL && *udev != NULL) {
         udev_unref(*udev);
         *udev = NULL;
     }
 }
 
-static void sc_cleanup_udev_enumerate(struct udev_enumerate **enumerate) {
+static void sc_cleanup_udev_enumerate(struct udev_enumerate * __unsafe_indexable * __unsafe_indexable enumerate) {
     if (enumerate != NULL && *enumerate != NULL) {
         udev_enumerate_unref(*enumerate);
         *enumerate = NULL;
@@ -219,7 +219,7 @@ static void sc_cleanup_udev_enumerate(struct udev_enumerate **enumerate) {
  */
 static int (*__sc_udev_device_has_current_tag)(struct udev_device *udev_device, const char *tag) = NULL;
 static void setup_current_tags_support(void) {
-    void *lib = dlopen("libudev.so.1", RTLD_NOW);
+    void *__unsafe_indexable lib = dlopen("libudev.so.1", RTLD_NOW);
     if (lib == NULL) {
         debug("cannot load libudev.so.1: %s", dlerror());
         /* bit unexpected as we use the library from the host and it's stable */
@@ -227,7 +227,7 @@ static void setup_current_tags_support(void) {
     }
     /* check whether we have the symbol introduced in systemd v247 to inspect
      * the CURRENT_TAGS property */
-    void *sym = dlsym(lib, "udev_device_has_current_tag");
+    void *__unsafe_indexable sym = dlsym(lib, "udev_device_has_current_tag");
     if (sym == NULL) {
         debug("cannot find current tags symbol: %s", dlerror());
         /* symbol is not found in the library version */
@@ -235,14 +235,14 @@ static void setup_current_tags_support(void) {
         return;
     }
     debug("libudev has current tags support");
-    __sc_udev_device_has_current_tag = sym;
+    __sc_udev_device_has_current_tag = __unsafe_forge_single(typeof(__sc_udev_device_has_current_tag), sym);
     /* lib goes out of scope and is leaked but we need sym and hence
      * lib to be valid for the entire lifetime of the application
      * lifecycle so this is fine. */
     /* coverity[leaked_storage] */
 }
 
-void sc_setup_device_cgroup(const char *security_tag, sc_device_cgroup_mode mode) {
+void sc_setup_device_cgroup(const char *__null_terminated security_tag, sc_device_cgroup_mode mode) {
     debug("setting up device cgroup, mode \"%s\"", mode == SC_DEVICE_CGROUP_MODE_REQUIRED ? "required" : "optional");
 
     setup_current_tags_support();
@@ -254,19 +254,19 @@ void sc_setup_device_cgroup(const char *security_tag, sc_device_cgroup_mode mode
      *
      * Because udev does not allow for dots in tag names, those are replaced by
      * underscores in snapd. We just match that behavior. */
-    char *udev_tag SC_CLEANUP(sc_cleanup_string) = NULL;
+    char *__unsafe_indexable udev_tag SC_CLEANUP(sc_cleanup_string) = NULL;
     udev_tag = sc_security_to_udev_tag(security_tag);
 
     /* Use udev APIs to talk to udev-the-daemon to determine the list of
      * "devices" with that tag assigned. The list may be empty, in which case
      * there's no udev tagging in effect and we must refrain from constructing
      * the cgroup as it would interfere with the execution of a program. */
-    struct udev SC_CLEANUP(sc_cleanup_udev) *udev = NULL;
+    struct udev *__unsafe_indexable udev SC_CLEANUP(sc_cleanup_udev) = NULL;
     udev = udev_new();
     if (udev == NULL) {
         die("cannot connect to udev");
     }
-    struct udev_enumerate SC_CLEANUP(sc_cleanup_udev_enumerate) *devices = NULL;
+    struct udev_enumerate *__unsafe_indexable devices SC_CLEANUP(sc_cleanup_udev_enumerate) = NULL;
     devices = udev_enumerate_new(udev);
     if (devices == NULL) {
         die("cannot create udev device enumeration");
@@ -278,7 +278,7 @@ void sc_setup_device_cgroup(const char *security_tag, sc_device_cgroup_mode mode
         die("cannot enumerate udev devices");
     }
     /* NOTE: udev_list_entry is bound to life-cycle of the used udev_enumerate */
-    struct udev_list_entry *assigned;
+    struct udev_list_entry *__unsafe_indexable assigned;
     assigned = udev_enumerate_get_list_entry(devices);
     if (assigned == NULL) {
         if (mode == SC_DEVICE_CGROUP_MODE_OPTIONAL) {
@@ -294,7 +294,7 @@ void sc_setup_device_cgroup(const char *security_tag, sc_device_cgroup_mode mode
 
     /* cgroup wrapper is lazily initialized when devices are actually
      * assigned */
-    sc_device_cgroup *cgroup SC_CLEANUP(sc_device_cgroup_cleanup) = NULL;
+    sc_device_cgroup *__unsafe_indexable cgroup SC_CLEANUP(sc_device_cgroup_cleanup) = NULL;
 
     if (mode == SC_DEVICE_CGROUP_MODE_REQUIRED) {
         /* Normally the cgroup setup is done lazily, but since device cgroup is
@@ -302,15 +302,16 @@ void sc_setup_device_cgroup(const char *security_tag, sc_device_cgroup_mode mode
          * devices being properly tagged. */
         cgroup = sc_device_cgroup_new(security_tag, 0);
         /* Setup the device group access control list */
-        sc_udev_setup_acls_common(cgroup);
+        sc_udev_setup_acls_common(__unsafe_forge_single(sc_device_cgroup *, cgroup));
     }
 
-    for (struct udev_list_entry *entry = assigned; entry != NULL; entry = udev_list_entry_get_next(entry)) {
-        const char *path = udev_list_entry_get_name(entry);
+    for (struct udev_list_entry *__unsafe_indexable entry = assigned; entry != NULL;
+         entry = udev_list_entry_get_next(entry)) {
+        const char *__unsafe_indexable path = udev_list_entry_get_name(entry);
         if (path == NULL) {
             die("udev_list_entry_get_name failed");
         }
-        struct udev_device *device = udev_device_new_from_syspath(udev, path);
+        struct udev_device *__unsafe_indexable device = udev_device_new_from_syspath(udev, path);
         /** This is a non-fatal error as devices can disappear asynchronously
          * and on slow devices we may indeed observe a device that no longer
          * exists.
@@ -328,7 +329,8 @@ void sc_setup_device_cgroup(const char *security_tag, sc_device_cgroup_mode mode
          * previously created/setup but should no longer be setup due
          * to interface disconnection, etc. */
         if (__sc_udev_device_has_current_tag != NULL) {
-            if (__sc_udev_device_has_current_tag(device, udev_tag) <= 0) {
+            if (__sc_udev_device_has_current_tag(__unsafe_forge_single(struct udev_device *, device),
+                                                 __unsafe_forge_null_terminated(const char *, udev_tag)) <= 0) {
                 debug("device %s has no matching current tag", path);
                 udev_device_unref(device);
                 continue;
@@ -341,15 +343,15 @@ void sc_setup_device_cgroup(const char *security_tag, sc_device_cgroup_mode mode
              * there are devices assigned to this snap */
             cgroup = sc_device_cgroup_new(security_tag, 0);
             /* Setup the device group access control list */
-            sc_udev_setup_acls_common(cgroup);
+            sc_udev_setup_acls_common(__unsafe_forge_single(sc_device_cgroup *, cgroup));
         }
 
-        sc_udev_allow_assigned_device(cgroup, device);
+        sc_udev_allow_assigned_device(__unsafe_forge_single(sc_device_cgroup *, cgroup), device);
         udev_device_unref(device);
     }
     if (cgroup != NULL) {
         /* Move ourselves to the device cgroup */
-        sc_device_cgroup_attach_pid(cgroup, getpid());
+        sc_device_cgroup_attach_pid(__unsafe_forge_single(sc_device_cgroup *, cgroup), getpid());
         debug("associated snap application process %i with device cgroup %s", getpid(), security_tag);
     } else {
         debug("device cgroup not set up for  %s", udev_tag);
