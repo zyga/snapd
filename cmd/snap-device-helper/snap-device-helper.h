@@ -18,12 +18,14 @@
 #ifndef SNAP_DEVICE_HELPER_H
 #define SNAP_DEVICE_HELPER_H
 
+#include "../libsnap-confine-private/bounds-safety.h"
+
 struct sdh_invocation {
-    const char *action;
-    const char *tagname;
-    const char *major;
-    const char *minor;
-    const char *subsystem;
+    const char *__null_terminated action;
+    const char *__null_terminated tagname;
+    const char *__null_terminated major;
+    const char *__null_terminated minor;
+    const char *__null_terminated subsystem;
 };
 
 int snap_device_helper_run(const struct sdh_invocation *inv);

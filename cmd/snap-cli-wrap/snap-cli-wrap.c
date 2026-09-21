@@ -29,9 +29,11 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "../libsnap-confine-private/bounds-safety.h"
+
 #define SNAPD_PATH LIBEXECDIR "/snapd"
 
-int main(int argc, char **argv) {
+int main(int argc, char *__null_terminated *__counted_by(argc) argv) {
     /* preserve unchanged argv[0], which could be 'snap' if acting as the CLI
      * tool, or a magic symlink at /snap/bin/<app-name>  */
     execv(SNAPD_PATH, argv);

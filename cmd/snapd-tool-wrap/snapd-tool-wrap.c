@@ -36,13 +36,15 @@
 #include <string.h>
 #include <unistd.h>
 
-int main(int argc, char **argv) {
+#include "../libsnap-confine-private/bounds-safety.h"
+
+int main(int argc, char *__null_terminated *__counted_by(argc) argv) {
     char self[PATH_MAX];
     char snapd_path[PATH_MAX];
     ssize_t n;
-    char *slash;
-    char *tool = basename(argv[0]);
-    char *new_argv[argc + 2];
+    char *__null_terminated slash;
+    char *__null_terminated tool = __unsafe_forge_null_terminated(char *, basename(argv[0]));
+    char *__null_terminated new_argv[argc + 2];
     int i;
 
     /* Derive the path to the snapd binary from our own location. This works
@@ -55,13 +57,13 @@ int main(int argc, char **argv) {
     }
     self[n] = '\0';
 
-    slash = strrchr(self, '/');
+    slash = __unsafe_forge_null_terminated(char *, strrchr(self, '/'));
     if (slash == NULL) {
         fprintf(stderr, "snapd-tool-wrap: cannot determine directory of %s\n", self);
         return 1;
     }
     /* Replace everything after the last slash with "snapd". */
-    slash[1] = '\0';
+    __null_terminated_to_indexable(slash)[1] = '\0';
     if (snprintf(snapd_path, sizeof(snapd_path), "%ssnapd", self) >= (int)sizeof(snapd_path)) {
         fprintf(stderr, "snapd-tool-wrap: snapd path too long\n");
         return 1;

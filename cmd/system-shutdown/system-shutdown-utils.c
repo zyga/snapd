@@ -35,9 +35,9 @@
 #include "../libsnap-confine-private/string-utils.h"
 #include "../libsnap-confine-private/utils.h"
 
-__attribute__((format(printf, 1, 2))) void kmsg(const char *fmt, ...) {
-    static FILE *kmsg = NULL;
-    static char *head = NULL;
+__attribute__((format(printf, 1, 2))) void kmsg(const char *__null_terminated fmt, ...) {
+    static FILE *__unsafe_indexable kmsg = NULL;
+    static char *__null_terminated head = NULL;
     if (!kmsg) {
         // TODO: figure out why writing to /dev/kmsg doesn't work from here
         kmsg = stderr;
@@ -52,8 +52,8 @@ __attribute__((format(printf, 1, 2))) void kmsg(const char *fmt, ...) {
     va_end(va);
 }
 
-int sc_read_reboot_arg(char *arg, size_t max_size) {
-    FILE *f;
+int sc_read_reboot_arg(char *__counted_by(max_size) arg, size_t max_size) {
+    FILE *__unsafe_indexable f;
 
     // This file is used by systemd to pass around a reboot parameter See
     // https://github.com/systemd/systemd/blob/v229/src/basic/def.h#L44
@@ -73,7 +73,7 @@ int sc_read_reboot_arg(char *arg, size_t max_size) {
     return 0;
 }
 
-static void detach_loop(const char *src) {
+static void detach_loop(const char *__null_terminated src) {
     int fd = open(src, O_RDONLY);
     if (fd < 0) {
         kmsg("* unable to open loop device %s: %s", src, strerror(errno));
@@ -102,8 +102,8 @@ bool umount_all(void) {
         had_writable = false;
         did_umount = false;
         while (cur) {
-            const char *dir = cur->mount_dir;
-            const char *src = cur->mount_source;
+            const char *__null_terminated dir = cur->mount_dir;
+            const char *__null_terminated src = cur->mount_source;
             unsigned major = cur->dev_major;
 
             cur = sc_next_mountinfo_entry(cur);
@@ -132,7 +132,7 @@ bool umount_all(void) {
                 did_umount = true;
             }
         }
-        sc_cleanup_mountinfo(&mounts);
+        sc_cleanup_mountinfo((sc_mountinfo * __unsafe_indexable * __unsafe_indexable) & mounts);
     }
 
     return !had_writable;

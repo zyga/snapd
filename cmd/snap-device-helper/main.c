@@ -19,7 +19,7 @@
 
 #include "snap-device-helper.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *__null_terminated *__counted_by(argc) argv) {
     int old_invocation_detected = (argc >= 5);
 
     if ((argc != 2) && !old_invocation_detected) {
@@ -27,11 +27,11 @@ int main(int argc, char *argv[]) {
     }
 
     struct sdh_invocation inv = {
-        .action = getenv("ACTION"),
+        .action = __unsafe_forge_null_terminated(const char *, getenv("ACTION")),
         .tagname = old_invocation_detected ? argv[2] : argv[1],
-        .major = getenv("MAJOR"),
-        .minor = getenv("MINOR"),
-        .subsystem = getenv("SUBSYSTEM"),
+        .major = __unsafe_forge_null_terminated(const char *, getenv("MAJOR")),
+        .minor = __unsafe_forge_null_terminated(const char *, getenv("MINOR")),
+        .subsystem = __unsafe_forge_null_terminated(const char *, getenv("SUBSYSTEM")),
     };
 
     return snap_device_helper_run(&inv);

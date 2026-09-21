@@ -15,7 +15,9 @@
  *
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <dirent.h>
 #include <errno.h>
@@ -45,7 +47,7 @@
 // Asserts the proces has sufficient capabilities being either run directly by root user or
 // through snap-confine.
 static void assert_caps(void) {
-    cap_t current SC_CLEANUP(cap_free) = cap_get_proc();
+    cap_t __unsafe_indexable current SC_CLEANUP(cap_free) = cap_get_proc();
 
     cap_value_t expected_caps[] = {
         CAP_SYS_ADMIN,    /* umount */
@@ -55,7 +57,7 @@ static void assert_caps(void) {
 
     for (size_t i = 0; i < SC_ARRAY_SIZE(expected_caps); i++) {
         cap_value_t cap = expected_caps[i];
-        const char *cap_name SC_CLEANUP(cap_free) = cap_to_name(cap);
+        const char *__unsafe_indexable cap_name SC_CLEANUP(cap_free) = cap_to_name(cap);
 
         cap_flag_value_t set = CAP_CLEAR;
         if (cap_get_flag(current, cap, CAP_EFFECTIVE, &set) != 0) {
@@ -68,12 +70,12 @@ static void assert_caps(void) {
     }
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char *__null_terminated *__counted_by(argc) argv) {
     if (argc != 2 && argc != 3) {
         printf("Usage: snap-discard-ns [--snap-already-locked|--from-snap-confine] <SNAP-INSTANCE-NAME>\n");
         return 0;
     }
-    const char *snap_instance_name;
+    const char *__null_terminated snap_instance_name;
     bool snap_already_locked;
 
     if (argc == 3) {
@@ -93,7 +95,7 @@ int main(int argc, char **argv) {
     }
 
     sc_error *err = NULL;
-    sc_instance_name_validate(snap_instance_name, &err);
+    sc_instance_name_validate(snap_instance_name, (sc_error * __single * __single) & err);
     sc_die_on_error(err);
 
     /* time to assert we have the right capabilities to perform the job */
@@ -114,7 +116,7 @@ int main(int argc, char **argv) {
     }
     debug("discarding mount namespaces of snap %s", snap_instance_name);
 
-    const char *ns_dir_path = "/run/snapd/ns";
+    const char *__null_terminated ns_dir_path = "/run/snapd/ns";
     int ns_dir_fd = open(ns_dir_path, O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
     if (ns_dir_fd < 0) {
         /* The directory may legitimately not exist if no snap has started to
@@ -157,7 +159,7 @@ int main(int argc, char **argv) {
     sc_must_snprintf(usr_mnt_pattern, sizeof usr_mnt_pattern, "%s\\.*\\.mnt", snap_instance_name);
     sc_must_snprintf(sys_info_pattern, sizeof sys_info_pattern, "snap\\.%s\\.info", snap_instance_name);
 
-    DIR *ns_dir = fdopendir(ns_dir_fd);
+    DIR *__unsafe_indexable ns_dir = fdopendir(ns_dir_fd);
     if (ns_dir == NULL) {
         die("cannot fdopendir");
     }
@@ -167,7 +169,7 @@ int main(int argc, char **argv) {
         /* Reset errno ahead of any call to readdir to differentiate errors
          * from legitimate end of directory. */
         errno = 0;
-        struct dirent *dent = readdir(ns_dir);
+        struct dirent *__unsafe_indexable dent = readdir(ns_dir);
         if (dent == NULL) {
             if (errno != 0) {
                 die("cannot read next directory entry");
@@ -177,7 +179,7 @@ int main(int argc, char **argv) {
         }
 
         /* We use dnet->d_name a lot so let's shorten it. */
-        const char *dname = dent->d_name;
+        const char *__null_terminated dname = __unsafe_forge_null_terminated(const char *, dent->d_name);
 
         /* Check the four patterns that we have against the name and set the
          * two should flags to decide further actions. Note that we always
@@ -185,15 +187,15 @@ int main(int argc, char **argv) {
         bool should_unmount = false;
         bool should_unlink = false;
         struct variant {
-            const char *pattern;
+            const char *__null_terminated pattern;
             bool unmount;
         };
         struct variant variants[] = {
-            {.pattern = sys_mnt_pattern, .unmount = true},
-            {.pattern = usr_mnt_pattern, .unmount = true},
-            {.pattern = sys_fstab_pattern},
-            {.pattern = usr_fstab_pattern},
-            {.pattern = sys_info_pattern},
+            {.pattern = __unsafe_forge_null_terminated(const char *, &sys_mnt_pattern[0]), .unmount = true},
+            {.pattern = __unsafe_forge_null_terminated(const char *, &usr_mnt_pattern[0]), .unmount = true},
+            {.pattern = __unsafe_forge_null_terminated(const char *, &sys_fstab_pattern[0])},
+            {.pattern = __unsafe_forge_null_terminated(const char *, &usr_fstab_pattern[0])},
+            {.pattern = __unsafe_forge_null_terminated(const char *, &sys_info_pattern[0])},
         };
         for (size_t i = 0; i < SC_ARRAY_SIZE(variants); ++i) {
             struct variant *v = &variants[i];

@@ -23,7 +23,7 @@
 
 #include "../libsnap-confine-private/utils.h"
 
-int main(int argc, char **argv) {
+int main(int argc, char *__null_terminated *__counted_by(argc) argv) {
     if (sc_is_debug_enabled()) {
         for (int i = 0; i < argc; i++) {
             fprintf(stderr, "-%s-\n", argv[i]);
@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     /* echo signal STOP to parent so that it knows when to attach strace */
     raise(SIGSTOP);
 
-    const char *executable = argv[1];
+    const char *__null_terminated executable = argv[1];
     execv(executable, (char *const *)&argv[1]);
     perror("execv failed");
     // very different exit code to make an execve failure easy to distinguish
