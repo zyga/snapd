@@ -27,8 +27,16 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#include "bounds-safety.h"
+
 // SC_CLEANUP will run the given cleanup function when the variable next
 // to it goes out of scope.
+//
+// The cleanup functions below take the address of the managed variable.  The
+// pointee types are annotated __unsafe_indexable so that they interoperate
+// with the plain-C, __unsafe_indexable pointers returned by libc (opendir,
+// fopen, strdup, ...) that these functions dispose of.  The managed local
+// should likewise be declared __unsafe_indexable.
 #define SC_CLEANUP(n) __attribute__((cleanup(n)))
 
 /**
@@ -38,7 +46,7 @@
  * The variable MUST be initialized for correct operation.
  * The safe initialisation value is NULL.
  **/
-void sc_cleanup_string(char **ptr);
+void sc_cleanup_string(char *__unsafe_indexable *__unsafe_indexable ptr);
 
 /**
  * Free a dynamically allocated string vector.
@@ -49,7 +57,7 @@ void sc_cleanup_string(char **ptr);
  * The variable MUST be initialized for correct operation.
  * The safe initialisation value is NULL.
  */
-void sc_cleanup_deep_strv(char ***ptr);
+void sc_cleanup_deep_strv(char *__unsafe_indexable * __unsafe_indexable * __unsafe_indexable ptr);
 
 /**
  * Shallow free a dynamically allocated string vector.
@@ -59,7 +67,7 @@ void sc_cleanup_deep_strv(char ***ptr);
  * The variable MUST be initialized for correct operation.
  * The safe initialisation value is NULL.
  */
-void sc_cleanup_shallow_strv(const char ***ptr);
+void sc_cleanup_shallow_strv(const char *__unsafe_indexable * __unsafe_indexable * __unsafe_indexable ptr);
 
 /**
  * Close an open file.
@@ -68,7 +76,7 @@ void sc_cleanup_shallow_strv(const char ***ptr);
  * The variable MUST be initialized for correct operation.
  * The safe initialisation value is NULL.
  **/
-void sc_cleanup_file(FILE **ptr);
+void sc_cleanup_file(FILE * __unsafe_indexable * __unsafe_indexable ptr);
 
 /**
  * Close an open file with endmntent(3)
@@ -77,7 +85,7 @@ void sc_cleanup_file(FILE **ptr);
  * The variable MUST be initialized for correct operation.
  * The safe initialisation value is NULL.
  **/
-void sc_cleanup_endmntent(FILE **ptr);
+void sc_cleanup_endmntent(FILE * __unsafe_indexable * __unsafe_indexable ptr);
 
 /**
  * Close an open directory with closedir(3)
@@ -86,7 +94,7 @@ void sc_cleanup_endmntent(FILE **ptr);
  * The variable MUST be initialized for correct operation.
  * The safe initialisation value is NULL.
  **/
-void sc_cleanup_closedir(DIR **ptr);
+void sc_cleanup_closedir(DIR * __unsafe_indexable * __unsafe_indexable ptr);
 
 /**
  * Close an open file descriptor with close(2)
@@ -95,6 +103,6 @@ void sc_cleanup_closedir(DIR **ptr);
  * The variable MUST be initialized for correct operation.
  * The safe initialisation value is -1.
  **/
-void sc_cleanup_close(int *ptr);
+void sc_cleanup_close(int *__unsafe_indexable ptr);
 
 #endif

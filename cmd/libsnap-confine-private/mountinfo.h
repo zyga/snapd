@@ -17,6 +17,8 @@
 #ifndef SNAP_CONFINE_MOUNTINFO_H
 #define SNAP_CONFINE_MOUNTINFO_H
 
+#include "bounds-safety.h"
+
 /**
  * Structure describing a single entry in /proc/self/sc_mountinfo
  **/
@@ -33,15 +35,15 @@ typedef struct sc_mountinfo_entry {
     /**
      * The root directory of a given mount entry.
      **/
-    char *root;
+    char *__null_terminated root;
     /**
      * The mount point of a given mount entry.
      **/
-    char *mount_dir;
+    char *__null_terminated mount_dir;
     /**
      * The mount options of a given mount entry.
      **/
-    char *mount_opts;
+    char *__null_terminated mount_opts;
     /**
      * Optional tagged data associated of a given mount entry.
      *
@@ -62,19 +64,19 @@ typedef struct sc_mountinfo_entry {
      * group under the same root, then only the "master:X" field is present and not
      * the "propagate_from:X" field.
      **/
-    char *optional_fields;
+    char *__null_terminated optional_fields;
     /**
      * The file system type of a given mount entry.
      **/
-    char *fs_type;
+    char *__null_terminated fs_type;
     /**
      * The source of a given mount entry.
      **/
-    char *mount_source;
+    char *__null_terminated mount_source;
     /**
      * The super block options of a given mount entry.
      **/
-    char *super_opts;
+    char *__null_terminated super_opts;
 
     struct sc_mountinfo_entry *next;
 
@@ -100,7 +102,7 @@ typedef struct sc_mountinfo {
  * implicitly parse /proc/self/sc_mountinfo, that is the mount information
  * associated with the current process.
  **/
-sc_mountinfo *sc_parse_mountinfo(const char *fname);
+sc_mountinfo *sc_parse_mountinfo(const char *__null_terminated fname);
 
 /**
  * Free a sc_mountinfo structure.
@@ -108,7 +110,7 @@ sc_mountinfo *sc_parse_mountinfo(const char *fname);
  * This function is designed to be used with __attribute__((cleanup)) so it
  * takes a pointer to the freed object (which is also a pointer).
  **/
-void sc_cleanup_mountinfo(sc_mountinfo **ptr) __attribute__((nonnull(1)));
+void sc_cleanup_mountinfo(sc_mountinfo * __unsafe_indexable * __unsafe_indexable ptr) __attribute__((nonnull(1)));
 
 /**
  * Get the first sc_mountinfo entry.

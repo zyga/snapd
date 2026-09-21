@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include "bounds-safety.h"
+
 struct sc_device_cgroup;
 typedef struct sc_device_cgroup sc_device_cgroup;
 
@@ -37,12 +39,12 @@ enum {
  * ENOENT indicates that the group was not found. Otherwise, a new device cgroup
  * for a given tag will be set up.
  */
-sc_device_cgroup *sc_device_cgroup_new(const char *security_tag, int flags);
+sc_device_cgroup *sc_device_cgroup_new(const char *__null_terminated security_tag, int flags);
 /**
  * sc_device_cgroup_cleanup disposes of the cgroup wrapper and is suitable for
  * use with SC_CLEANUP
  */
-void sc_device_cgroup_cleanup(sc_device_cgroup **self);
+void sc_device_cgroup_cleanup(sc_device_cgroup * __unsafe_indexable * __unsafe_indexable self);
 
 /**
  * SC_DEVICE_MINOR_ANY is used to indicate any minor device.

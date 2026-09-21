@@ -44,7 +44,7 @@
  * (10) mount source:  filesystem specific information or "none"
  * (11) super options:  per super block options
  **/
-static sc_mountinfo_entry *sc_parse_mountinfo_entry(const char *line) __attribute__((nonnull(1)));
+static sc_mountinfo_entry *sc_parse_mountinfo_entry(const char *__null_terminated line) __attribute__((nonnull(1)));
 
 /**
  * Free a sc_mountinfo structure and all its entries.
@@ -60,7 +60,7 @@ sc_mountinfo_entry *sc_first_mountinfo_entry(sc_mountinfo *info) { return info->
 
 sc_mountinfo_entry *sc_next_mountinfo_entry(sc_mountinfo_entry *entry) { return entry->next; }
 
-sc_mountinfo *sc_parse_mountinfo(const char *fname) {
+sc_mountinfo *sc_parse_mountinfo(const char *__null_terminated fname) {
     sc_mountinfo *info = calloc(1, sizeof *info);
     if (info == NULL) {
         return NULL;
@@ -68,13 +68,13 @@ sc_mountinfo *sc_parse_mountinfo(const char *fname) {
     if (fname == NULL) {
         fname = "/proc/self/mountinfo";
     }
-    FILE *f SC_CLEANUP(sc_cleanup_file) = NULL;
+    FILE *__unsafe_indexable f SC_CLEANUP(sc_cleanup_file) = NULL;
     f = fopen(fname, "rt");
     if (f == NULL) {
         free(info);
         return NULL;
     }
-    char *line SC_CLEANUP(sc_cleanup_string) = NULL;
+    char *__unsafe_indexable line SC_CLEANUP(sc_cleanup_string) = NULL;
     size_t line_size = 0;
     sc_mountinfo_entry *entry, *last = NULL;
     for (;;) {
@@ -86,7 +86,7 @@ sc_mountinfo *sc_parse_mountinfo(const char *fname) {
             }
             break;
         };
-        entry = sc_parse_mountinfo_entry(line);
+        entry = sc_parse_mountinfo_entry(__unsafe_forge_null_terminated(char *, line));
         if (entry == NULL) {
             sc_free_mountinfo(info);
             return NULL;
@@ -101,7 +101,7 @@ sc_mountinfo *sc_parse_mountinfo(const char *fname) {
     return info;
 }
 
-static void show_buffers(const char *line, int offset, sc_mountinfo_entry *entry) {
+static void show_buffers(const char *__null_terminated line, int offset, sc_mountinfo_entry *entry) {
 #ifdef MOUNTINFO_DEBUG
     fprintf(stderr, "Input buffer (first), with offset arrow\n");
     fprintf(stderr, "Output buffer (second)\n");
@@ -130,10 +130,15 @@ static void show_buffers(const char *line, int offset, sc_mountinfo_entry *entry
 
 static bool is_octal_digit(char c) { return c >= '0' && c <= '7'; }
 
-static char *parse_next_string_field_ex(sc_mountinfo_entry *entry, const char *line, size_t *offset,
-                                        bool allow_spaces_in_field) {
-    const char *input = &line[*offset];
-    char *output = &entry->line_buf[*offset];
+static char *__null_terminated parse_next_string_field_ex(sc_mountinfo_entry *entry, const char *__null_terminated line,
+                                                          size_t *offset, bool allow_spaces_in_field) {
+    const char *input = &__null_terminated_to_indexable(line)[*offset];
+    // The output buffer is a substring of entry->line_buf and is terminated
+    // along with the parsed data below.
+    char *__null_terminated output = __unsafe_forge_null_terminated(char *, &entry->line_buf[*offset]);
+    // Indexable view of the output buffer, sharing the same terminator.  The
+    // upper bound (the offset of the NUL) is filled in as data is written.
+    char *output_ = __null_terminated_to_indexable(output);
     size_t input_idx = 0;              // reading index
     size_t output_idx = 0;             // writing index
     size_t input_len = strlen(input);  // length of remaining input (used for bounds checks below)
@@ -153,7 +158,7 @@ static char *parse_next_string_field_ex(sc_mountinfo_entry *entry, const char *l
             }
             // The scanned line is NUL terminated. This ensures that the
             // terminator is copied to the output buffer.
-            output[output_idx] = '\0';
+            output_[output_idx] = '\0';
             // NOTE: we must not advance the reading index since we
             // reached the end of the buffer.
             break;
@@ -165,7 +170,7 @@ static char *parse_next_string_field_ex(sc_mountinfo_entry *entry, const char *l
             // index which is needed for subsequent calls.
             //
             // XXX: The last field may contain spaces.
-            output[output_idx] = '\0';
+            output_[output_idx] = '\0';
             input_idx++;
             break;
         } else if (c == '\\') {
@@ -181,19 +186,19 @@ static char *parse_next_string_field_ex(sc_mountinfo_entry *entry, const char *l
                 // s[2] and s[3]. Because we are working with
                 // byte values there are no issues related to
                 // byte order.
-                output[output_idx++] = ((s[1] - '0') << 6) | ((s[2] - '0') << 3) | ((s[3] - '0'));
+                output_[output_idx++] = ((s[1] - '0') << 6) | ((s[2] - '0') << 3) | ((s[3] - '0'));
                 // Advance the reading index by the length of the escape
                 // sequence.
                 input_idx += 4;
             } else {
                 // Partial escape sequence, copy verbatim and
                 // continue (since we don't use this).
-                output[output_idx++] = c;
+                output_[output_idx++] = c;
                 input_idx++;
             }
         } else {
             // All other characters are simply copied verbatim.
-            output[output_idx++] = c;
+            output_[output_idx++] = c;
             input_idx++;
         }
     }
@@ -207,17 +212,19 @@ static char *parse_next_string_field_ex(sc_mountinfo_entry *entry, const char *l
 }
 
 // Return the next space separated string field in the given line
-static char *parse_next_string_field(sc_mountinfo_entry *entry, const char *line, size_t *offset) {
+static char *__null_terminated parse_next_string_field(sc_mountinfo_entry *entry, const char *__null_terminated line,
+                                                       size_t *offset) {
     return parse_next_string_field_ex(entry, line, offset, false);
 }
 
 // Return the last string field in the given line, this means the field
 // is allowed to contain spaces (' ', 0x20)
-static char *parse_last_string_field(sc_mountinfo_entry *entry, const char *line, size_t *offset) {
+static char *__null_terminated parse_last_string_field(sc_mountinfo_entry *entry, const char *__null_terminated line,
+                                                       size_t *offset) {
     return parse_next_string_field_ex(entry, line, offset, true);
 }
 
-static sc_mountinfo_entry *sc_parse_mountinfo_entry(const char *line) {
+static sc_mountinfo_entry *sc_parse_mountinfo_entry(const char *__null_terminated line) {
     // NOTE: the sc_mountinfo structure is allocated along with enough extra
     // storage to hold the whole line we are parsing. This is used as backing
     // store for all text fields.
@@ -261,11 +268,11 @@ static sc_mountinfo_entry *sc_parse_mountinfo_entry(const char *line) {
     if ((entry->root = parse_next_string_field(entry, line, &offset)) == NULL) goto fail;
     if ((entry->mount_dir = parse_next_string_field(entry, line, &offset)) == NULL) goto fail;
     if ((entry->mount_opts = parse_next_string_field(entry, line, &offset)) == NULL) goto fail;
-    entry->optional_fields = &entry->line_buf[0] + offset;
+    entry->optional_fields = __unsafe_forge_null_terminated(char *, &entry->line_buf[0] + offset);
     // NOTE: This ensures that optional_fields is never NULL. If this changes,
     // must adjust all callers of parse_mountinfo_entry() accordingly.
     for (int field_num = 0;; ++field_num) {
-        char *opt_field = parse_next_string_field(entry, line, &offset);
+        char *opt_field = __null_terminated_to_indexable(parse_next_string_field(entry, line, &offset));
         if (opt_field == NULL) goto fail;
         if (strcmp(opt_field, "-") == 0) {
             opt_field[0] = 0;
@@ -284,9 +291,9 @@ fail:
     return NULL;
 }
 
-void sc_cleanup_mountinfo(sc_mountinfo **ptr) {
+void sc_cleanup_mountinfo(sc_mountinfo * __unsafe_indexable * __unsafe_indexable ptr) {
     if (*ptr != NULL) {
-        sc_free_mountinfo(*ptr);
+        sc_free_mountinfo(__unsafe_forge_single(sc_mountinfo *, *ptr));
         *ptr = NULL;
     }
 }

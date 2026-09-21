@@ -14,10 +14,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include "error.h"
-
 // To get vasprintf
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
+
+#include "error.h"
 
 #include "utils.h"
 
@@ -26,7 +28,8 @@
 #include <stdio.h>
 #include <string.h>
 
-static sc_error *sc_error_initv(const char *domain, int code, const char *msgfmt, va_list ap) {
+static sc_error *sc_error_initv(const char *__null_terminated domain, int code, const char *__null_terminated msgfmt,
+                                va_list ap) {
     // Set errno in case we die.
     errno = 0;
     sc_error *err = calloc(1, sizeof *err);
@@ -41,7 +44,7 @@ static sc_error *sc_error_initv(const char *domain, int code, const char *msgfmt
     return err;
 }
 
-sc_error *sc_error_init(const char *domain, int code, const char *msgfmt, ...) {
+sc_error *sc_error_init(const char *__null_terminated domain, int code, const char *__null_terminated msgfmt, ...) {
     va_list ap;
     va_start(ap, msgfmt);
     sc_error *err = sc_error_initv(domain, code, msgfmt, ap);
@@ -49,7 +52,7 @@ sc_error *sc_error_init(const char *domain, int code, const char *msgfmt, ...) {
     return err;
 }
 
-sc_error *sc_error_init_from_errno(int errno_copy, const char *msgfmt, ...) {
+sc_error *sc_error_init_from_errno(int errno_copy, const char *__null_terminated msgfmt, ...) {
     va_list ap;
     va_start(ap, msgfmt);
     sc_error *err = sc_error_initv(SC_ERRNO_DOMAIN, errno_copy, msgfmt, ap);
@@ -57,7 +60,7 @@ sc_error *sc_error_init_from_errno(int errno_copy, const char *msgfmt, ...) {
     return err;
 }
 
-sc_error *sc_error_init_simple(const char *msgfmt, ...) {
+sc_error *sc_error_init_simple(const char *__null_terminated msgfmt, ...) {
     va_list ap;
     va_start(ap, msgfmt);
     sc_error *err = sc_error_initv(SC_LIBSNAP_DOMAIN, SC_UNSPECIFIED_ERROR, msgfmt, ap);
@@ -65,7 +68,7 @@ sc_error *sc_error_init_simple(const char *msgfmt, ...) {
     return err;
 }
 
-sc_error *sc_error_init_api_misuse(const char *msgfmt, ...) {
+sc_error *sc_error_init_api_misuse(const char *__null_terminated msgfmt, ...) {
     va_list ap;
     va_start(ap, msgfmt);
     sc_error *err = sc_error_initv(SC_LIBSNAP_DOMAIN, SC_API_MISUSE, msgfmt, ap);
@@ -73,7 +76,7 @@ sc_error *sc_error_init_api_misuse(const char *msgfmt, ...) {
     return err;
 }
 
-const char *sc_error_domain(sc_error *err) {
+const char *__null_terminated sc_error_domain(sc_error *err) {
     // Set errno in case we die.
     errno = 0;
     if (err == NULL) {
@@ -91,7 +94,7 @@ int sc_error_code(sc_error *err) {
     return err->code;
 }
 
-const char *sc_error_msg(sc_error *err) {
+const char *__null_terminated sc_error_msg(sc_error *err) {
     // Set errno in case we die.
     errno = 0;
     if (err == NULL) {
@@ -108,8 +111,8 @@ void sc_error_free(sc_error *err) {
     }
 }
 
-void sc_cleanup_error(sc_error **ptr) {
-    sc_error_free(*ptr);
+void sc_cleanup_error(sc_error * __unsafe_indexable * __unsafe_indexable ptr) {
+    sc_error_free(__unsafe_forge_single(sc_error *, *ptr));
     *ptr = NULL;
 }
 
@@ -134,7 +137,7 @@ int sc_error_forward(sc_error **recipient, sc_error *error) {
     return error != NULL ? -1 : 0;
 }
 
-bool sc_error_match(sc_error *error, const char *domain, int code) {
+bool sc_error_match(sc_error *error, const char *__null_terminated domain, int code) {
     // Set errno in case we die.
     errno = 0;
     if (domain == NULL) {

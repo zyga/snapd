@@ -51,7 +51,7 @@ static sc_cgroup_fds sc_cgroup_fds_new(void) {
 
 struct sc_device_cgroup {
     bool is_v2;
-    char *security_tag;
+    char *__unsafe_indexable security_tag;
     union {
         struct {
             sc_cgroup_fds fds;
@@ -60,7 +60,7 @@ struct sc_device_cgroup {
         struct {
             int devmap_fd;
             int prog_fd;
-            char *tag;
+            char *__unsafe_indexable tag;
             char pretty_name[BPF_OBJ_NAME_LEN]; /* only for presentation */
             struct rlimit old_limit;
         } v2;
@@ -68,9 +68,9 @@ struct sc_device_cgroup {
     };
 };
 
-__attribute__((format(printf, 2, 3))) static void sc_dprintf(int fd, const char *format, ...);
+__attribute__((format(printf, 2, 3))) static void sc_dprintf(int fd, const char *__null_terminated format, ...);
 
-static int sc_udev_open_cgroup_v1(const char *security_tag, int flags, sc_cgroup_fds *fds);
+static int sc_udev_open_cgroup_v1(const char *__null_terminated security_tag, int flags, sc_cgroup_fds *fds);
 static void sc_cleanup_cgroup_fds(sc_cgroup_fds *fds);
 
 static int _sc_cgroup_v1_init(sc_device_cgroup *self, int flags) {
@@ -79,7 +79,8 @@ static int _sc_cgroup_v1_init(sc_device_cgroup *self, int flags) {
     /* are we creating the group or just using whatever there is? */
     const bool from_existing = (flags & SC_DEVICE_CGROUP_FROM_EXISTING) != 0;
     /* initialize to something sane */
-    if (sc_udev_open_cgroup_v1(self->security_tag, flags, &self->v1.fds) < 0) {
+    if (sc_udev_open_cgroup_v1(__unsafe_forge_null_terminated(const char *, self->security_tag), flags, &self->v1.fds) <
+        0) {
         if (from_existing) {
             return -1;
         }
@@ -152,7 +153,7 @@ typedef struct sc_cgroup_v2_device_key sc_cgroup_v2_device_key;
 typedef uint8_t sc_cgroup_v2_device_value;
 
 #ifdef ENABLE_BPF
-static int load_devcgroup_prog(int map_fd, const char *name) {
+static int load_devcgroup_prog(int map_fd, const char *__null_terminated name) {
     /* Basic rules about registers:
      * r0    - return value of built in functions and exit code of the program
      * r1-r5 - respective arguments to built in functions, clobbered by calls
@@ -251,7 +252,7 @@ static int load_devcgroup_prog(int map_fd, const char *name) {
     return prog_fd;
 }
 
-static void _sc_cleanup_v2_device_key(sc_cgroup_v2_device_key **keyptr) {
+static void _sc_cleanup_v2_device_key(sc_cgroup_v2_device_key * __unsafe_indexable * __unsafe_indexable keyptr) {
     if (keyptr == NULL || *keyptr == NULL) {
         return;
     }
@@ -299,17 +300,18 @@ static struct rlimit _sc_cgroup_v2_adjust_memlock_limit(void) {
 
 // _sc_is_snap_cgroup checks that the cgroup looks like a snap specific one and
 // matches the snap's expected cgroup name.
-static bool _sc_is_snap_cgroup(const char *group, const char *expected_group_name) {
+static bool _sc_is_snap_cgroup(const char *__null_terminated group, const char *__null_terminated expected_group_name) {
     /* make a copy as basename may modify its input */
     char copy[PATH_MAX] = {0};
     strncpy(copy, group, sizeof(copy) - 1);
-    char *leaf = basename(copy);
+    char *__unsafe_indexable leaf = basename(copy);
     /* expecting: snap.foo.bar-<uuid>.scope or snap.foo.bar.service, where
        snap.foo.bar is the group name derived from security tag */
-    if (!sc_startswith(leaf, expected_group_name)) {
+    if (!sc_startswith(__unsafe_forge_null_terminated(const char *, leaf), expected_group_name)) {
         return false;
     }
-    if (!sc_endswith(leaf, ".service") && !sc_endswith(leaf, ".scope")) {
+    if (!sc_endswith(__unsafe_forge_null_terminated(const char *, leaf), ".service") &&
+        !sc_endswith(__unsafe_forge_null_terminated(const char *, leaf), ".scope")) {
         return false;
     }
     /* we already know that the string is longer than the group name as it at
@@ -331,9 +333,10 @@ static int _sc_cgroup_v2_init_bpf(sc_device_cgroup *self, int flags) {
 
     const bool from_existing = (flags & SC_DEVICE_CGROUP_FROM_EXISTING) != 0;
 
-    self->v2.tag = sc_strdup(self->security_tag);
+    self->v2.tag =
+        __null_terminated_to_indexable(sc_strdup(__unsafe_forge_null_terminated(const char *, self->security_tag)));
     /* bpffs is unhappy about dots in the name, replace all with underscores */
-    for (char *c = strchr(self->v2.tag, '.'); c != NULL; c = strchr(c, '.')) {
+    for (char *__unsafe_indexable c = strchr(self->v2.tag, '.'); c != NULL; c = strchr(c, '.')) {
         *c = '_';
     }
 
@@ -343,12 +346,12 @@ static int _sc_cgroup_v2_init_bpf(sc_device_cgroup *self, int flags) {
      * attach a `s_` prefix and then best effort copy of what fits in the name
      * from the part of security tag that follows the `snap_` prefix */
     /* note the tag is valid */
-    const char *pref_end = strchr(self->v2.tag, '_');
+    const char *__unsafe_indexable pref_end = strchr(self->v2.tag, '_');
     if (pref_end == NULL) {
         die("invalid position of separator in a valid tag");
     }
     /* this is where the name starts after snap_ */
-    const char *snap_name_start = pref_end + 1;
+    const char *__unsafe_indexable snap_name_start = pref_end + 1;
 
     sc_must_snprintf(self->v2.pretty_name, sizeof(self->v2.pretty_name), "s_");
     /* copy what fits into BPF_OBJ_NAME_LEN-2 ('s_' prefix) and truncate the
@@ -356,7 +359,7 @@ static int _sc_cgroup_v2_init_bpf(sc_device_cgroup *self, int flags) {
     strncpy(self->v2.pretty_name + 2, snap_name_start, sizeof(self->v2.pretty_name) - 2 - 1);
     /* Security tags may contain '+' and '-' characters that are not
      * valid for use in BPF object names. */
-    for (char *c = self->v2.pretty_name; *c != '\0'; c++)
+    for (char *__unsafe_indexable c = self->v2.pretty_name; *c != '\0'; c++)
         if ((*c == '-') || (*c == '+')) *c = '_';
 
     debug("bpf fs tag: %s, object name: %s", self->v2.tag, self->v2.pretty_name);
@@ -389,7 +392,7 @@ static int _sc_cgroup_v2_init_bpf(sc_device_cgroup *self, int flags) {
     close(bpf_fd);
 
     /* and obtain a file descriptor to the map, also as root */
-    int devmap_fd = bpf_get_by_path(path);
+    int devmap_fd = bpf_get_by_path(__unsafe_forge_null_terminated(const char *, &path[0]));
     /* keep a copy of errno in case it gets clobbered */
     int get_by_path_errno = errno;
     /* This used to be 500 (using ~47kB of kernel mem), but got bumped to 1000
@@ -419,7 +422,7 @@ static int _sc_cgroup_v2_init_bpf(sc_device_cgroup *self, int flags) {
          * pages (45k) of memlock memory, while on newer kernels (5.11+) only 2 (8k) */
         /* NOTE: the new file map must be owned by root:root. */
         devmap_fd = bpf_create_map(BPF_MAP_TYPE_HASH, sizeof(struct sc_cgroup_v2_device_key), value_size, max_entries,
-                                   self->v2.pretty_name);
+                                   __unsafe_forge_null_terminated(const char *, self->v2.pretty_name));
         if (devmap_fd < 0) {
             die("cannot create bpf map");
         }
@@ -432,7 +435,7 @@ static int _sc_cgroup_v2_init_bpf(sc_device_cgroup *self, int flags) {
          * bit of kernel memory still in use as, even once all BPF programs
          * referencing the map go away with their respective cgroups, the map
          * will stay around as it is still referenced by the path */
-        if (bpf_pin_to_path(devmap_fd, path) < 0) {
+        if (bpf_pin_to_path(devmap_fd, __unsafe_forge_null_terminated(const char *, &path[0])) < 0) {
             /* we checked that the map did not exist, so fail on EEXIST too */
             die("cannot pin map to %s", path);
         }
@@ -451,7 +454,7 @@ static int _sc_cgroup_v2_init_bpf(sc_device_cgroup *self, int flags) {
          * there in the map */
 
         /* first collect all keys in the map */
-        sc_cgroup_v2_device_key *existing_keys SC_CLEANUP(_sc_cleanup_v2_device_key) =
+        sc_cgroup_v2_device_key *__unsafe_indexable existing_keys SC_CLEANUP(_sc_cleanup_v2_device_key) =
             calloc(max_entries, sizeof(sc_cgroup_v2_device_key));
         if (existing_keys == NULL) {
             die("cannot allocate keys map");
@@ -504,7 +507,8 @@ static int _sc_cgroup_v2_init_bpf(sc_device_cgroup *self, int flags) {
 
     if (!from_existing) {
         /* load and attach the BPF program */
-        int prog_fd = load_devcgroup_prog(devmap_fd, self->v2.pretty_name);
+        int prog_fd =
+            load_devcgroup_prog(devmap_fd, __unsafe_forge_null_terminated(const char *, self->v2.pretty_name));
         /* keep track of the program */
         self->v2.prog_fd = prog_fd;
     }
@@ -518,7 +522,7 @@ static void _sc_cgroup_v2_close_bpf(sc_device_cgroup *self) {
     /* restore the old limit */
     _sc_cgroup_v2_set_memlock_limit(self->v2.old_limit);
 
-    sc_cleanup_string(&self->v2.tag);
+    sc_cleanup_string(__unsafe_forge_single(char **, &self->v2.tag));
     /* the map is pinned to a per-snap-application file and referenced by the
      * program */
     sc_cleanup_close(&self->v2.devmap_fd);
@@ -559,14 +563,16 @@ static void _sc_cgroup_v2_attach_pid_bpf(sc_device_cgroup *self, pid_t pid) {
         die("internal error: BPF program not loaded");
     }
 
-    char *own_group SC_CLEANUP(sc_cleanup_string) = sc_cgroup_v2_own_path_full();
+    char *__unsafe_indexable own_group SC_CLEANUP(sc_cleanup_string) = sc_cgroup_v2_own_path_full();
     if (own_group == NULL) {
         die("cannot obtain own group path");
     }
     debug("process in cgroup %s", own_group);
 
-    char *expected_unit_name SC_CLEANUP(sc_cleanup_string) = sc_security_tag_to_unit_name(self->security_tag);
-    if (!_sc_is_snap_cgroup(own_group, expected_unit_name)) {
+    char *__unsafe_indexable expected_unit_name SC_CLEANUP(sc_cleanup_string) =
+        sc_security_tag_to_unit_name(__unsafe_forge_null_terminated(const char *, self->security_tag));
+    if (!_sc_is_snap_cgroup(__unsafe_forge_null_terminated(const char *, own_group),
+                            __unsafe_forge_null_terminated(const char *, expected_unit_name))) {
         /* we cannot proceed to install a device filtering program when the
          * process is not in a snap specific cgroup, as we would effectively
          * lock down the group that can be shared with other processes or even
@@ -637,13 +643,13 @@ static int _sc_cgroup_v2_init(sc_device_cgroup *self, int flags) {
 
 static void sc_device_cgroup_close(sc_device_cgroup *self);
 
-sc_device_cgroup *sc_device_cgroup_new(const char *security_tag, int flags) {
+sc_device_cgroup *sc_device_cgroup_new(const char *__null_terminated security_tag, int flags) {
     sc_device_cgroup *self = calloc(1, sizeof(sc_device_cgroup));
     if (self == NULL) {
         die("cannot allocate device cgroup wrapper");
     }
     self->is_v2 = sc_cgroup_is_v2();
-    self->security_tag = sc_strdup(security_tag);
+    self->security_tag = __null_terminated_to_indexable(sc_strdup(security_tag));
 
     int ret = 0;
     if (self->is_v2) {
@@ -665,15 +671,15 @@ static void sc_device_cgroup_close(sc_device_cgroup *self) {
     } else {
         _sc_cgroup_v1_close(self);
     }
-    sc_cleanup_string(&self->security_tag);
+    sc_cleanup_string(__unsafe_forge_single(char **, &self->security_tag));
     free(self);
 }
 
-void sc_device_cgroup_cleanup(sc_device_cgroup **self) {
+void sc_device_cgroup_cleanup(sc_device_cgroup * __unsafe_indexable * __unsafe_indexable self) {
     if (*self == NULL) {
         return;
     }
-    sc_device_cgroup_close(*self);
+    sc_device_cgroup_close(__unsafe_forge_single(sc_device_cgroup *, *self));
     *self = NULL;
 }
 
@@ -710,7 +716,7 @@ int sc_device_cgroup_attach_pid(sc_device_cgroup *self, pid_t pid) {
     return 0;
 }
 
-static void sc_dprintf(int fd, const char *format, ...) {
+static void sc_dprintf(int fd, const char *__null_terminated format, ...) {
     va_list ap1;
     va_list ap2;
     int n_expected, n_actual;
@@ -726,7 +732,7 @@ static void sc_dprintf(int fd, const char *format, ...) {
     va_end(ap1);
 }
 
-static int sc_udev_open_cgroup_v1(const char *security_tag, int flags, sc_cgroup_fds *fds) {
+static int sc_udev_open_cgroup_v1(const char *__null_terminated security_tag, int flags, sc_cgroup_fds *fds) {
     /* Open /sys/fs/cgroup */
     const char *cgroup_path = "/sys/fs/cgroup";
     int SC_CLEANUP(sc_cleanup_close) cgroup_fd = -1;
@@ -744,10 +750,11 @@ static int sc_udev_open_cgroup_v1(const char *security_tag, int flags, sc_cgroup
         die("cannot open %s/%s", cgroup_path, devices_relpath);
     }
 
-    const char *security_tag_relpath = security_tag;
+    const char *__unsafe_indexable security_tag_relpath = __null_terminated_to_indexable(security_tag);
     if (!from_existing) {
         /* Create snap.$SNAP_NAME.$APP_NAME relative to /sys/fs/cgroup/devices */
-        if (sc_ensure_mkdirat(devices_fd, security_tag_relpath, 0700, 0, 0) != 0) {
+        if (sc_ensure_mkdirat(devices_fd, __unsafe_forge_null_terminated(const char *, security_tag_relpath), 0700, 0,
+                              0) != 0) {
             die("cannot create directory %s/%s/%s", cgroup_path, devices_relpath, security_tag_relpath);
         }
     }

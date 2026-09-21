@@ -20,6 +20,8 @@
 
 #include <stdbool.h>
 
+#include "bounds-safety.h"
+
 #define SC_GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 
 /**
@@ -47,12 +49,12 @@
  **/
 typedef struct sc_error {
     // Error domain defines a scope for particular error codes.
-    const char *domain;
+    const char *__null_terminated domain;
     // Code differentiates particular errors for the programmer.
     // The code may be zero if the particular meaning is not relevant.
     int code;
     // Message carries a formatted description of the problem.
-    char *msg;
+    char *__null_terminated msg;
 } sc_error;
 
 /**
@@ -86,7 +88,7 @@ typedef enum sc_libsnap_error {
  * This function calls die() in case of memory allocation failure.
  **/
 __attribute__((warn_unused_result, format(printf, 3, 4) SC_APPEND_RETURNS_NONNULL)) sc_error *sc_error_init(
-    const char *domain, int code, const char *msgfmt, ...);
+    const char *__null_terminated domain, int code, const char *__null_terminated msgfmt, ...);
 
 /**
  * Initialize an unspecified error with formatted message.
@@ -95,7 +97,7 @@ __attribute__((warn_unused_result, format(printf, 3, 4) SC_APPEND_RETURNS_NONNUL
  * SC_UNSPECIFIED_ERROR, msgfmt, ...) which is repeated often.
  **/
 __attribute__((warn_unused_result, format(printf, 1, 2) SC_APPEND_RETURNS_NONNULL)) sc_error *sc_error_init_simple(
-    const char *msgfmt, ...);
+    const char *__null_terminated msgfmt, ...);
 
 /**
  * Initialize an API misuse error with formatted message.
@@ -104,7 +106,7 @@ __attribute__((warn_unused_result, format(printf, 1, 2) SC_APPEND_RETURNS_NONNUL
  * SC_API_MISUSE, msgfmt, ...) which is repeated often.
  **/
 __attribute__((warn_unused_result, format(printf, 1, 2) SC_APPEND_RETURNS_NONNULL)) sc_error *sc_error_init_api_misuse(
-    const char *msgfmt, ...);
+    const char *__null_terminated msgfmt, ...);
 
 /**
  * Initialize an errno-based error.
@@ -115,7 +117,7 @@ __attribute__((warn_unused_result, format(printf, 1, 2) SC_APPEND_RETURNS_NONNUL
  * This function calls die() in case of memory allocation failure.
  **/
 __attribute__((warn_unused_result, format(printf, 2, 3) SC_APPEND_RETURNS_NONNULL)) sc_error *sc_error_init_from_errno(
-    int errno_copy, const char *msgfmt, ...);
+    int errno_copy, const char *__null_terminated msgfmt, ...);
 
 /**
  * Get the error domain out of an error object.
@@ -123,7 +125,8 @@ __attribute__((warn_unused_result, format(printf, 2, 3) SC_APPEND_RETURNS_NONNUL
  * The error domain acts as a namespace for error codes.
  * No change of ownership takes place.
  **/
-__attribute__((warn_unused_result SC_APPEND_RETURNS_NONNULL)) const char *sc_error_domain(sc_error *err);
+__attribute__((warn_unused_result SC_APPEND_RETURNS_NONNULL)) const char *__null_terminated
+sc_error_domain(sc_error *err);
 
 /**
  * Get the error code out of an error object.
@@ -143,7 +146,7 @@ __attribute__((warn_unused_result)) int sc_error_code(sc_error *err);
  * The error message is bound to the life-cycle of the error object.
  * No change of ownership takes place.
  **/
-__attribute__((warn_unused_result SC_APPEND_RETURNS_NONNULL)) const char *sc_error_msg(sc_error *err);
+__attribute__((warn_unused_result SC_APPEND_RETURNS_NONNULL)) const char *__null_terminated sc_error_msg(sc_error *err);
 
 /**
  * Free an error object.
@@ -158,7 +161,7 @@ void sc_error_free(sc_error *error);
  * This function is designed to be used with
  * __attribute__((cleanup(sc_cleanup_error))).
  **/
-__attribute__((nonnull)) void sc_cleanup_error(sc_error **ptr);
+__attribute__((nonnull)) void sc_cleanup_error(sc_error * __unsafe_indexable * __unsafe_indexable ptr);
 
 /**
  *
@@ -194,6 +197,7 @@ int sc_error_forward(sc_error **recipient, sc_error *error);
  * It is okay to match a NULL error, the function simply returns false in that
  * case. The domain cannot be NULL though.
  **/
-__attribute__((warn_unused_result)) bool sc_error_match(sc_error *error, const char *domain, int code);
+__attribute__((warn_unused_result)) bool sc_error_match(sc_error *error, const char *__null_terminated domain,
+                                                        int code);
 
 #endif
