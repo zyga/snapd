@@ -29,7 +29,7 @@
 #include "string-utils.h"
 #include "utils.h"
 
-const char *sc_mount_opt2str(char *buf, size_t buf_size, unsigned long flags) {
+const char *__null_terminated sc_mount_opt2str(char *__counted_by(buf_size) buf, size_t buf_size, unsigned long flags) {
     unsigned long used = 0;
     sc_string_init(buf, buf_size);
 
@@ -118,18 +118,20 @@ const char *sc_mount_opt2str(char *buf, size_t buf_size, unsigned long flags) {
     if (flags) {
         char of[128] = {0};
         sc_must_snprintf(of, sizeof of, "%#lx", flags);
-        sc_string_append(buf, buf_size, of);
+        sc_string_append(buf, buf_size, __unsafe_forge_null_terminated(char *, &of[0]));
     }
     // Chop the excess comma from the end.
     size_t len = strnlen(buf, buf_size);
     if (len > 0 && buf[len - 1] == ',') {
         buf[len - 1] = 0;
     }
-    return buf;
+    return __unsafe_forge_null_terminated(char *, &buf[0]);
 }
 
-const char *sc_mount_cmd(char *buf, size_t buf_size, const char *source, const char *target, const char *fs_type,
-                         unsigned long mountflags, const void *data) {
+const char *__null_terminated sc_mount_cmd(char *__counted_by(buf_size) buf, size_t buf_size,
+                                           const char *__null_terminated source, const char *__null_terminated target,
+                                           const char *__null_terminated fs_type, unsigned long mountflags,
+                                           const void *data) {
     sc_string_init(buf, buf_size);
     sc_string_append(buf, buf_size, "mount");
 
@@ -205,7 +207,7 @@ const char *sc_mount_cmd(char *buf, size_t buf_size, const char *source, const c
         char opts_buf[1000] = {0};
         sc_mount_opt2str(opts_buf, sizeof opts_buf, mountflags & ~used_special_flags);
         sc_string_append(buf, buf_size, " -o ");
-        sc_string_append(buf, buf_size, opts_buf);
+        sc_string_append(buf, buf_size, __unsafe_forge_null_terminated(char *, &opts_buf[0]));
     }
     // Add source and target locations
     if (source != NULL && strncmp(source, "none", 5) != 0) {
@@ -217,10 +219,11 @@ const char *sc_mount_cmd(char *buf, size_t buf_size, const char *source, const c
         sc_string_append(buf, buf_size, target);
     }
 
-    return buf;
+    return __unsafe_forge_null_terminated(char *, &buf[0]);
 }
 
-const char *sc_umount_cmd(char *buf, size_t buf_size, const char *target, int flags) {
+const char *__null_terminated sc_umount_cmd(char *__counted_by(buf_size) buf, size_t buf_size,
+                                            const char *__null_terminated target, int flags) {
     sc_string_init(buf, buf_size);
     sc_string_append(buf, buf_size, "umount");
 
@@ -244,17 +247,18 @@ const char *sc_umount_cmd(char *buf, size_t buf_size, const char *target, int fl
         sc_string_append(buf, buf_size, target);
     }
 
-    return buf;
+    return __unsafe_forge_null_terminated(char *, &buf[0]);
 }
 
 #ifndef SNAP_CONFINE_DEBUG_BUILD
-static const char *use_debug_build = "(disabled) use debug build to see details";
+static const char *__null_terminated use_debug_build = "(disabled) use debug build to see details";
 #endif
 
-static bool sc_do_mount_ex(const char *source, const char *target, const char *fs_type, unsigned long mountflags,
-                           const void *data, bool optional) {
+static bool sc_do_mount_ex(const char *__null_terminated source, const char *__null_terminated target,
+                           const char *__null_terminated fs_type, unsigned long mountflags, const void *data,
+                           bool optional) {
     char buf[10000] = {0};
-    const char *mount_cmd = NULL;
+    const char *__null_terminated mount_cmd = NULL;
 
     if (sc_is_debug_enabled()) {
 #ifdef SNAP_CONFINE_DEBUG_BUILD
@@ -283,19 +287,19 @@ static bool sc_do_mount_ex(const char *source, const char *target, const char *f
     return true;
 }
 
-void sc_do_mount(const char *source, const char *target, const char *fs_type, unsigned long mountflags,
-                 const void *data) {
+void sc_do_mount(const char *__null_terminated source, const char *__null_terminated target,
+                 const char *__null_terminated fs_type, unsigned long mountflags, const void *data) {
     (void)sc_do_mount_ex(source, target, fs_type, mountflags, data, false);
 }
 
-bool sc_do_optional_mount(const char *source, const char *target, const char *fs_type, unsigned long mountflags,
-                          const void *data) {
+bool sc_do_optional_mount(const char *__null_terminated source, const char *__null_terminated target,
+                          const char *__null_terminated fs_type, unsigned long mountflags, const void *data) {
     return sc_do_mount_ex(source, target, fs_type, mountflags, data, true);
 }
 
-void sc_do_umount(const char *target, int flags) {
+void sc_do_umount(const char *__null_terminated target, int flags) {
     char buf[10000] = {0};
-    const char *umount_cmd = NULL;
+    const char *__null_terminated umount_cmd = NULL;
 
     if (sc_is_debug_enabled()) {
 #ifdef SNAP_CONFINE_DEBUG_BUILD

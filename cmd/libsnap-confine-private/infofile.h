@@ -21,6 +21,7 @@
 #include <stdio.h>
 
 #include "../libsnap-confine-private/error.h"
+#include "bounds-safety.h"
 
 /**
  * sc_infofile_get_key extracts a single value of a key=value pair from a given
@@ -31,7 +32,7 @@
  * detailed error information is stored by dereferencing err_out. If an error
  * occurs and err_out is NULL then the program dies, printing the error message.
  **/
-int sc_infofile_get_key(FILE *stream, const char *key, char **value, sc_error **err_out);
+int sc_infofile_get_key(FILE *stream, const char *__null_terminated key, char **value, sc_error **err_out);
 
 /**
  * sc_infofile_get_ini_section_key extracts a single value of a key=value pair
@@ -42,7 +43,7 @@ int sc_infofile_get_key(FILE *stream, const char *key, char **value, sc_error **
  * detailed error information is stored by dereferencing err_out. If an error
  * occurs and err_out is NULL then the program dies, printing the error message.
  **/
-int sc_infofile_get_ini_section_key(FILE *stream, const char *section, const char *key, char **value,
-                                    sc_error **err_out);
+int sc_infofile_get_ini_section_key(FILE *stream, const char *__null_terminated section,
+                                    const char *__null_terminated key, char **value, sc_error **err_out);
 
 #endif

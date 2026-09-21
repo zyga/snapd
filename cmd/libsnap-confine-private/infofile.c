@@ -27,15 +27,15 @@
 #include "../libsnap-confine-private/string-utils.h"
 #include "../libsnap-confine-private/utils.h"
 
-int sc_infofile_get_key(FILE *stream, const char *key, char **value, sc_error **err_out) {
+int sc_infofile_get_key(FILE *stream, const char *__null_terminated key, char **value, sc_error **err_out) {
     return sc_infofile_get_ini_section_key(stream, NULL, key, value, err_out);
 }
 
-int sc_infofile_get_ini_section_key(FILE *stream, const char *section, const char *key, char **value,
-                                    sc_error **err_out) {
+int sc_infofile_get_ini_section_key(FILE *stream, const char *__null_terminated section,
+                                    const char *__null_terminated key, char **value, sc_error **err_out) {
     sc_error *err = NULL;
     size_t line_size = 0;
-    char *line_buf SC_CLEANUP(sc_cleanup_string) = NULL;
+    char *__unsafe_indexable line_buf SC_CLEANUP(sc_cleanup_string) = NULL;
 
     if (stream == NULL) {
         err = sc_error_init_api_misuse("stream cannot be NULL");
@@ -101,15 +101,15 @@ int sc_infofile_get_ini_section_key(FILE *stream, const char *section, const cha
             }
             section_matched = false;
             // skip the leading [ and trailing \0
-            char *start_section_name = line_buf + 1;
-            char *end_section_name = strchr(start_section_name, ']');
+            char *__unsafe_indexable start_section_name = line_buf + 1;
+            char *__unsafe_indexable end_section_name = strchr(start_section_name, ']');
             if (end_section_name == NULL) {
                 err = sc_error_init_simple("line %d is not a valid ini section", lineno);
                 goto out;
             }
             /* Replace closing ']' with string terminator byte */
             *end_section_name = '\0';
-            if (sc_streq(start_section_name, section)) {
+            if (sc_streq(__unsafe_forge_null_terminated(char *, start_section_name), section)) {
                 section_matched = true;
             }
             /* Advance to next line */
@@ -122,7 +122,7 @@ int sc_infofile_get_ini_section_key(FILE *stream, const char *section, const cha
         }
 
         /* Guard against malformed input that does not contain '=' byte */
-        char *eq_ptr = strchr(line_buf, '=');
+        char *__unsafe_indexable eq_ptr = strchr(line_buf, '=');
         if (eq_ptr == NULL) {
             err = sc_error_init_simple("line %d is not a key=value assignment", lineno);
             goto out;
@@ -136,10 +136,10 @@ int sc_infofile_get_ini_section_key(FILE *stream, const char *section, const cha
         *eq_ptr = '\0';
 
         /* If the key matches the one we are looking for, store it and stop scanning. */
-        const char *scanned_key = line_buf;
-        const char *scanned_value = eq_ptr + 1;
+        const char *__null_terminated scanned_key = __unsafe_forge_null_terminated(char *, line_buf);
+        const char *__null_terminated scanned_value = __unsafe_forge_null_terminated(char *, eq_ptr + 1);
         if (sc_streq(scanned_key, key)) {
-            *value = sc_strdup(scanned_value);
+            *value = __null_terminated_to_indexable(sc_strdup(scanned_value));
             break;
         }
     }
