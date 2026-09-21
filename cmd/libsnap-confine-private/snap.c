@@ -28,7 +28,8 @@
 #include "string-utils.h"
 #include "utils.h"
 
-bool sc_security_tag_validate(const char *security_tag, const char *snap_instance, const char *component_name) {
+bool sc_security_tag_validate(const char *__null_terminated security_tag, const char *__null_terminated snap_instance,
+                              const char *__null_terminated component_name) {
     /* Don't even check overly long tags. */
     if (strlen(security_tag) > SNAP_SECURITY_TAG_MAX_LEN) {
         return false;
@@ -76,7 +77,8 @@ bool sc_security_tag_validate(const char *security_tag, const char *snap_instanc
         }
 
         size_t len = matches[7].rm_eo - matches[7].rm_so;
-        if (len != component_name_len || strncmp(security_tag + matches[7].rm_so, component_name, len) != 0) {
+        if (len != component_name_len ||
+            strncmp(__null_terminated_to_indexable(security_tag) + matches[7].rm_so, component_name, len) != 0) {
             return false;
         }
     } else if (matches[7].rm_so >= 0) {
@@ -86,10 +88,11 @@ bool sc_security_tag_validate(const char *security_tag, const char *snap_instanc
     }
 
     size_t len = matches[1].rm_eo - matches[1].rm_so;
-    return len == strlen(snap_instance) && strncmp(security_tag + matches[1].rm_so, snap_instance, len) == 0;
+    return len == strlen(snap_instance) &&
+           strncmp(__null_terminated_to_indexable(security_tag) + matches[1].rm_so, snap_instance, len) == 0;
 }
 
-bool sc_is_hook_security_tag(const char *security_tag) {
+bool sc_is_hook_security_tag(const char *__null_terminated security_tag) {
     const char *whitelist_re = "^snap\\.[a-z](-?[a-z0-9])*(_[a-z0-9]{1,10})?\\.(hook\\.[a-z](-?[a-z0-9])*)$";
 
     regex_t re;
@@ -101,25 +104,25 @@ bool sc_is_hook_security_tag(const char *security_tag) {
     return status == 0;
 }
 
-static int skip_lowercase_letters(const char **p) {
+static int skip_lowercase_letters(const char *__bidi_indexable *p) {
     int skipped = 0;
     for (const char *c = *p; *c >= 'a' && *c <= 'z'; ++c) {
         skipped += 1;
     }
-    *p = (*p) + skipped;
+    *p = *p + skipped;
     return skipped;
 }
 
-static int skip_digits(const char **p) {
+static int skip_digits(const char *__bidi_indexable *p) {
     int skipped = 0;
     for (const char *c = *p; *c >= '0' && *c <= '9'; ++c) {
         skipped += 1;
     }
-    *p = (*p) + skipped;
+    *p = *p + skipped;
     return skipped;
 }
 
-static int skip_one_char(const char **p, char c) {
+static int skip_one_char(const char *__bidi_indexable *p, char c) {
     if (**p == c) {
         *p += 1;
         return 1;
@@ -127,11 +130,11 @@ static int skip_one_char(const char **p, char c) {
     return 0;
 }
 
-static void validate_as_snap_or_component_name(const char *name, int err_code, const char *err_subject,
-                                               sc_error **errorp) {
+static void validate_as_snap_or_component_name(const char *__null_terminated name, int err_code,
+                                               const char *__null_terminated err_subject, sc_error **errorp) {
     // NOTE: This function should be synchronized with the two other
     // implementations: validate_snap_name and snap.ValidateName.
-    sc_error *err = NULL;
+    sc_error *__single err = NULL;
 
     // Ensure that name is not NULL
     if (name == NULL) {
@@ -152,7 +155,7 @@ static void validate_as_snap_or_component_name(const char *name, int err_code, c
     // The only motivation for not using regular expressions is so that we
     // don't run untrusted input against a potentially complex regular
     // expression engine.
-    const char *p = name;
+    const char *p = __unsafe_null_terminated_to_indexable(name);
     if (skip_one_char(&p, '-')) {
         err = sc_error_init(SC_SNAP_DOMAIN, err_code, "%s cannot start with a dash", err_subject);
         goto out;
@@ -197,10 +200,10 @@ out:
     sc_error_forward(errorp, err);
 }
 
-void sc_instance_name_validate(const char *instance_name, sc_error **errorp) {
+void sc_instance_name_validate(const char *__null_terminated instance_name, sc_error **errorp) {
     // NOTE: This function should be synchronized with the two other
     // implementations: validate_instance_name and snap.ValidateInstanceName.
-    sc_error *err = NULL;
+    sc_error *__single err = NULL;
 
     // Ensure that name is not NULL
     if (instance_name == NULL) {
@@ -217,10 +220,10 @@ void sc_instance_name_validate(const char *instance_name, sc_error **errorp) {
     char s[SNAP_INSTANCE_LEN + 1 + 1] = {0};
     strncpy(s, instance_name, sizeof(s) - 1);
 
-    char *t = s;
-    const char *snap_name = strsep(&t, "_");
-    const char *instance_key = strsep(&t, "_");
-    const char *third_separator = strsep(&t, "_");
+    char *__single t = s;
+    const char *__null_terminated snap_name = __unsafe_forge_null_terminated(const char *, strsep(&t, "_"));
+    const char *__null_terminated instance_key = __unsafe_forge_null_terminated(const char *, strsep(&t, "_"));
+    const char *__null_terminated third_separator = __unsafe_forge_null_terminated(const char *, strsep(&t, "_"));
     if (third_separator != NULL) {
         err = sc_error_init(SC_SNAP_DOMAIN, SC_SNAP_INVALID_INSTANCE_NAME,
                             "snap instance name can contain only one underscore");
@@ -241,10 +244,10 @@ out:
     sc_error_forward(errorp, err);
 }
 
-void sc_instance_key_validate(const char *instance_key, sc_error **errorp) {
+void sc_instance_key_validate(const char *__null_terminated instance_key, sc_error **errorp) {
     // NOTE: see snap.ValidateInstanceName for reference of a valid instance key
     // format
-    sc_error *err = NULL;
+    sc_error *__single err = NULL;
 
     // Ensure that name is not NULL
     if (instance_key == NULL) {
@@ -259,8 +262,13 @@ void sc_instance_key_validate(const char *instance_key, sc_error **errorp) {
     // run untrusted input against a potentially complex regular expression
     // engine.
     int i = 0;
-    for (i = 0; instance_key[i] != '\0'; i++) {
-        if (islower(instance_key[i]) || isdigit(instance_key[i])) {
+    /* The loop reads the terminating NUL (key[i] == '\0'), which is one past
+     * the bound that the checked __null_terminated_to_indexable() conversion
+     * yields.  instance_key is NUL-terminated by contract, so use the unchecked
+     * conversion here. */
+    const char *__bidi_indexable key = __unsafe_null_terminated_to_indexable(instance_key);
+    for (i = 0; key[i] != '\0'; i++) {
+        if (islower(key[i]) || isdigit(key[i])) {
             continue;
         }
         err = sc_error_init(SC_SNAP_DOMAIN, SC_SNAP_INVALID_INSTANCE_KEY,
@@ -279,8 +287,9 @@ out:
     sc_error_forward(errorp, err);
 }
 
-void sc_snap_component_validate(const char *snap_component, const char *snap_instance, sc_error **errorp) {
-    sc_error *err = NULL;
+void sc_snap_component_validate(const char *__null_terminated snap_component,
+                                const char *__null_terminated snap_instance, sc_error **errorp) {
+    sc_error *__single err = NULL;
 
     // ensure that name is not NULL
     if (snap_component == NULL) {
@@ -288,7 +297,8 @@ void sc_snap_component_validate(const char *snap_component, const char *snap_ins
         goto out;
     }
 
-    const char *pos = strchr(snap_component, '+');
+    const char *__null_terminated pos =
+        __unsafe_forge_null_terminated(const char *, strchr(__null_terminated_to_indexable(snap_component), '+'));
     if (pos == NULL) {
         err = sc_error_init(SC_SNAP_DOMAIN, SC_SNAP_INVALID_COMPONENT, "snap component must contain a +");
         goto out;
@@ -313,12 +323,14 @@ void sc_snap_component_validate(const char *snap_component, const char *snap_ins
     char component_name[SNAP_NAME_LEN + 1] = {0};
     strncpy(component_name, pos + 1, sizeof(component_name) - 1);
 
-    validate_as_snap_or_component_name(snap_name, SC_SNAP_INVALID_COMPONENT, "snap name in component", &err);
+    validate_as_snap_or_component_name(__unsafe_forge_null_terminated(const char *, &snap_name[0]),
+                                       SC_SNAP_INVALID_COMPONENT, "snap name in component", &err);
     if (err != NULL) {
         goto out;
     }
 
-    validate_as_snap_or_component_name(component_name, SC_SNAP_INVALID_COMPONENT, "component name", &err);
+    validate_as_snap_or_component_name(__unsafe_forge_null_terminated(const char *, &component_name[0]),
+                                       SC_SNAP_INVALID_COMPONENT, "component name", &err);
     if (err != NULL) {
         goto out;
     }
@@ -338,28 +350,32 @@ out:
     sc_error_forward(errorp, err);
 }
 
-void sc_snap_name_validate(const char *snap_name, sc_error **errorp) {
+void sc_snap_name_validate(const char *__null_terminated snap_name, sc_error **errorp) {
     validate_as_snap_or_component_name(snap_name, SC_SNAP_INVALID_NAME, "snap name", errorp);
 }
 
-void sc_snap_drop_instance_key(const char *instance_name, char *snap_name, size_t snap_name_size) {
+void sc_snap_drop_instance_key(const char *__null_terminated instance_name,
+                               char *__counted_by_or_null(snap_name_size) snap_name, size_t snap_name_size) {
     sc_snap_split_instance_name(instance_name, snap_name, snap_name_size, NULL, 0);
 }
 
-void sc_snap_split_instance_name(const char *instance_name, char *snap_name, size_t snap_name_size, char *instance_key,
-                                 size_t instance_key_size) {
+void sc_snap_split_instance_name(const char *__null_terminated instance_name,
+                                 char *__counted_by_or_null(snap_name_size) snap_name, size_t snap_name_size,
+                                 char *__counted_by_or_null(instance_key_size) instance_key, size_t instance_key_size) {
     sc_string_split(instance_name, '_', snap_name, snap_name_size, instance_key, instance_key_size);
 }
 
-void sc_snap_split_snap_component(const char *snap_component, char *snap_name, size_t snap_name_size,
-                                  char *component_name, size_t component_name_size) {
+void sc_snap_split_snap_component(const char *__null_terminated snap_component,
+                                  char *__counted_by_or_null(snap_name_size) snap_name, size_t snap_name_size,
+                                  char *__counted_by_or_null(component_name_size) component_name,
+                                  size_t component_name_size) {
     sc_string_split(snap_component, '+', snap_name, snap_name_size, component_name, component_name_size);
 }
 
-char *sc_security_tag_to_unit_name(const char *security_tag) {
+char *__null_terminated sc_security_tag_to_unit_name(const char *__null_terminated security_tag) {
     char unit_name[PATH_MAX] = {0};
 
-    for (const char *c = security_tag; *c != 0; c++) {
+    for (const char *c = __null_terminated_to_indexable(security_tag); *c != 0; c++) {
         switch (*c) {
             case '0' ... '9':
             case 'a' ... 'z':
@@ -381,5 +397,5 @@ char *sc_security_tag_to_unit_name(const char *security_tag) {
                 break;
         }
     }
-    return sc_strdup(unit_name);
+    return sc_strdup(__unsafe_forge_null_terminated(const char *, &unit_name[0]));
 }
