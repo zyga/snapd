@@ -380,6 +380,61 @@ AC_ARG_ENABLE([sanitize],
     [enable_sanitize=no])
 AM_CONDITIONAL([ENABLE_SANITIZE], [test "x$enable_sanitize" = "xyes"])
 
+# Enable clang's -fbounds-safety extension by calling:
+# ./configure --enable-bounds-safety
+# This enforces bounds checking on annotated C pointers at run time.  The
+# feature requires a clang build that actually implements the extension
+# (upstream clang only carries it experimentally; see
+# https://clang.llvm.org/docs/BoundsSafety.html).  Bounds annotations are
+# macro-defined to empty when the toolchain lacks support, so the tree keeps
+# building with gcc or plain clang regardless of this switch.
+AC_ARG_ENABLE([bounds-safety],
+    AS_HELP_STRING([--enable-bounds-safety], [Build C code with clang's -fbounds-safety bounds checking.
+                                               Requires a clang that implements the extension; without one
+                                               the flag is dropped with a warning and the build proceeds.]),
+    [case "$enableval" in
+        yes)
+          enable_bounds_safety=yes
+          ;;
+        no)
+          enable_bounds_safety=no
+          ;;
+        *) AC_MSG_ERROR([bad value ${enableval} for --enable-bounds-safety])
+    esac],
+    [enable_bounds_safety=no])
+
+AS_IF([test "x$enable_bounds_safety" = "xyes"], [
+  # Probe for a functional -fbounds-safety: it must both accept the flag and
+  # parse the annotations (with ptrcheck.h providing the macro definitions).
+  AC_CACHE_CHECK([whether $CC supports -fbounds-safety], [snapd_cv_bounds_safety_works], [
+    save_CFLAGS="${CFLAGS}"
+    CFLAGS="${CFLAGS} -fbounds-safety"
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+#ifdef __has_include
+# if __has_include(<ptrcheck.h>)
+#  include <ptrcheck.h>
+# endif
+#endif
+void f(int *__counted_by(n) p, unsigned n) { if (n) p[0] = 0; }
+]])], [
+      snapd_cv_bounds_safety_works=yes
+    ], [
+      snapd_cv_bounds_safety_works=no
+    ])
+    CFLAGS="${save_CFLAGS}"
+  ])
+
+  AS_IF([test "x$snapd_cv_bounds_safety_works" = "xyes"], [
+    AX_APPEND_COMPILE_FLAGS([-fbounds-safety], [BOUNDS_SAFETY_CFLAGS])
+    AC_DEFINE([HAVE_BOUNDS_SAFETY], [1], [Build with clang -fbounds-safety bounds checking])
+  ], [
+    enable_bounds_safety=no
+    AC_MSG_WARN([-fbounds-safety is not supported by $CC; building without bounds checking])
+  ])
+])
+AM_CONDITIONAL([ENABLE_BOUNDS_SAFETY], [test "x$enable_bounds_safety" = "xyes"])
+AC_SUBST([BOUNDS_SAFETY_CFLAGS])
+
 AC_SUBST([CHECK_CFLAGS])
 AC_SUBST([CHECK_LDFLAGS])
 

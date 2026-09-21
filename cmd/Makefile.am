@@ -6,8 +6,15 @@ dist_man_MANS =
 noinst_PROGRAMS =
 noinst_LIBRARIES =
 
-AM_CFLAGS = $(CHECK_CFLAGS) $(CODE_COVERAGE_CFLAGS)
+AM_CFLAGS = $(CHECK_CFLAGS) $(CODE_COVERAGE_CFLAGS) $(BOUNDS_SAFETY_CFLAGS)
 AM_LDFLAGS = $(CHECK_LDFLAGS) $(CODE_COVERAGE_LDFLAGS)
+if ENABLE_BOUNDS_SAFETY
+# The unit-test programs pull in glib and other system headers that have not
+# adopted bounds annotations.  They are not annotated themselves (only shipped
+# code is), so opt them out of -fbounds-safety.  This is a no-op when bounds
+# safety is disabled.
+NO_BOUNDS_SAFETY_CFLAGS = -fno-bounds-safety
+endif
 if ENABLE_SANITIZE
 SANITIZE_CFLAGS = -fsanitize=address -fsanitize=undefined
 SANITIZE_LDFLAGS = -fsanitize=address -fsanitize=undefined
@@ -116,6 +123,7 @@ noinst_LIBRARIES += libsnap-confine-private.a
 libsnap_confine_private_a_SOURCES = \
 	libsnap-confine-private/apparmor-support.c \
 	libsnap-confine-private/apparmor-support.h \
+	libsnap-confine-private/bounds-safety.h \
 	libsnap-confine-private/bpf/bpf-insn.h \
 	libsnap-confine-private/cgroup-freezer-support.c \
 	libsnap-confine-private/cgroup-freezer-support.h \
@@ -181,7 +189,7 @@ libsnap_confine_private_test_support_a_SOURCES = \
 	libsnap-confine-private/unit-tests-main.c \
 	libsnap-confine-private/unit-tests.c \
 	libsnap-confine-private/unit-tests.h
-libsnap_confine_private_test_support_a_CFLAGS = $(AM_CFLAGS) $(GLIB_CFLAGS)
+libsnap_confine_private_test_support_a_CFLAGS = $(AM_CFLAGS) $(NO_BOUNDS_SAFETY_CFLAGS) $(GLIB_CFLAGS)
 
 noinst_PROGRAMS += libsnap-confine-private/unit-tests
 libsnap_confine_private_unit_tests_SOURCES = \
@@ -204,7 +212,7 @@ libsnap_confine_private_unit_tests_SOURCES = \
 	libsnap-confine-private/test-utils-test.c \
 	libsnap-confine-private/utils-test.c
 
-libsnap_confine_private_unit_tests_CFLAGS = $(AM_CFLAGS) $(VENDOR_BPF_HEADERS_CFLAGS) $(GLIB_CFLAGS) $(SANITIZE_CFLAGS)
+libsnap_confine_private_unit_tests_CFLAGS = $(AM_CFLAGS) $(NO_BOUNDS_SAFETY_CFLAGS) $(VENDOR_BPF_HEADERS_CFLAGS) $(GLIB_CFLAGS) $(SANITIZE_CFLAGS)
 libsnap_confine_private_unit_tests_LDFLAGS = $(SANITIZE_LDFLAGS)
 libsnap_confine_private_unit_tests_LDADD = $(GLIB_LIBS) libsnap-confine-private-test-support.a
 libsnap_confine_private_unit_tests_CFLAGS += -D_ENABLE_FAULT_INJECTION
@@ -370,7 +378,7 @@ snap_confine_unit_tests_SOURCES = \
 	snap-confine/snap-confine-args-test.c \
 	snap-confine/snap-confine-invocation-test.c \
 	snap-confine/group-policy-test.c
-snap_confine_unit_tests_CFLAGS = $(snap_confine_snap_confine_CFLAGS) $(GLIB_CFLAGS) $(SANITIZE_CFLAGS)
+snap_confine_unit_tests_CFLAGS = $(snap_confine_snap_confine_CFLAGS) $(NO_BOUNDS_SAFETY_CFLAGS) $(GLIB_CFLAGS) $(SANITIZE_CFLAGS)
 snap_confine_unit_tests_LDADD = $(snap_confine_snap_confine_LDADD) $(GLIB_LIBS) libsnap-confine-private-test-support.a
 snap_confine_unit_tests_LDFLAGS = $(snap_confine_snap_confine_LDFLAGS) $(SANITIZE_LDFLAGS)
 snap_confine_unit_tests_STATIC = $(snap_confine_snap_confine_STATIC)
@@ -497,7 +505,7 @@ if WITH_UNIT_TESTS
 noinst_PROGRAMS += snap-device-helper/unit-tests
 snap_device_helper_unit_tests_SOURCES = \
 	snap-device-helper/snap-device-helper-test.c
-snap_device_helper_unit_tests_CFLAGS = $(AM_CFLAGS) $(snap_device_helper_snap_device_helper_CFLAGS) $(GLIB_CFLAGS)
+snap_device_helper_unit_tests_CFLAGS = $(AM_CFLAGS) $(NO_BOUNDS_SAFETY_CFLAGS) $(snap_device_helper_snap_device_helper_CFLAGS) $(GLIB_CFLAGS)
 snap_device_helper_unit_tests_LDADD = $(GLIB_LIBS) libsnap-confine-private.a libsnap-confine-private-test-support.a
 snap_device_helper_unit_tests_LDFLAGS =$(snap_device_helper_snap_device_helper_LDFLAGS)
 
@@ -550,7 +558,7 @@ noinst_PROGRAMS += system-shutdown/unit-tests
 system_shutdown_unit_tests_SOURCES = \
 	system-shutdown/system-shutdown-utils-test.c
 system_shutdown_unit_tests_LDADD = libsnap-confine-private.a libsnap-confine-private-test-support.a
-system_shutdown_unit_tests_CFLAGS = $(AM_CFLAGS) $(GLIB_CFLAGS)
+system_shutdown_unit_tests_CFLAGS = $(AM_CFLAGS) $(NO_BOUNDS_SAFETY_CFLAGS) $(GLIB_CFLAGS)
 system_shutdown_unit_tests_LDADD +=  $(GLIB_LIBS)
 system_shutdown_unit_tests_LDFLAGS =  $(system_shutdown_system_shutdown_LDFLAGS)
 endif

@@ -518,6 +518,71 @@ if needed.
 >If you need manual control over configure options, you can run `autoreconf -i -f` followed
 by `./configure` with your desired flags. See `./configure --help` for available options.
 
+## Bounds safety (`-fbounds-safety`)
+
+The C parts of snapd (snap-confine and friends) carry
+[clang `-fbounds-safety`](https://clang.llvm.org/docs/BoundsSafety.html) bounds
+annotations on pointer parameters, struct fields and string buffers, so that a
+bounds-safety-capable clang can insert run-time bounds checks. Enable it with:
+
+```bash
+cd cmd/
+./configure --enable-bounds-safety CC=clang
+make
+```
+
+`configure` probes whether `$CC` actually implements the extension (accepts the
+flag *and* parses the annotations via `<ptrcheck.h>`). If it does not — as is
+the case with gcc and with the current upstream/experimental clang — the flag
+is dropped with a warning and the build proceeds without bounds checking. The
+annotations themselves are macro-defined to empty by
+`cmd/libsnap-confine-private/bounds-safety.h` whenever the toolchain lacks
+support, so the tree keeps building unchanged with gcc or a plain clang.
+
+When editing C code, keep the annotations correct:
+
+* pointers are `__single` (a single object, or NULL) by default — do not
+  annotate plain single-object pointers or local variables;
+* use `__null_terminated` for NUL-terminated C strings;
+* use `__counted_by(n)` / `__sized_by(n)` (or their `_or_null` variants) for a
+  buffer whose element/byte count lives in a sibling parameter or field;
+* keep the annotation identical between a header declaration and its
+  definition.
+
+Interop with code that has no annotations (libc, glib, the kernel) returns
+`__unsafe_indexable` pointers.  `bounds-safety.h` provides the conversion
+intrinsics used to cross that boundary (`__unsafe_forge_null_terminated`,
+`__unsafe_forge_single`, `__unsafe_forge_bidi_indexable`,
+`__null_terminated_to_indexable`, `__unsafe_null_terminated_to_indexable`,
+`__unsafe_null_terminated_from_indexable`, ...); under gcc they compile to a
+plain cast.  Two rules of thumb that the run-time checks enforce:
+
+* the checked `__null_terminated_to_indexable()` conversion yields a bound that
+  *excludes* the terminating NUL, so a loop or `memcpy` that reads the NUL
+  (e.g. `len + 1` bytes) must use `__unsafe_null_terminated_to_indexable()`;
+* do not put `__null_terminated` on an in/out string cursor that is advanced by
+  pointer arithmetic (a `__terminated_by` pointer may only move one element at
+  a time) — keep the cursor as a plain/`__bidi_indexable` pointer instead.
+
+The unit-test programs pull in un-annotated system headers (glib), so they are
+built with `-fno-bounds-safety`; only the shipped C code is bounds-checked.
+
+### Getting a capable clang
+
+`-fbounds-safety` is not yet available in any released upstream clang (the
+flag is a non-functional stub even in clang 21/22).  A working toolchain can be
+built from the LLVM fork branch referenced by the adoption guide:
+
+```bash
+git clone --depth 1 --single-branch --branch stable/20240723 \
+    https://github.com/swiftlang/llvm-project.git
+cmake -G Ninja -S llvm-project/llvm -B build -DCMAKE_BUILD_TYPE=Release \
+    -DLLVM_ENABLE_PROJECTS=clang -DLLVM_TARGETS_TO_BUILD=X86 \
+    -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_TESTS=OFF
+ninja -C build clang
+# then: ./configure --enable-bounds-safety CC=$PWD/build/bin/clang
+```
+
 ## Testing your changes locally 
 
 After building the code locally as explained in the previous section, you can run the 
