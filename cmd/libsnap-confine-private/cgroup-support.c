@@ -15,7 +15,9 @@
  *
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include "cgroup-support.h"
 
@@ -33,7 +35,7 @@
 #include "string-utils.h"
 #include "utils.h"
 
-void sc_cgroup_create_and_join(const char *parent, const char *name, pid_t pid) {
+void sc_cgroup_create_and_join(const char *__null_terminated parent, const char *__null_terminated name, pid_t pid) {
     int parent_fd SC_CLEANUP(sc_cleanup_close) = -1;
     parent_fd = open(parent, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
     if (parent_fd < 0) {
@@ -91,13 +93,14 @@ bool sc_cgroup_is_v2(void) {
 
 static const size_t max_traversal_depth = 32;
 
-static bool traverse_looking_for_prefix_in_dir(DIR *root, const char *prefix, const char *skip, size_t depth) {
+static bool traverse_looking_for_prefix_in_dir(DIR *__unsafe_indexable root, const char *__null_terminated prefix,
+                                               const char *__null_terminated skip, size_t depth) {
     if (depth > max_traversal_depth) {
         die("cannot traverse cgroups hierarchy deeper than %zu levels", max_traversal_depth);
     }
     while (true) {
         errno = 0;
-        struct dirent *ent = readdir(root);
+        struct dirent *__unsafe_indexable ent = readdir(root);
         if (ent == NULL) {
             // is this an error?
             if (errno != 0) {
@@ -114,15 +117,16 @@ static bool traverse_looking_for_prefix_in_dir(DIR *root, const char *prefix, co
         if (ent->d_type != DT_DIR) {
             continue;
         }
-        if (sc_streq(ent->d_name, "..") || sc_streq(ent->d_name, ".")) {
+        if (sc_streq(__unsafe_forge_null_terminated(const char *, ent->d_name), "..") ||
+            sc_streq(__unsafe_forge_null_terminated(const char *, ent->d_name), ".")) {
             // we don't want to go up or process the current directory again
             continue;
         }
-        if (sc_streq(ent->d_name, skip)) {
+        if (sc_streq(__unsafe_forge_null_terminated(const char *, ent->d_name), skip)) {
             // we were asked to skip this group
             continue;
         }
-        if (sc_startswith(ent->d_name, prefix)) {
+        if (sc_startswith(__unsafe_forge_null_terminated(const char *, ent->d_name), prefix)) {
             debug("found matching prefix in \"%s\"", ent->d_name);
             // the directory starts with our prefix
             return true;
@@ -138,7 +142,7 @@ static bool traverse_looking_for_prefix_in_dir(DIR *root, const char *prefix, co
             die("cannot open directory entry \"%s\"", ent->d_name);
         }
         // takes ownership of the file descriptor
-        DIR *entdir SC_CLEANUP(sc_cleanup_closedir) = fdopendir(entfd);
+        DIR *__unsafe_indexable entdir SC_CLEANUP(sc_cleanup_closedir) = fdopendir(entfd);
         if (entdir == NULL) {
             // we have the fd, so ENOENT isn't possible here
             die("cannot fdopendir directory \"%s\"", ent->d_name);
@@ -151,7 +155,7 @@ static bool traverse_looking_for_prefix_in_dir(DIR *root, const char *prefix, co
     return false;
 }
 
-bool sc_cgroup_v2_is_tracking_snap(const char *snap_instance) {
+bool sc_cgroup_v2_is_tracking_snap(const char *__null_terminated snap_instance) {
     debug("is cgroup tracking snap %s?", snap_instance);
     char tracking_group_name[PATH_MAX] = {0};
     // tracking groups created by snap run chain have a format:
@@ -163,12 +167,12 @@ bool sc_cgroup_v2_is_tracking_snap(const char *snap_instance) {
     // when running with cgroup v2, the snap run chain or systemd would create a
     // tracking cgroup which the current process would execute in and would
     // match the pattern we are looking for, thus it needs to be skipped
-    char *own_group SC_CLEANUP(sc_cleanup_string) = sc_cgroup_v2_own_path_full();
+    char *__unsafe_indexable own_group SC_CLEANUP(sc_cleanup_string) = sc_cgroup_v2_own_path_full();
     if (own_group == NULL) {
         die("cannot obtain own cgroup v2 group path");
     }
     debug("own group: %s", own_group);
-    char *just_leaf = strrchr(own_group, '/');
+    char *__unsafe_indexable just_leaf = strrchr(own_group, '/');
     if (just_leaf == NULL) {
         die("cannot obtain the leaf group path");
     }
@@ -182,7 +186,7 @@ bool sc_cgroup_v2_is_tracking_snap(const char *snap_instance) {
     // cleaned up the group
 
     debug("opening cgroup root dir at %s", cgroup_dir);
-    DIR *root SC_CLEANUP(sc_cleanup_closedir) = opendir(cgroup_dir);
+    DIR *__unsafe_indexable root SC_CLEANUP(sc_cleanup_closedir) = opendir(cgroup_dir);
     if (root == NULL) {
         if (errno == ENOENT) {
             return false;
@@ -192,13 +196,15 @@ bool sc_cgroup_v2_is_tracking_snap(const char *snap_instance) {
     // traverse the cgroup hierarchy tree looking for other groups that
     // correspond to the snap (i.e. their name matches the pattern), but skip
     // our own group in the process
-    return traverse_looking_for_prefix_in_dir(root, tracking_group_name, just_leaf, 1);
+    return traverse_looking_for_prefix_in_dir(root,
+                                              __unsafe_forge_null_terminated(const char *, &tracking_group_name[0]),
+                                              __unsafe_forge_null_terminated(const char *, just_leaf), 1);
 }
 
 static const char *self_cgroup = "/proc/self/cgroup";
 
-char *sc_cgroup_v2_own_path_full(void) {
-    FILE *in SC_CLEANUP(sc_cleanup_file) = fopen(self_cgroup, "r");
+char *__null_terminated sc_cgroup_v2_own_path_full(void) {
+    FILE *__unsafe_indexable in SC_CLEANUP(sc_cleanup_file) = fopen(self_cgroup, "r");
     if (in == NULL) {
         die("cannot open %s", self_cgroup);
     }
@@ -206,7 +212,7 @@ char *sc_cgroup_v2_own_path_full(void) {
     char *own_group = NULL;
 
     while (true) {
-        char *line SC_CLEANUP(sc_cleanup_string) = NULL;
+        char *__unsafe_indexable line SC_CLEANUP(sc_cleanup_string) = NULL;
         size_t linesz = 0;
         ssize_t sz = getline(&line, &linesz, in);
         if (sz < 0 && errno != 0) {
@@ -216,7 +222,7 @@ char *sc_cgroup_v2_own_path_full(void) {
             // end of file
             break;
         }
-        if (!sc_startswith(line, "0::")) {
+        if (!sc_startswith(__unsafe_forge_null_terminated(const char *, line), "0::")) {
             continue;
         }
         size_t len = strlen(line);
@@ -225,12 +231,12 @@ char *sc_cgroup_v2_own_path_full(void) {
         }
         // \n does not normally appear inside the group path, but if it did, it
         // would be escaped anyway
-        char *newline = strchr(line, '\n');
+        char *__unsafe_indexable newline = strchr(line, '\n');
         if (newline != NULL) {
             *newline = '\0';
         }
-        own_group = sc_strdup(line + 3);
+        own_group = __null_terminated_to_indexable(sc_strdup(__unsafe_forge_null_terminated(const char *, line + 3)));
         break;
     }
-    return own_group;
+    return __unsafe_forge_null_terminated(char *, own_group);
 }

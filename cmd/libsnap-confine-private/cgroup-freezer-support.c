@@ -16,7 +16,9 @@
  */
 
 // For AT_EMPTY_PATH and O_PATH
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include "cgroup-freezer-support.h"
 
@@ -35,13 +37,13 @@
 
 static const char *freezer_cgroup_dir = "/sys/fs/cgroup/freezer";
 
-void sc_cgroup_freezer_join(const char *snap_name, pid_t pid) {
+void sc_cgroup_freezer_join(const char *__null_terminated snap_name, pid_t pid) {
     char buf[PATH_MAX] = {0};
     sc_must_snprintf(buf, sizeof buf, "snap.%s", snap_name);
-    sc_cgroup_create_and_join(freezer_cgroup_dir, buf, pid);
+    sc_cgroup_create_and_join(freezer_cgroup_dir, __unsafe_forge_null_terminated(const char *, &buf[0]), pid);
 }
 
-bool sc_cgroup_freezer_occupied(const char *snap_name) {
+bool sc_cgroup_freezer_occupied(const char *__null_terminated snap_name) {
     // Format the name of the cgroup hierarchy.
     char buf[PATH_MAX] = {0};
     sc_must_snprintf(buf, sizeof buf, "snap.%s", snap_name);
@@ -75,14 +77,14 @@ bool sc_cgroup_freezer_occupied(const char *snap_name) {
         die("cannot open cgroup.procs file for freezer cgroup hierarchy for snap %s", snap_name);
     }
 
-    FILE *cgroup_procs SC_CLEANUP(sc_cleanup_file) = NULL;
+    FILE *__unsafe_indexable cgroup_procs SC_CLEANUP(sc_cleanup_file) = NULL;
     cgroup_procs = fdopen(cgroup_procs_fd, "r");
     if (cgroup_procs == NULL) {
         die("cannot convert cgroups.procs file descriptor to FILE");
     }
     cgroup_procs_fd = -1;  // cgroup_procs_fd will now be closed by fclose.
 
-    char *line_buf SC_CLEANUP(sc_cleanup_string) = NULL;
+    char *__unsafe_indexable line_buf SC_CLEANUP(sc_cleanup_string) = NULL;
     size_t line_buf_size = 0;
     ssize_t num_read;
     struct stat statbuf;

@@ -19,6 +19,8 @@
 #define SC_CGROUP_FREEZER_SUPPORT_H
 
 #include <sys/types.h>
+
+#include "bounds-safety.h"
 #include "error.h"
 
 /**
@@ -38,7 +40,7 @@
  * For more details please review:
  * https://www.kernel.org/doc/Documentation/cgroup-v1/freezer-subsystem.txt
  **/
-void sc_cgroup_freezer_join(const char *snap_name, pid_t pid);
+void sc_cgroup_freezer_join(const char *__null_terminated snap_name, pid_t pid);
 
 /**
  * Check if a freezer cgroup for given snap has any processes belonging to a given user.
@@ -47,6 +49,6 @@ void sc_cgroup_freezer_join(const char *snap_name, pid_t pid);
  * at each of its processes. If any process exists then the function returns true.
  **/
 // TODO: Support per user filtering for eventual per-user mount namespaces
-bool sc_cgroup_freezer_occupied(const char *snap_name);
+bool sc_cgroup_freezer_occupied(const char *__null_terminated snap_name);
 
 #endif

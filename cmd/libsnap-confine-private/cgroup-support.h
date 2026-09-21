@@ -21,6 +21,8 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
+#include "bounds-safety.h"
+
 /**
  * sc_cgroup_create_and_join joins, perhaps creating, a cgroup hierarchy.
  *
@@ -29,7 +31,7 @@
  * sub-hierarchy is made to belong to root:root and the specified process is
  * moved there.
  **/
-void sc_cgroup_create_and_join(const char *parent, const char *name, pid_t pid);
+void sc_cgroup_create_and_join(const char *__null_terminated parent, const char *__null_terminated name, pid_t pid);
 
 /**
  * sc_cgroup_is_v2() returns true if running on cgroups v2
@@ -51,7 +53,7 @@ bool sc_cgroup_is_v2(void);
  * It is possible that the current process is already being tracked in cgroup,
  * in which case the code will skip its own group.
  */
-bool sc_cgroup_v2_is_tracking_snap(const char *snap_instance);
+bool sc_cgroup_v2_is_tracking_snap(const char *__null_terminated snap_instance);
 
 /**
  * sc_cgroup_v2_own_path_full return the full path of the owning cgroup as
@@ -60,6 +62,6 @@ bool sc_cgroup_v2_is_tracking_snap(const char *snap_instance);
  * Returns the full path of the group in the unified hierarchy relative to its
  * root. The string is owned by the caller.
  */
-char *sc_cgroup_v2_own_path_full(void);
+char *__null_terminated sc_cgroup_v2_own_path_full(void);
 
 #endif
