@@ -113,7 +113,7 @@ void sc_init_apparmor_support(struct sc_apparmor *apparmor) {
 #endif  // ifdef HAVE_APPARMOR
 }
 
-void sc_maybe_aa_change_onexec(struct sc_apparmor *apparmor, const char *profile) {
+void sc_maybe_aa_change_onexec(struct sc_apparmor *apparmor, const char *__null_terminated profile) {
 #ifdef HAVE_APPARMOR
     if (apparmor->mode == SC_AA_NOT_APPLICABLE) {
         return;

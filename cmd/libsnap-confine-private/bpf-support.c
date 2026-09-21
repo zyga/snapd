@@ -53,7 +53,7 @@ static int set_cloexec(int fd) {
 }
 
 int bpf_create_map(enum bpf_map_type type, size_t key_size, size_t value_size, size_t max_entries,
-                   const char *map_name) {
+                   const char *__null_terminated map_name) {
     debug("create bpf map of type 0x%x, key size %zu, value size %zu, entries %zu name '%s'", type, key_size,
           value_size, max_entries, map_name != NULL ? map_name : "(none)");
     union bpf_attr attr;
@@ -83,7 +83,7 @@ int bpf_update_map(int map_fd, const void *key, const void *value) {
     return sys_bpf(BPF_MAP_UPDATE_ELEM, &attr, sizeof(attr));
 }
 
-int bpf_pin_to_path(int fd, const char *path) {
+int bpf_pin_to_path(int fd, const char *__null_terminated path) {
     debug("pin bpf object %d to path %s", fd, path);
     union bpf_attr attr;
     memset(&attr, 0, sizeof(attr));
@@ -94,7 +94,7 @@ int bpf_pin_to_path(int fd, const char *path) {
     return sys_bpf(BPF_OBJ_PIN, &attr, sizeof(attr));
 }
 
-int bpf_get_by_path(const char *path) {
+int bpf_get_by_path(const char *__null_terminated path) {
     debug("get bpf object at path %s", path);
     union bpf_attr attr;
     memset(&attr, 0, sizeof(attr));
@@ -108,8 +108,9 @@ int bpf_get_by_path(const char *path) {
     return set_cloexec(fd);
 }
 
-int bpf_load_prog(enum bpf_prog_type type, const struct bpf_insn *insns, size_t insns_cnt, char *log_buf,
-                  size_t log_buf_size, const char *prog_name) {
+int bpf_load_prog(enum bpf_prog_type type, const struct bpf_insn *__counted_by(insns_cnt) insns, size_t insns_cnt,
+                  char *__counted_by_or_null(log_buf_size) log_buf, size_t log_buf_size,
+                  const char *__null_terminated prog_name) {
     if (type == BPF_PROG_TYPE_UNSPEC) {
         errno = EINVAL;
         return -1;
@@ -181,7 +182,7 @@ int bpf_map_get_next_key(int map_fd, const void *key, void *next_key) {
     return sys_bpf(BPF_MAP_GET_NEXT_KEY, &attr, sizeof(attr));
 }
 
-int bpf_map_delete_batch(int map_fd, const void *keys, size_t cnt) {
+int bpf_map_delete_batch(int map_fd, const void *__sized_by(cnt) keys, size_t cnt) {
 #if 0
 /*
  * XXX: batch operations don't seem to work with 5.13.10, getting -EINVAL
@@ -218,7 +219,7 @@ int bpf_map_delete_elem(int map_fd, const void *key) {
 #define BPF_FS_MAGIC 0xcafe4a11
 #endif
 
-bool bpf_path_is_bpffs(const char *path) {
+bool bpf_path_is_bpffs(const char *__null_terminated path) {
     struct statfs fs;
     int res = statfs(path, &fs);
     if (res < 0) {
@@ -235,7 +236,7 @@ bool bpf_path_is_bpffs(const char *path) {
     return false;
 }
 
-void bpf_mount_bpffs(const char *path) {
+void bpf_mount_bpffs(const char *__null_terminated path) {
     /* systemd and bpftool disagree as to the propagation mode of bpffs mounts,
      * so go with the default which is a shared propagation and matches the
      * state of a freshly booted system.

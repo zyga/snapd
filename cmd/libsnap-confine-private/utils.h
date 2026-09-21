@@ -20,6 +20,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "bounds-safety.h"
+
 /**
  * Macro which calculates array size.
  *
@@ -31,9 +33,9 @@
          _Static_assert(!__builtin_types_compatible_p(typeof(arr), typeof(&(arr)[0])), "must be an array"); \
      })))
 
-__attribute__((noreturn)) __attribute__((format(printf, 1, 2))) void die(const char *fmt, ...);
+__attribute__((noreturn)) __attribute__((format(printf, 1, 2))) void die(const char *__null_terminated fmt, ...);
 
-__attribute__((format(printf, 1, 2))) void debug(const char *fmt, ...);
+__attribute__((format(printf, 1, 2))) void debug(const char *__null_terminated fmt, ...);
 
 /**
  * Get an environment variable and convert it to a boolean.
@@ -43,7 +45,7 @@ __attribute__((format(printf, 1, 2))) void debug(const char *fmt, ...);
  * printed to stderr. If the environment variable is unset, set value to the
  * default_value as if the environment variable was set to default_value.
  **/
-bool getenv_bool(const char *name, bool default_value);
+bool getenv_bool(const char *__null_terminated name, bool default_value);
 
 /**
  * Return true if debugging is enabled.
@@ -120,7 +122,7 @@ static inline sc_identity sc_no_change_identity(void) {
  **/
 sc_identity sc_set_effective_identity(sc_identity identity);
 
-void write_string_to_file(const char *filepath, const char *buf);
+void write_string_to_file(const char *__null_terminated filepath, const char *__null_terminated buf);
 
 /**
  * Safely create a given directory.
@@ -139,18 +141,19 @@ void write_string_to_file(const char *filepath, const char *buf);
  *
  * The function returns -1 in case of any error.
  **/
-__attribute__((warn_unused_result)) int sc_nonfatal_mkpath(const char *const path, mode_t mode, uid_t uid, uid_t gid);
+__attribute__((warn_unused_result)) int sc_nonfatal_mkpath(const char *__null_terminated const path, mode_t mode,
+                                                           uid_t uid, uid_t gid);
 
 /**
  * Return true if path is a valid path for the snap-confine binary
  **/
-__attribute__((warn_unused_result)) bool sc_is_expected_path(const char *path);
+__attribute__((warn_unused_result)) bool sc_is_expected_path(const char *__null_terminated path);
 
 /**
  * Wait for file to appear for timeout_sec seconds. Returns true once the file
  * is present.
  */
-bool sc_wait_for_file(const char *path, size_t timeout_sec);
+bool sc_wait_for_file(const char *__null_terminated path, size_t timeout_sec);
 
 /**
  * Ensure a directory exists inside a given parent directory. Essentially a
@@ -159,7 +162,8 @@ bool sc_wait_for_file(const char *path, size_t timeout_sec);
  *
  * Returns -1 in case of error.
  */
-__attribute__((warn_unused_result)) int sc_ensure_mkdirat(int fd, const char *name, mode_t mode, uid_t uid, uid_t gid);
+__attribute__((warn_unused_result)) int sc_ensure_mkdirat(int fd, const char *__null_terminated name, mode_t mode,
+                                                          uid_t uid, uid_t gid);
 
 /**
  * Ensure a directory exists. Essentially a convenience wrapper around mkdirat()
@@ -167,7 +171,8 @@ __attribute__((warn_unused_result)) int sc_ensure_mkdirat(int fd, const char *na
  *
  * Returns -1 in case of error.
  */
-__attribute__((warn_unused_result)) int sc_ensure_mkdir(const char *name, mode_t mode, uid_t uid, uid_t gid);
+__attribute__((warn_unused_result)) int sc_ensure_mkdir(const char *__null_terminated name, mode_t mode, uid_t uid,
+                                                        uid_t gid);
 
 /**
  * Checks whether a path is canonical, starts with /, and has no relative path
@@ -176,6 +181,6 @@ __attribute__((warn_unused_result)) int sc_ensure_mkdir(const char *name, mode_t
  *
  * Returns false if not.
  **/
-bool sc_is_path_canonical(const char *path);
+bool sc_is_path_canonical(const char *__null_terminated path);
 
 #endif

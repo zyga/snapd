@@ -20,6 +20,8 @@
 
 #include <stdbool.h>
 
+#include "bounds-safety.h"
+
 /**
  * Check for an injected fault.
  *
@@ -31,7 +33,7 @@
  * When the pre-processor macro _ENABLE_FAULT_INJECTION is not defined this
  * function always returns false and does nothing at all.
  **/
-bool sc_faulty(const char *name, void *ptr);
+bool sc_faulty(const char *__null_terminated name, void *ptr);
 
 #ifdef _ENABLE_FAULT_INJECTION
 
@@ -55,7 +57,7 @@ struct sc_fault_state {
  * After testing faults should be reset using sc_reset_faults().
  **/
 
-void sc_break(const char *name, sc_fault_fn fn);
+void sc_break(const char *__null_terminated name, sc_fault_fn fn);
 
 /**
  * Remove all the injected faults.

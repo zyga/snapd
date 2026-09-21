@@ -20,6 +20,8 @@
 
 #include <stdbool.h>
 
+#include "bounds-safety.h"
+
 /**
  * Type of apparmor confinement.
  **/
@@ -76,6 +78,6 @@ void sc_init_apparmor_support(struct sc_apparmor *apparmor);
  * process termination. As an exception, when SNAPPY_LAUNCHER_INSIDE_TESTS
  * environment variable is set then the process is not terminated.
  **/
-void sc_maybe_aa_change_onexec(struct sc_apparmor *apparmor, const char *profile);
+void sc_maybe_aa_change_onexec(struct sc_apparmor *apparmor, const char *__null_terminated profile);
 
 #endif

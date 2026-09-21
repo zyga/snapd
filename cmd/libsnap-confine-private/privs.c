@@ -40,7 +40,7 @@
 #define PR_CAP_AMBIENT_CLEAR_ALL 4
 #endif
 
-void sc_cleanup_cap_t(cap_t *ptr) {
+void sc_cleanup_cap_t(struct _cap_struct * __unsafe_indexable * __unsafe_indexable ptr) {
     if (ptr != NULL && *ptr != NULL) {
         cap_free(*ptr);
         *ptr = NULL;
@@ -48,7 +48,7 @@ void sc_cleanup_cap_t(cap_t *ptr) {
 }
 
 /* the same as sc_cleanup_cap_t but applicable to char* type */
-static void sc_cleanup_cap_str(char **ptr) {
+static void sc_cleanup_cap_str(char *__unsafe_indexable *__unsafe_indexable ptr) {
     if (ptr != NULL && *ptr != NULL) {
         cap_free(*ptr);
         *ptr = NULL;
@@ -58,7 +58,7 @@ static void sc_cleanup_cap_str(char **ptr) {
 void sc_privs_drop(void) {
     /* TODO: this should use cap_set_mode(CAP_MODE_NOPRIV) for better effect,
      * but it's not supported by libcap 2.25 in 18.04 */
-    cap_t working SC_CLEANUP(sc_cleanup_cap_t) = cap_init();
+    cap_t __unsafe_indexable working SC_CLEANUP(sc_cleanup_cap_t) = cap_init();
     if (working == NULL) {
         die("cannot allocate working caps set");
     }
@@ -67,13 +67,13 @@ void sc_privs_drop(void) {
     }
 }
 
-void sc_debug_capabilities(const char *msg_prefix) {
+void sc_debug_capabilities(const char *__null_terminated msg_prefix) {
     if (sc_is_debug_enabled()) {
-        cap_t caps SC_CLEANUP(sc_cleanup_cap_t) = cap_get_proc();
+        cap_t __unsafe_indexable caps SC_CLEANUP(sc_cleanup_cap_t) = cap_get_proc();
         if (caps == NULL) {
             die("cannot obtain current capabilities");
         }
-        char *caps_as_str SC_CLEANUP(sc_cleanup_cap_str) = cap_to_text(caps, NULL);
+        char *__unsafe_indexable caps_as_str SC_CLEANUP(sc_cleanup_cap_str) = cap_to_text(caps, NULL);
         if (caps_as_str == NULL) {
             die("cannot format capabilities string");
         }
@@ -113,7 +113,8 @@ int sc_cap_reset_ambient(void) {
 #endif
 }
 
-void sc_cap_assert_permitted(cap_t current, const cap_value_t caps[], size_t caps_n, const char *die_context) {
+void sc_cap_assert_permitted(cap_t current, const cap_value_t *__counted_by(caps_n) caps, size_t caps_n,
+                             const char *__null_terminated die_context) {
     for (size_t i = 0; i < caps_n; i++) {
         cap_value_t val = caps[i];
         cap_flag_value_t is_permitted = CAP_CLEAR;
@@ -122,8 +123,8 @@ void sc_cap_assert_permitted(cap_t current, const cap_value_t caps[], size_t cap
         }
 
         if (is_permitted == CAP_CLEAR) {
-            char *name SC_CLEANUP(sc_cleanup_cap_str) = cap_to_name(val);
-            char *current_text SC_CLEANUP(sc_cleanup_cap_str) = cap_to_text(current, NULL);
+            char *__unsafe_indexable name SC_CLEANUP(sc_cleanup_cap_str) = cap_to_name(val);
+            char *__unsafe_indexable current_text SC_CLEANUP(sc_cleanup_cap_str) = cap_to_text(current, NULL);
             die("%srequired permitted capability %s not found in current capabilities:\n  %s",
                 die_context ? die_context : "", name, current_text);
         }

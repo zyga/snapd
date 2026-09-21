@@ -20,7 +20,7 @@
 #include <sys/auxv.h>
 
 #ifndef HAVE_SECURE_GETENV
-char *secure_getenv(const char *name) {
+char *__null_terminated secure_getenv(const char *__null_terminated name) {
     unsigned long secure = getauxval(AT_SECURE);
     if (secure != 0) {
         return NULL;

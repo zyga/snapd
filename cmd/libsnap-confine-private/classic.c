@@ -14,7 +14,7 @@ static const char *os_release = "/etc/os-release";
 static const char *meta_snap_yaml = "/meta/snap.yaml";
 
 sc_distro sc_classify_distro(void) {
-    FILE *f SC_CLEANUP(sc_cleanup_file) = fopen(os_release, "r");
+    FILE *__unsafe_indexable f SC_CLEANUP(sc_cleanup_file) = fopen(os_release, "r");
     if (f == NULL) {
         return SC_DISTRO_CLASSIC;
     }
@@ -28,11 +28,14 @@ sc_distro sc_classify_distro(void) {
         if (len > 0 && buf[len - 1] == '\n') {
             buf[len - 1] = '\0';
         }
-        if (sc_streq(buf, "ID=\"ubuntu-core\"") || sc_streq(buf, "ID=ubuntu-core")) {
+        if (sc_streq(__unsafe_forge_null_terminated(const char *, &buf[0]), "ID=\"ubuntu-core\"") ||
+            sc_streq(__unsafe_forge_null_terminated(const char *, &buf[0]), "ID=ubuntu-core")) {
             is_core = true;
-        } else if (sc_streq(buf, "VERSION_ID=\"16\"") || sc_streq(buf, "VERSION_ID=16")) {
+        } else if (sc_streq(__unsafe_forge_null_terminated(const char *, &buf[0]), "VERSION_ID=\"16\"") ||
+                   sc_streq(__unsafe_forge_null_terminated(const char *, &buf[0]), "VERSION_ID=16")) {
             core_version = 16;
-        } else if (sc_streq(buf, "VARIANT_ID=\"snappy\"") || sc_streq(buf, "VARIANT_ID=snappy")) {
+        } else if (sc_streq(__unsafe_forge_null_terminated(const char *, &buf[0]), "VARIANT_ID=\"snappy\"") ||
+                   sc_streq(__unsafe_forge_null_terminated(const char *, &buf[0]), "VARIANT_ID=snappy")) {
             is_core = true;
         }
     }
@@ -56,7 +59,7 @@ sc_distro sc_classify_distro(void) {
 }
 
 bool sc_is_debian_like(void) {
-    FILE *f SC_CLEANUP(sc_cleanup_file) = fopen(os_release, "r");
+    FILE *__unsafe_indexable f SC_CLEANUP(sc_cleanup_file) = fopen(os_release, "r");
     if (f == NULL) {
         return false;
     }
@@ -69,14 +72,16 @@ bool sc_is_debian_like(void) {
         if (fseek(f, 0L, SEEK_SET) == -1) {
             return false;
         }
-        char *id_val SC_CLEANUP(sc_cleanup_string) = NULL;
-        struct sc_error *err SC_CLEANUP(sc_cleanup_error) = NULL;
-        int rc = sc_infofile_get_key(f, id_keys_to_try[i], &id_val, &err);
+        char *__unsafe_indexable id_val SC_CLEANUP(sc_cleanup_string) = NULL;
+        struct sc_error *__unsafe_indexable err SC_CLEANUP(sc_cleanup_error) = NULL;
+        int rc = sc_infofile_get_key(__unsafe_forge_single(FILE *, f), id_keys_to_try[i],
+                                     __unsafe_forge_single(char **, &id_val), __unsafe_forge_single(sc_error **, &err));
         if (rc != 0) {
             /* only if sc_infofile_get_key failed */
             return false;
         }
-        if (sc_streq(id_val, "\"debian\"") || sc_streq(id_val, "debian")) {
+        if (sc_streq(__unsafe_forge_null_terminated(const char *, id_val), "\"debian\"") ||
+            sc_streq(__unsafe_forge_null_terminated(const char *, id_val), "debian")) {
             return true;
         }
     }

@@ -22,18 +22,20 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "bounds-safety.h"
+
 /**
  * bpf_pin_to_path pins an object referenced by fd to a path under a bpffs
  * mount.
  */
-int bpf_pin_to_path(int fd, const char *path);
+int bpf_pin_to_path(int fd, const char *__null_terminated path);
 
 /**
  * bpf_get_by_path obtains the file handle to the object referenced by a path
  * under bpffs filesystem. The returned file descriptor has O_CLOEXEC flag set
  * on it.
  */
-int bpf_get_by_path(const char *path);
+int bpf_get_by_path(const char *__null_terminated path);
 
 /**
  * bpf_load_prog loads a given BPF program and returns a file descriptor handle
@@ -44,8 +46,9 @@ int bpf_get_by_path(const char *path);
  * if the program is found to be invalid. The returned file descriptor has
  * O_CLOEXEC flag set on it.
  */
-int bpf_load_prog(enum bpf_prog_type type, const struct bpf_insn *insns, size_t insns_cnt, char *log_buf,
-                  size_t log_buf_size, const char *prog_name);
+int bpf_load_prog(enum bpf_prog_type type, const struct bpf_insn *__counted_by(insns_cnt) insns, size_t insns_cnt,
+                  char *__counted_by_or_null(log_buf_size) log_buf, size_t log_buf_size,
+                  const char *__null_terminated prog_name);
 
 int bpf_prog_attach(enum bpf_attach_type type, int cgroup_fd, int prog_fd);
 
@@ -54,7 +57,7 @@ int bpf_prog_attach(enum bpf_attach_type type, int cgroup_fd, int prog_fd);
  * The returned file descriptor has O_CLOEXEC flag set on it.
  */
 int bpf_create_map(enum bpf_map_type type, size_t key_size, size_t value_size, size_t max_entries,
-                   const char *map_name);
+                   const char *__null_terminated map_name);
 
 /**
  * bpf_update_map updates the value of element with a given key (or adds it to
@@ -76,7 +79,7 @@ int bpf_map_get_next_key(int map_fd, const void *key, void *next_key);
  * bpf_map_delete_batch performs a batch delete of elements with keys, where cnt
  * is the number of keys.
  */
-int bpf_map_delete_batch(int map_fd, const void *keys, size_t cnt);
+int bpf_map_delete_batch(int map_fd, const void *__sized_by(cnt) keys, size_t cnt);
 
 /**
  * bpf_map_delete_elem deletes an element with a key from the map, returns -1
@@ -87,11 +90,11 @@ int bpf_map_delete_elem(int map_fd, const void *key);
 /**
  * bpf_path_is_bpffs returns true when given path is a bpffs filesystem.
  */
-bool bpf_path_is_bpffs(const char *path);
+bool bpf_path_is_bpffs(const char *__null_terminated path);
 
 /**
  * bpf_mount_bpffs mounts a bpf filesystem at a given path.
  */
-void bpf_mount_bpffs(const char *path);
+void bpf_mount_bpffs(const char *__null_terminated path);
 
 #endif /* SNAP_CONFINE_BPF_SUPPORT_H */

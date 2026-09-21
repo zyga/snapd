@@ -15,7 +15,9 @@
  *
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include "snap-dir.h"
 
@@ -33,10 +35,10 @@
 static const char *_snap_mount_dir = NULL;
 
 // Function is exported only for tests.
-void sc_set_snap_mount_dir(const char *dir);
-void sc_set_snap_mount_dir(const char *dir) { _snap_mount_dir = dir; }
+void sc_set_snap_mount_dir(const char *__null_terminated dir);
+void sc_set_snap_mount_dir(const char *__null_terminated dir) { _snap_mount_dir = dir; }
 
-const char *sc_snap_mount_dir(sc_error **errorp) {
+const char *__null_terminated sc_snap_mount_dir(sc_error **errorp) {
     sc_error *err = NULL;
 
     if (_snap_mount_dir == NULL) {

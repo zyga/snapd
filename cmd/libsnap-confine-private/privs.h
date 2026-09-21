@@ -20,6 +20,8 @@
 
 #include <sys/capability.h>
 
+#include "bounds-safety.h"
+
 /**
  * Permanently drop elevated permissions.
  *
@@ -40,7 +42,7 @@ void sc_privs_drop(void);
 /**
  * Debug print of current capabilities with the provided message prefix.
  */
-void sc_debug_capabilities(const char *msg_prefix);
+void sc_debug_capabilities(const char *__null_terminated msg_prefix);
 
 /**
  * Compatibility wrapper around cap_set_ambient().
@@ -57,7 +59,7 @@ int sc_cap_reset_ambient(void);
  *
  * This function is designed to be used with SC_CLEANUP() macro.
  **/
-void sc_cleanup_cap_t(cap_t *ptr);
+void sc_cleanup_cap_t(struct _cap_struct * __unsafe_indexable * __unsafe_indexable ptr);
 
 /**
  * Assert that given caps are listed in the permitted set of the provided,
@@ -67,6 +69,7 @@ void sc_cleanup_cap_t(cap_t *ptr);
  * are found. Optional context message will be prepended to the error message
  * displayed by die().
  */
-void sc_cap_assert_permitted(cap_t current, const cap_value_t caps[], size_t caps_n, const char *die_context);
+void sc_cap_assert_permitted(cap_t current, const cap_value_t *__counted_by(caps_n) caps, size_t caps_n,
+                             const char *__null_terminated die_context);
 
 #endif

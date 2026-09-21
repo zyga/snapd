@@ -42,12 +42,29 @@
  * The executable is located based on the location of the currently executing process.
  * The returning file descriptor can be used with fexecve function, like in sc_call_snapd_tool.
  **/
-static int sc_open_snapd_tool(const char *tool_name);
+static int sc_open_snapd_tool(const char *__null_terminated tool_name);
+
+/* cap_free(3) takes the capability object by value, but SC_CLEANUP() hands the
+ * cleanup function a pointer to the variable being cleaned up.  Adapt between
+ * the two so that a cap_t can be used with SC_CLEANUP(). */
+static void sc_cleanup_cap(cap_t *__unsafe_indexable ptr) {
+    if (ptr != NULL && *ptr != NULL) {
+        cap_free(*ptr);
+    }
+}
+
+/* As above, but for the string returned by cap_to_name(3), which is also
+ * released with cap_free(3). */
+static void sc_cleanup_cap_name(const char *__single *__unsafe_indexable ptr) {
+    if (ptr != NULL && *ptr != NULL) {
+        cap_free((void *)*ptr);
+    }
+}
 
 typedef struct {
     /* number of entries in @caps */
     size_t n_caps;
-    const cap_value_t *caps;
+    const cap_value_t *__counted_by(n_caps) caps;
 } sc_tool_privs;
 
 /**
@@ -65,28 +82,34 @@ typedef struct {
  * Identity indicates the set of effective uid/gid which are to be applied in
  * the child process right after forking.
  **/
-static void sc_call_snapd_tool(int tool_fd, const char *tool_name, sc_tool_privs privs, char **argv, char **envp);
+static void sc_call_snapd_tool(int tool_fd, const char *__null_terminated tool_name, sc_tool_privs privs,
+                               char *__null_terminated *__null_terminated argv,
+                               char *__null_terminated *__null_terminated envp);
 
 /**
  * sc_call_snapd_tool_with_apparmor calls a snapd tool by file descriptor,
  * possibly confining the program with a specific apparmor profile.
  **/
-static void sc_call_snapd_tool_with_apparmor(int tool_fd, const char *tool_name, struct sc_apparmor *apparmor,
-                                             const char *aa_profile, sc_tool_privs privs, char **argv, char **envp);
+static void sc_call_snapd_tool_with_apparmor(int tool_fd, const char *__null_terminated tool_name,
+                                             struct sc_apparmor *apparmor, const char *__null_terminated aa_profile,
+                                             sc_tool_privs privs, char *__null_terminated *__null_terminated argv,
+                                             char *__null_terminated *__null_terminated envp);
 
 int sc_open_snap_update_ns(void) { return sc_open_snapd_tool("snap-update-ns"); }
 
-void sc_call_snap_update_ns(int snap_update_ns_fd, const char *snap_name, struct sc_apparmor *apparmor) {
-    char *snap_name_copy SC_CLEANUP(sc_cleanup_string) = NULL;
+void sc_call_snap_update_ns(int snap_update_ns_fd, const char *__null_terminated snap_name,
+                            struct sc_apparmor *apparmor) {
+    char *__unsafe_indexable snap_name_copy SC_CLEANUP(sc_cleanup_string) = NULL;
     snap_name_copy = sc_strdup(snap_name);
 
     char aa_profile[PATH_MAX] = {0};
     sc_must_snprintf(aa_profile, sizeof aa_profile, "snap-update-ns.%s", snap_name);
 
-    char *argv[] = {"snap-update-ns",
-                    /* This tells snap-update-ns we are calling from snap-confine and locking is in place */
-                    "--from-snap-confine", snap_name_copy, NULL};
-    char *envp[] = {"SNAPD_DEBUG=x", NULL};
+    char *__null_terminated argv[] __null_terminated = {
+        "snap-update-ns",
+        /* This tells snap-update-ns we are calling from snap-confine and locking is in place */
+        "--from-snap-confine", __unsafe_forge_null_terminated(char *, snap_name_copy), NULL};
+    char *__null_terminated envp[] __null_terminated = {"SNAPD_DEBUG=x", NULL};
 
     /* keep the current identity, privileges are carried over through capabilities */
     const cap_value_t caps[] = {
@@ -98,37 +121,44 @@ void sc_call_snap_update_ns(int snap_update_ns_fd, const char *snap_name, struct
         .n_caps = SC_ARRAY_SIZE(caps),
         .caps = caps,
     };
-    sc_call_snapd_tool_with_apparmor(snap_update_ns_fd, "snap-update-ns", apparmor, aa_profile, privs, argv, envp);
+    sc_call_snapd_tool_with_apparmor(snap_update_ns_fd, "snap-update-ns", apparmor,
+                                     __unsafe_forge_null_terminated(const char *, &aa_profile[0]), privs, argv, envp);
 }
 
-void sc_call_snap_update_ns_as_user(int snap_update_ns_fd, const char *snap_name, struct sc_apparmor *apparmor) {
-    char *snap_name_copy SC_CLEANUP(sc_cleanup_string) = NULL;
+void sc_call_snap_update_ns_as_user(int snap_update_ns_fd, const char *__null_terminated snap_name,
+                                    struct sc_apparmor *apparmor) {
+    char *__unsafe_indexable snap_name_copy SC_CLEANUP(sc_cleanup_string) = NULL;
     snap_name_copy = sc_strdup(snap_name);
 
     char aa_profile[PATH_MAX] = {0};
     sc_must_snprintf(aa_profile, sizeof aa_profile, "snap-update-ns.%s", snap_name);
 
-    const char *xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+    const char *__null_terminated xdg_runtime_dir =
+        __unsafe_forge_null_terminated(const char *, getenv("XDG_RUNTIME_DIR"));
     char xdg_runtime_dir_env[PATH_MAX + sizeof("XDG_RUNTIME_DIR=")] = {0};
     if (xdg_runtime_dir != NULL) {
         sc_must_snprintf(xdg_runtime_dir_env, sizeof(xdg_runtime_dir_env), "XDG_RUNTIME_DIR=%s", xdg_runtime_dir);
     }
 
-    const char *snap_real_home = getenv("SNAP_REAL_HOME");
+    const char *__null_terminated snap_real_home =
+        __unsafe_forge_null_terminated(const char *, getenv("SNAP_REAL_HOME"));
     char snap_real_home_env[PATH_MAX + sizeof("SNAP_REAL_HOME=")] = {0};
     if (snap_real_home != NULL) {
         sc_must_snprintf(snap_real_home_env, sizeof(snap_real_home_env), "SNAP_REAL_HOME=%s", snap_real_home);
     }
 
-    char *argv[] = {"snap-update-ns",
-                    /* This tells snap-update-ns we are calling from snap-confine and locking is in place */
-                    "--from-snap-confine",
-                    /* This tells snap-update-ns that we want to process the per-user profile */
-                    "--user-mounts", snap_name_copy, NULL};
-    char *envp[] = {/* SNAPD_DEBUG=x is replaced by sc_call_snapd_tool_with_apparmor
-                     * with either SNAPD_DEBUG=0 or SNAPD_DEBUG=1, see that function
-                     * for details. */
-                    "SNAPD_DEBUG=x", xdg_runtime_dir_env, snap_real_home_env, NULL};
+    char *__null_terminated argv[] __null_terminated = {
+        "snap-update-ns",
+        /* This tells snap-update-ns we are calling from snap-confine and locking is in place */
+        "--from-snap-confine",
+        /* This tells snap-update-ns that we want to process the per-user profile */
+        "--user-mounts", __unsafe_forge_null_terminated(char *, snap_name_copy), NULL};
+    char *__null_terminated envp[] __null_terminated = {
+        /* SNAPD_DEBUG=x is replaced by sc_call_snapd_tool_with_apparmor
+         * with either SNAPD_DEBUG=0 or SNAPD_DEBUG=1, see that function
+         * for details. */
+        "SNAPD_DEBUG=x", __unsafe_forge_null_terminated(char *, &xdg_runtime_dir_env[0]),
+        __unsafe_forge_null_terminated(char *, &snap_real_home_env[0]), NULL};
     /* keep the current identity */
     const cap_value_t caps[] = {
         CAP_DAC_OVERRIDE, /* poking around as a regular user */
@@ -139,18 +169,20 @@ void sc_call_snap_update_ns_as_user(int snap_update_ns_fd, const char *snap_name
         .n_caps = SC_ARRAY_SIZE(caps),
         .caps = caps,
     };
-    sc_call_snapd_tool_with_apparmor(snap_update_ns_fd, "snap-update-ns", apparmor, aa_profile, privs, argv, envp);
+    sc_call_snapd_tool_with_apparmor(snap_update_ns_fd, "snap-update-ns", apparmor,
+                                     __unsafe_forge_null_terminated(const char *, &aa_profile[0]), privs, argv, envp);
 }
 
 int sc_open_snap_discard_ns(void) { return sc_open_snapd_tool("snap-discard-ns"); }
 
-void sc_call_snap_discard_ns(int snap_discard_ns_fd, const char *snap_name) {
-    char *snap_name_copy SC_CLEANUP(sc_cleanup_string) = NULL;
+void sc_call_snap_discard_ns(int snap_discard_ns_fd, const char *__null_terminated snap_name) {
+    char *__unsafe_indexable snap_name_copy SC_CLEANUP(sc_cleanup_string) = NULL;
     snap_name_copy = sc_strdup(snap_name);
-    char *argv[] = {"snap-discard-ns", "--from-snap-confine", snap_name_copy, NULL};
+    char *__null_terminated argv[] __null_terminated = {"snap-discard-ns", "--from-snap-confine",
+                                                        __unsafe_forge_null_terminated(char *, snap_name_copy), NULL};
     /* SNAPD_DEBUG=x is replaced by sc_call_snapd_tool_with_apparmor with
      * either SNAPD_DEBUG=0 or SNAPD_DEBUG=1, see that function for details. */
-    char *envp[] = {"SNAPD_DEBUG=x", NULL};
+    char *__null_terminated envp[] __null_terminated = {"SNAPD_DEBUG=x", NULL};
     /* keep the current identity, privileges are carried over through capabilities */
     const cap_value_t caps[] = {
         CAP_DAC_OVERRIDE, /* poking around as a regular user */
@@ -164,7 +196,7 @@ void sc_call_snap_discard_ns(int snap_discard_ns_fd, const char *snap_name) {
     sc_call_snapd_tool(snap_discard_ns_fd, "snap-discard-ns", privs, argv, envp);
 }
 
-static int sc_open_snapd_tool(const char *tool_name) {
+static int sc_open_snapd_tool(const char *__null_terminated tool_name) {
     // +1 is for the case where the link is exactly PATH_MAX long but we also
     // want to store the terminating '\0'. The readlink system call doesn't add
     // terminating null, but our initialization of buf handles this for us.
@@ -179,10 +211,10 @@ static int sc_open_snapd_tool(const char *tool_name) {
     // we are located where we think we should be - otherwise we
     // may have been hardlink'd elsewhere and then may execute the
     // wrong tool as a result
-    if (!sc_is_expected_path(buf)) {
+    if (!sc_is_expected_path(__unsafe_forge_null_terminated(const char *, &buf[0]))) {
         die("running from unexpected location: %s", buf);
     }
-    char *dir_name = dirname(buf);
+    char *__null_terminated dir_name = __unsafe_forge_null_terminated(char *, dirname(buf));
     int dir_fd SC_CLEANUP(sc_cleanup_close) = -1;
     dir_fd = open(dir_name, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
     if (dir_fd < 0) {
@@ -197,12 +229,16 @@ static int sc_open_snapd_tool(const char *tool_name) {
     return tool_fd;
 }
 
-static void sc_call_snapd_tool(int tool_fd, const char *tool_name, sc_tool_privs privs, char **argv, char **envp) {
+static void sc_call_snapd_tool(int tool_fd, const char *__null_terminated tool_name, sc_tool_privs privs,
+                               char *__null_terminated *__null_terminated argv,
+                               char *__null_terminated *__null_terminated envp) {
     sc_call_snapd_tool_with_apparmor(tool_fd, tool_name, NULL, NULL, privs, argv, envp);
 }
 
-static void sc_call_snapd_tool_with_apparmor(int tool_fd, const char *tool_name, struct sc_apparmor *apparmor,
-                                             const char *aa_profile, sc_tool_privs privs, char **argv, char **envp) {
+static void sc_call_snapd_tool_with_apparmor(int tool_fd, const char *__null_terminated tool_name,
+                                             struct sc_apparmor *apparmor, const char *__null_terminated aa_profile,
+                                             sc_tool_privs privs, char *__null_terminated *__null_terminated argv,
+                                             char *__null_terminated *__null_terminated envp) {
     debug("calling snapd tool %s", tool_name);
     pid_t child = fork();
     if (child < 0) {
@@ -213,7 +249,7 @@ static void sc_call_snapd_tool_with_apparmor(int tool_fd, const char *tool_name,
             die("cannot reset ambient capabilities");
         }
 
-        cap_t working SC_CLEANUP(cap_free) = cap_init();
+        cap_t __single working SC_CLEANUP(sc_cleanup_cap) = __unsafe_forge_single(cap_t, cap_init());
         if (working == NULL) {
             die("cannot allocate capability set");
         }
@@ -228,20 +264,21 @@ static void sc_call_snapd_tool_with_apparmor(int tool_fd, const char *tool_name,
         /* now that permitted and inheritable caps are set, we can also set ambient caps */
         for (size_t i = 0; i < privs.n_caps; i++) {
             if (sc_cap_set_ambient(privs.caps[i], CAP_SET) != 0) {
-                const char *txt_cap SC_CLEANUP(cap_free) = cap_to_name(privs.caps[i]);
+                const char *__single txt_cap SC_CLEANUP(sc_cleanup_cap_name) =
+                    __unsafe_forge_single(const char *, cap_to_name(privs.caps[i]));
                 die("cannot set ambient capability: %s", txt_cap);
             }
         }
 
         /* If the caller provided template environment entry for SNAPD_DEBUG
          * then expand it to the actual value. */
-        for (char **env = envp;
+        for (char *__null_terminated *__null_terminated env = envp;
              /* Mama mia, that's a spicy meatball. */
              env != NULL && *env != NULL && **env != '\0'; env++) {
             if (sc_streq(*env, "SNAPD_DEBUG=x")) {
                 /* NOTE: this is not released, on purpose. */
-                char *entry = sc_strdup(*env);
-                entry[strlen("SNAPD_DEBUG=x") - 1] = sc_is_debug_enabled() ? '1' : '0';
+                char *__null_terminated entry = sc_strdup(*env);
+                __null_terminated_to_indexable(entry)[strlen("SNAPD_DEBUG=x") - 1] = sc_is_debug_enabled() ? '1' : '0';
                 *env = entry;
             }
         }

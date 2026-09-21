@@ -31,7 +31,7 @@
 #include "string-utils.h"
 #include "utils.h"
 
-void die(const char *msg, ...) {
+void die(const char *__null_terminated msg, ...) {
     va_list ap;
     va_start(ap, msg);
     sc_panicv(msg, ap);
@@ -39,7 +39,7 @@ void die(const char *msg, ...) {
 }
 
 struct sc_bool_name {
-    const char *text;
+    const char *__null_terminated text;
     bool value;
 };
 
@@ -56,7 +56,7 @@ static const struct sc_bool_name sc_bool_names[] = {
  *
  * If the text cannot be recognized, the default value is used.
  **/
-static int parse_bool(const char *text, bool *value, bool default_value) {
+static int parse_bool(const char *__null_terminated text, bool *value, bool default_value) {
     if (value == NULL) {
         errno = EFAULT;
         return -1;
@@ -83,8 +83,8 @@ static int parse_bool(const char *text, bool *value, bool default_value) {
  * printed to stderr. If the environment variable is unset, set value to the
  * default_value as if the environment variable was set to default_value.
  **/
-bool getenv_bool(const char *name, bool default_value) {
-    const char *str_value = getenv(name);
+bool getenv_bool(const char *__null_terminated name, bool default_value) {
+    const char *__null_terminated str_value = __unsafe_forge_null_terminated(const char *, getenv(name));
     bool value = default_value;
     if (parse_bool(str_value, &value, default_value) < 0) {
         if (errno == EINVAL) {
@@ -101,7 +101,7 @@ bool sc_is_debug_enabled(void) { return getenv_bool("SNAP_CONFINE_DEBUG", false)
 
 bool sc_is_reexec_enabled(void) { return getenv_bool("SNAP_REEXEC", true); }
 
-void debug(const char *msg, ...) {
+void debug(const char *__null_terminated msg, ...) {
     if (sc_is_debug_enabled()) {
         va_list va;
         va_start(va, msg);
@@ -112,9 +112,9 @@ void debug(const char *msg, ...) {
     }
 }
 
-void write_string_to_file(const char *filepath, const char *buf) {
+void write_string_to_file(const char *__null_terminated filepath, const char *__null_terminated buf) {
     debug("write_string_to_file %s %s", filepath, buf);
-    FILE *f = fopen(filepath, "w");
+    FILE *__unsafe_indexable f = fopen(filepath, "w");
     if (f == NULL) die("fopen %s failed", filepath);
     if (fwrite(buf, strlen(buf), 1, f) != 1) die("fwrite failed");
     if (fflush(f) != 0) die("fflush failed");
@@ -155,14 +155,14 @@ sc_identity sc_set_effective_identity(sc_identity identity) {
     return old;
 }
 
-int sc_nonfatal_mkpath(const char *const path, mode_t mode, uid_t uid, uid_t gid) {
+int sc_nonfatal_mkpath(const char *__null_terminated const path, mode_t mode, uid_t uid, uid_t gid) {
     // If asked to create an empty path, return immediately.
     if (strlen(path) == 0) {
         return 0;
     }
     // We're going to use strtok_r, which needs to modify the path, so we'll
     // make a copy of it.
-    char *path_copy SC_CLEANUP(sc_cleanup_string) = NULL;
+    char *__unsafe_indexable path_copy SC_CLEANUP(sc_cleanup_string) = NULL;
     path_copy = strdup(path);
     if (path_copy == NULL) {
         return -1;
@@ -185,24 +185,24 @@ int sc_nonfatal_mkpath(const char *const path, mode_t mode, uid_t uid, uid_t gid
         }
     }
     // strtok_r needs a pointer to keep track of where it is in the string.
-    char *path_walker = NULL;
+    char *__unsafe_indexable path_walker = NULL;
 
     // Initialize tokenizer and obtain first path segment.
-    char *path_segment = strtok_r(path_copy, "/", &path_walker);
+    char *__unsafe_indexable path_segment = strtok_r(path_copy, "/", &path_walker);
     while (path_segment) {
         // Try to create the directory.  It's okay if it already existed, but
         // return with error on any other error. Reset errno before attempting
         // this as it may stay stale (errno is not reset if mkdirat(2) returns
         // successfully).
         errno = 0;
-        if (sc_ensure_mkdirat(fd, path_segment, mode, uid, gid) != 0) {
+        if (sc_ensure_mkdirat(fd, __unsafe_forge_null_terminated(char *, path_segment), mode, uid, gid) != 0) {
             return -1;
         }
         // Open the parent directory we just made (and close the previous one
         // (but not the special value AT_FDCWD) so we can continue down the
         // path.
         int previous_fd = fd;
-        fd = openat(fd, path_segment, open_flags);
+        fd = openat(fd, __unsafe_forge_null_terminated(char *, path_segment), open_flags);
         if (previous_fd != AT_FDCWD && close(previous_fd) != 0) {
             return -1;
         }
@@ -215,7 +215,7 @@ int sc_nonfatal_mkpath(const char *const path, mode_t mode, uid_t uid, uid_t gid
     return 0;
 }
 
-bool sc_is_expected_path(const char *path) {
+bool sc_is_expected_path(const char *__null_terminated path) {
     const char *expected_path_re =
         "^((/var/lib/snapd)?/snap/(snapd|core)/x?[0-9]+/usr/lib|/usr/lib(exec)?)/snapd/snap-confine$";
     regex_t re;
@@ -226,7 +226,7 @@ bool sc_is_expected_path(const char *path) {
     return status == 0;
 }
 
-bool sc_wait_for_file(const char *path, size_t timeout_sec) {
+bool sc_wait_for_file(const char *__null_terminated path, size_t timeout_sec) {
     for (size_t i = 0; i < timeout_sec; ++i) {
         if (access(path, F_OK) == 0) {
             return true;
@@ -238,11 +238,11 @@ bool sc_wait_for_file(const char *path, size_t timeout_sec) {
 
 const char *run_systemd_container = "/run/systemd/container";
 
-static bool _sc_is_in_container(const char *p) {
+static bool _sc_is_in_container(const char *__null_terminated p) {
     // see what systemd-detect-virt --container does in, see:
     // https://github.com/systemd/systemd/blob/5dcd6b1d55a1cfe247621d70f0e25d020de6e0ed/src/basic/virt.c#L749-L755
     // https://systemd.io/CONTAINER_INTERFACE/
-    FILE *in SC_CLEANUP(sc_cleanup_file) = fopen(p, "r");
+    FILE *__unsafe_indexable in SC_CLEANUP(sc_cleanup_file) = fopen(p, "r");
     if (in == NULL) {
         return false;
     }
@@ -255,20 +255,20 @@ static bool _sc_is_in_container(const char *p) {
     }
 
     // Remove trailing \n if present
-    sc_str_chomp(container);
+    sc_str_chomp(__unsafe_forge_null_terminated(char *, &container[0]));
 
     if (container[0] == '\0') {
         /* file was empty or had just a newline */
         return false;
     }
 
-    debug("detected container environment: %s", container);
+    debug("detected container environment: %s", __unsafe_forge_null_terminated(char *, &container[0]));
     return true;
 }
 
 bool sc_is_in_container(void) { return _sc_is_in_container(run_systemd_container); }
 
-static int compat_fchmodat_symlink_nofollow(int fd, const char *name, mode_t mode) {
+static int compat_fchmodat_symlink_nofollow(int fd, const char *__null_terminated name, mode_t mode) {
     /* not all kernels support fchmodat(.., AT_SYMLINK_NOFOLLOW) (at least 4.14
      * on AMZN2 does not), attempt to handle that gracefully */
     int ret = fchmodat(fd, name, mode, AT_SYMLINK_NOFOLLOW);
@@ -281,7 +281,7 @@ static int compat_fchmodat_symlink_nofollow(int fd, const char *name, mode_t mod
     return ret;
 }
 
-int sc_ensure_mkdirat(int fd, const char *name, mode_t mode, uid_t uid, uid_t gid) {
+int sc_ensure_mkdirat(int fd, const char *__null_terminated name, mode_t mode, uid_t uid, uid_t gid) {
     /* Using 0000 permissions to avoid a race condition; we'll set the right
      * permissions after chown. */
     if (mkdirat(fd, name, 0000) < 0) {
@@ -307,11 +307,11 @@ int sc_ensure_mkdirat(int fd, const char *name, mode_t mode, uid_t uid, uid_t gi
     return 0;
 }
 
-int sc_ensure_mkdir(const char *path, mode_t mode, uid_t uid, uid_t gid) {
+int sc_ensure_mkdir(const char *__null_terminated path, mode_t mode, uid_t uid, uid_t gid) {
     return sc_ensure_mkdirat(AT_FDCWD, path, mode, uid, gid);
 }
 
-bool sc_is_path_canonical(const char *path) {
+bool sc_is_path_canonical(const char *__null_terminated path) {
     if (path == NULL) {
         return false;
     }

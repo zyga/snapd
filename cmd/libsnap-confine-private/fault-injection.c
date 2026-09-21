@@ -23,7 +23,7 @@
 #include <string.h>
 
 struct sc_fault {
-    const char *name;
+    const char *__null_terminated name;
     struct sc_fault *next;
     sc_fault_fn fn;
     struct sc_fault_state state;
@@ -31,7 +31,7 @@ struct sc_fault {
 
 static struct sc_fault *sc_faults = NULL;
 
-static bool _sc_faulty(const char *name, void *ptr) {
+static bool _sc_faulty(const char *__null_terminated name, void *ptr) {
     for (struct sc_fault *fault = sc_faults; fault != NULL; fault = fault->next) {
         if (strcmp(name, fault->name) == 0) {
             bool is_faulty = fault->fn(&fault->state, ptr);
@@ -42,7 +42,7 @@ static bool _sc_faulty(const char *name, void *ptr) {
     return false;
 }
 
-void sc_break(const char *name, sc_fault_fn fn) {
+void sc_break(const char *__null_terminated name, sc_fault_fn fn) {
     struct sc_fault *fault = calloc(1, sizeof *fault);
     if (fault == NULL) {
         abort();
@@ -65,8 +65,8 @@ void sc_reset_faults(void) {
 
 #else  // ifndef _ENABLE_FAULT_INJECTION
 
-static bool _sc_faulty(const char *name, void *ptr) { return false; }
+static bool _sc_faulty(const char *__null_terminated name, void *ptr) { return false; }
 
 #endif  // ifndef _ENABLE_FAULT_INJECTION
 
-bool sc_faulty(const char *name, void *ptr) { return _sc_faulty(name, ptr); }
+bool sc_faulty(const char *__null_terminated name, void *ptr) { return _sc_faulty(name, ptr); }

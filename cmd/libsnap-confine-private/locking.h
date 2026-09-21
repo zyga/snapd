@@ -27,6 +27,8 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
+#include "bounds-safety.h"
+
 /**
  * Obtain a flock-based, exclusive, globally scoped, lock.
  *
@@ -52,7 +54,7 @@ int sc_lock_global(void);
  * The return value needs to be passed to sc_unlock(), there is no need to
  * check for errors as the function will die() on any problem.
  **/
-int sc_lock_snap(const char *snap_name);
+int sc_lock_snap(const char *__null_terminated snap_name);
 
 /**
  * Verify that a flock-based, exclusive, snap-scoped, lock is held.
@@ -60,7 +62,7 @@ int sc_lock_snap(const char *snap_name);
  * If the lock is not held the process dies. The details about the lock
  * are exactly the same as for sc_lock_snap().
  **/
-void sc_verify_snap_lock(const char *snap_name);
+void sc_verify_snap_lock(const char *__null_terminated snap_name);
 
 /**
  * Obtain a flock-based, exclusive, snap-scoped, lock.
@@ -73,7 +75,7 @@ void sc_verify_snap_lock(const char *snap_name);
  * The return value needs to be passed to sc_unlock(), there is no need to
  * check for errors as the function will die() on any problem.
  **/
-int sc_lock_snap_user(const char *snap_name, uid_t uid);
+int sc_lock_snap_user(const char *__null_terminated snap_name, uid_t uid);
 
 /**
  * Release a flock-based lock.
@@ -113,6 +115,6 @@ typedef enum sc_snap_inhibition_hint {
  * sc_snap_is_inhibited returns true if a given inhibition hint is set for given snap.
  * This is determined by testing the presence of a file in /var/lib/snapd/inhibit/<snap_name>.<hint>.
  **/
-bool sc_snap_is_inhibited(const char *snap_name, sc_snap_inhibition_hint hint);
+bool sc_snap_is_inhibited(const char *__null_terminated snap_name, sc_snap_inhibition_hint hint);
 
 #endif  // SNAP_CONFINE_LOCKING_H

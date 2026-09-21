@@ -27,14 +27,14 @@
 static sc_panic_exit_fn panic_exit_fn = NULL;
 static sc_panic_msg_fn panic_msg_fn = NULL;
 
-void sc_panic(const char *fmt, ...) {
+void sc_panic(const char *__null_terminated fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     sc_panicv(fmt, ap);
     va_end(ap);
 }
 
-void sc_panicv(const char *fmt, va_list ap) {
+void sc_panicv(const char *__null_terminated fmt, va_list ap) {
     int errno_copy = errno;
 
     if (panic_msg_fn != NULL) {

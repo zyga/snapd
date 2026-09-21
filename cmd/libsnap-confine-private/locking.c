@@ -98,7 +98,8 @@ static int get_lock_directory(void) {
     return dir_fd;
 }
 
-static void get_lock_name(char *lock_fname, size_t size, const char *scope, uid_t uid) {
+static void get_lock_name(char *__counted_by(size) lock_fname, size_t size, const char *__null_terminated scope,
+                          uid_t uid) {
     if (uid == 0) {
         // The root user doesn't have a per-user mount namespace.
         // Doing so would be confusing for services which use $SNAP_DATA
@@ -109,7 +110,7 @@ static void get_lock_name(char *lock_fname, size_t size, const char *scope, uid_
     }
 }
 
-static int open_lock(const char *scope, uid_t uid) {
+static int open_lock(const char *__null_terminated scope, uid_t uid) {
     int dir_fd SC_CLEANUP(sc_cleanup_close) = -1;
     char lock_fname[PATH_MAX] = {0};
     int lock_fd;
@@ -130,7 +131,7 @@ static int open_lock(const char *scope, uid_t uid) {
     return lock_fd;
 }
 
-static int sc_lock_generic(const char *scope, uid_t uid) {
+static int sc_lock_generic(const char *__null_terminated scope, uid_t uid) {
     int lock_fd = open_lock(scope, uid);
     sc_enable_sanity_timeout();
     debug("acquiring exclusive lock (scope %s, uid %d)", scope ?: "(global)", uid);
@@ -146,9 +147,9 @@ static int sc_lock_generic(const char *scope, uid_t uid) {
 
 int sc_lock_global(void) { return sc_lock_generic(NULL, 0); }
 
-int sc_lock_snap(const char *snap_name) { return sc_lock_generic(snap_name, 0); }
+int sc_lock_snap(const char *__null_terminated snap_name) { return sc_lock_generic(snap_name, 0); }
 
-void sc_verify_snap_lock(const char *snap_name) {
+void sc_verify_snap_lock(const char *__null_terminated snap_name) {
     int lock_fd, retval;
 
     lock_fd = open_lock(snap_name, 0);
@@ -168,7 +169,7 @@ void sc_verify_snap_lock(const char *snap_name) {
      * Good, this is what we expected. */
 }
 
-int sc_lock_snap_user(const char *snap_name, uid_t uid) { return sc_lock_generic(snap_name, uid); }
+int sc_lock_snap_user(const char *__null_terminated snap_name, uid_t uid) { return sc_lock_generic(snap_name, uid); }
 
 void sc_unlock(int lock_fd) {
     // Release the lock and finish.
@@ -183,7 +184,7 @@ void sc_unlock(int lock_fd) {
 
 static const char *sc_inhibit_dir = SC_INHIBIT_DIR;
 
-bool sc_snap_is_inhibited(const char *snap_name, sc_snap_inhibition_hint hint) {
+bool sc_snap_is_inhibited(const char *__null_terminated snap_name, sc_snap_inhibition_hint hint) {
     char file_name[PATH_MAX] = {0};
     switch (hint) {
         case SC_SNAP_HINT_INHIBITED_FOR_REMOVE:

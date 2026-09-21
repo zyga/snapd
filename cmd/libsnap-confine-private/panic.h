@@ -20,6 +20,8 @@
 
 #include <stdarg.h>
 
+#include "bounds-safety.h"
+
 /**
  * sc_panic is an exit-with-message utility function.
  *
@@ -37,12 +39,12 @@
  * can be set to a non-zero value just prior to calling sc_panic. The value
  * will then be used when crafting the error message.
  **/
-__attribute__((noreturn, format(printf, 1, 2))) void sc_panic(const char *fmt, ...);
+__attribute__((noreturn, format(printf, 1, 2))) void sc_panic(const char *__null_terminated fmt, ...);
 
 /**
  * sc_panicv is a variant of sc_panic with an argument list.
  **/
-__attribute__((noreturn)) void sc_panicv(const char *fmt, va_list ap);
+__attribute__((noreturn)) void sc_panicv(const char *__null_terminated fmt, va_list ap);
 
 /**
  * sc_panic_exit_fn is the type of the exit function used by sc_panic().
@@ -67,7 +69,7 @@ sc_panic_exit_fn sc_set_panic_exit_fn(sc_panic_exit_fn fn);
 /**
  * sc_panic_msg_fn is the type of the format function used by sc_panic().
  **/
-typedef void (*sc_panic_msg_fn)(const char *fmt, va_list ap, int errno_copy);
+typedef void (*sc_panic_msg_fn)(const char *__null_terminated fmt, va_list ap, int errno_copy);
 
 /**
  * sc_set_panic_msg_fn sets the panic message function.

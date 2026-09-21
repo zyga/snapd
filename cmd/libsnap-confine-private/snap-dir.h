@@ -18,6 +18,7 @@
 #ifndef SNAP_CONFINE_SNAP_DIR_H
 #define SNAP_CONFINE_SNAP_DIR_H
 
+#include "bounds-safety.h"
 #include "error.h"
 
 /**
@@ -40,7 +41,7 @@
  * The error protocol is observed so if the caller doesn't provide an outgoing
  * error pointer the function will die on any error.
  **/
-const char *sc_snap_mount_dir(sc_error **errorp);
+const char *__null_terminated sc_snap_mount_dir(sc_error **errorp);
 
 /**
  * Probe the system to decide which of the two possible mount locations to use.
