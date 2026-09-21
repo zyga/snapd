@@ -21,6 +21,7 @@
 #include <stdbool.h>
 
 #include "../libsnap-confine-private/apparmor-support.h"
+#include "../libsnap-confine-private/bounds-safety.h"
 #include "snap-confine-invocation.h"
 
 /**
@@ -74,7 +75,7 @@ struct sc_mount_ns;
  * - sc_create_or_join_mount_ns()
  * - sc_preserve_populated_mount_ns()
  */
-struct sc_mount_ns *sc_open_mount_ns(const char *group_name);
+struct sc_mount_ns *sc_open_mount_ns(const char *__null_terminated group_name);
 
 /**
  * Close namespace group.
@@ -105,7 +106,7 @@ int sc_join_preserved_ns(struct sc_mount_ns *group, struct sc_apparmor *apparmor
  * The return is ESRCH if a preserved per-user mount namespace does not exist
  * and cannot be joined or zero otherwise.
  **/
-int sc_join_preserved_per_user_ns(struct sc_mount_ns *group, const char *snap_name);
+int sc_join_preserved_per_user_ns(struct sc_mount_ns *group, const char *__null_terminated snap_name);
 
 /**
  * Fork off a helper process for mount namespace capture.

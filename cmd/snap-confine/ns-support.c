@@ -134,7 +134,7 @@ void sc_initialize_mount_ns(unsigned int experimental_features) {
 
     /* Read and analyze the mount table. We need to see whether /run/snapd/ns
      * is a mount point with private event propagation. */
-    sc_mountinfo *info SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
+    sc_mountinfo *__unsafe_indexable info SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
     info = sc_parse_mountinfo(NULL);
     if (info == NULL) {
         die("cannot parse /proc/self/mountinfo");
@@ -142,14 +142,14 @@ void sc_initialize_mount_ns(unsigned int experimental_features) {
 
     bool is_mnt = false;
     bool is_private = false;
-    for (sc_mountinfo_entry *entry = sc_first_mountinfo_entry(info); entry != NULL;
-         entry = sc_next_mountinfo_entry(entry)) {
+    for (sc_mountinfo_entry *entry = sc_first_mountinfo_entry(__unsafe_forge_single(sc_mountinfo *, info));
+         entry != NULL; entry = sc_next_mountinfo_entry(entry)) {
         /* Find /run/snapd/ns */
         if (!sc_streq(entry->mount_dir, sc_ns_dir)) {
             continue;
         }
         is_mnt = true;
-        if (strstr(entry->optional_fields, "shared:") == NULL) {
+        if (strstr(__unsafe_null_terminated_to_indexable(entry->optional_fields), "shared:") == NULL) {
             /* Mount event propagation is not set to shared, good. */
             is_private = true;
         }
@@ -178,7 +178,7 @@ void sc_initialize_mount_ns(unsigned int experimental_features) {
 
 struct sc_mount_ns {
     // Name of the namespace group ($SNAP_NAME).
-    char *name;
+    char *__null_terminated name;
     // Descriptor to the namespace group control directory.  This descriptor is
     // opened with O_PATH|O_DIRECTORY so it's only used for openat() calls.
     int dir_fd;
@@ -208,7 +208,7 @@ static struct sc_mount_ns *sc_alloc_mount_ns(void) {
     return group;
 }
 
-struct sc_mount_ns *sc_open_mount_ns(const char *group_name) {
+struct sc_mount_ns *sc_open_mount_ns(const char *__null_terminated group_name) {
     struct sc_mount_ns *group = sc_alloc_mount_ns();
     group->dir_fd = open(sc_ns_dir, O_DIRECTORY | O_PATH | O_CLOEXEC | O_NOFOLLOW);
     if (group->dir_fd < 0) {
@@ -231,7 +231,8 @@ void sc_close_mount_ns(struct sc_mount_ns *group) {
     free(group);
 }
 
-static dev_t find_base_snap_device(const char *base_snap_name, const char *base_snap_rev) {
+static dev_t find_base_snap_device(const char *__null_terminated base_snap_name,
+                                   const char *__null_terminated base_snap_rev) {
     // Find the backing device of the base snap.
     // TODO: add support for "try mode" base snaps that also need
     // consideration of the mie->root component.
@@ -239,14 +240,15 @@ static dev_t find_base_snap_device(const char *base_snap_name, const char *base_
     char base_squashfs_path[PATH_MAX];
     sc_must_snprintf(base_squashfs_path, sizeof base_squashfs_path, "%s/%s/%s", sc_snap_mount_dir(NULL), base_snap_name,
                      base_snap_rev);
-    sc_mountinfo *mi SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
+    sc_mountinfo *__unsafe_indexable mi SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
     mi = sc_parse_mountinfo(NULL);
     if (mi == NULL) {
         die("cannot parse mountinfo of the current process");
     }
     bool found = false;
-    for (sc_mountinfo_entry *mie = sc_first_mountinfo_entry(mi); mie != NULL; mie = sc_next_mountinfo_entry(mie)) {
-        if (sc_streq(mie->mount_dir, base_squashfs_path)) {
+    for (sc_mountinfo_entry *mie = sc_first_mountinfo_entry(__unsafe_forge_single(sc_mountinfo *, mi)); mie != NULL;
+         mie = sc_next_mountinfo_entry(mie)) {
+        if (sc_streq(mie->mount_dir, __unsafe_forge_null_terminated(const char *, &base_squashfs_path[0]))) {
             base_snap_dev = makedev(mie->dev_major, mie->dev_minor);
             debug("block device of snap %s, revision %s is %d:%d", base_snap_name, base_snap_rev, mie->dev_major,
                   mie->dev_minor);
@@ -292,7 +294,8 @@ static bool base_snap_device_changed(sc_mountinfo *mi, dev_t base_snap_dev) {
     return true;
 }
 
-static bool homedirs_are_mounted(sc_mountinfo *mi, char **homedirs, int num_homedirs) {
+static bool homedirs_are_mounted(sc_mountinfo *mi, char *__unsafe_indexable *__counted_by(num_homedirs) homedirs,
+                                 int num_homedirs) {
     if (num_homedirs == 0) {
         return true;
     }
@@ -307,7 +310,7 @@ static bool homedirs_are_mounted(sc_mountinfo *mi, char **homedirs, int num_home
     sc_mountinfo_entry *mie;
     for (mie = sc_first_mountinfo_entry(mi); mie != NULL; mie = sc_next_mountinfo_entry(mie)) {
         for (int i = 0; i < num_homedirs; i++) {
-            if (sc_streq(mie->mount_dir, homedirs[i])) {
+            if (sc_streq(mie->mount_dir, __unsafe_forge_null_terminated(const char *, homedirs[i]))) {
                 homedir_seen[i] = true;
             }
         }
@@ -316,7 +319,7 @@ static bool homedirs_are_mounted(sc_mountinfo *mi, char **homedirs, int num_home
     bool all_seen = true;
     for (int i = 0; i < num_homedirs; i++) {
         if (!homedir_seen[i]) {
-            debug("Homedir %s missing from namespace", homedirs[i]);
+            debug("Homedir %s missing from namespace", __unsafe_forge_null_terminated(const char *, homedirs[i]));
             all_seen = false;
             break;
         }
@@ -326,7 +329,7 @@ static bool homedirs_are_mounted(sc_mountinfo *mi, char **homedirs, int num_home
 
 // Inspect the namespace and check if we should discard it.
 static bool should_discard_current_ns(const struct sc_invocation *inv, dev_t base_snap_dev) {
-    sc_mountinfo *mi SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
+    sc_mountinfo *__unsafe_indexable mi SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
 
     mi = sc_parse_mountinfo(NULL);
     if (mi == NULL) {
@@ -335,13 +338,16 @@ static bool should_discard_current_ns(const struct sc_invocation *inv, dev_t bas
     // The namespace may become "stale" when the rootfs is not the same
     // device we found above. This will happen whenever the base snap is
     // refreshed since the namespace was first created.
-    if (base_snap_device_changed(mi, base_snap_dev)) {
+    if (base_snap_device_changed(__unsafe_forge_single(sc_mountinfo *, mi), base_snap_dev)) {
         return true;
     }
     // Another reason for becoming stale is if the homedirs configuration has
     // changed: so this code will check that all homedirs are mounted in the
     // namespace.
-    if (!homedirs_are_mounted(mi, inv->homedirs, inv->num_homedirs)) {
+    if (!homedirs_are_mounted(__unsafe_forge_single(sc_mountinfo *, mi),
+                              __unsafe_forge_bidi_indexable(char *__unsafe_indexable *, inv->homedirs,
+                                                            inv->num_homedirs * sizeof(char *)),
+                              inv->num_homedirs)) {
         return true;
     }
 
@@ -383,7 +389,7 @@ static bool is_base_transition(const sc_invocation *inv) {
     char info_path[PATH_MAX] = {0};
     sc_must_snprintf(info_path, sizeof info_path, "/run/snapd/ns/snap.%s.info", inv->snap_instance);
 
-    FILE *stream SC_CLEANUP(sc_cleanup_file) = NULL;
+    FILE *__unsafe_indexable stream SC_CLEANUP(sc_cleanup_file) = NULL;
     stream = fopen(info_path, "r");
     if (stream == NULL && errno == ENOENT) {
         // If the info file is absent then we cannot decide if a transition had
@@ -395,10 +401,11 @@ static bool is_base_transition(const sc_invocation *inv) {
         die("cannot open %s", info_path);
     }
 
-    char *base_snap_name SC_CLEANUP(sc_cleanup_string) = NULL;
-    sc_error *err = NULL;
-    if (sc_infofile_get_key(stream, "base-snap-name", &base_snap_name, &err) < 0) {
-        sc_die_on_error(err);
+    char *__unsafe_indexable base_snap_name SC_CLEANUP(sc_cleanup_string) = NULL;
+    sc_error *__unsafe_indexable err = NULL;
+    if (sc_infofile_get_key(__unsafe_forge_single(FILE *, stream), "base-snap-name", (char **)(void *)&base_snap_name,
+                            (sc_error **)(void *)&err) < 0) {
+        sc_die_on_error(__unsafe_forge_single(sc_error *, err));
     }
 
     if (base_snap_name == NULL) {
@@ -407,10 +414,10 @@ static bool is_base_transition(const sc_invocation *inv) {
         return false;
     }
 
-    return !sc_streq(inv->orig_base_snap_name, base_snap_name);
+    return !sc_streq(inv->orig_base_snap_name, __unsafe_forge_null_terminated(const char *, base_snap_name));
 }
 
-static bool sc_is_mount_ns_in_use(const char *snap_instance);
+static bool sc_is_mount_ns_in_use(const char *__null_terminated snap_instance);
 
 // The namespace may be stale. To check this we must actually switch into it
 // but then we use up our setns call (the kernel misbehaves if we setns twice).
@@ -430,7 +437,8 @@ static int sc_inspect_and_maybe_discard_stale_ns(int mnt_fd, const sc_invocation
         die("cannot read current revision of snap %s: value too long", inv->snap_instance);
     }
     // Find the device that is backing the current revision of the base snap.
-    base_snap_dev = find_base_snap_device(inv->base_snap_name, base_snap_rev);
+    base_snap_dev =
+        find_base_snap_device(inv->base_snap_name, __unsafe_forge_null_terminated(const char *, &base_snap_rev[0]));
 
     // Store the PID of this process. This is done instead of calls to
     // getppid() below because then we can reliably track the PID of the
@@ -606,7 +614,7 @@ int sc_join_preserved_ns(struct sc_mount_ns *group, struct sc_apparmor *apparmor
     return ESRCH;
 }
 
-int sc_join_preserved_per_user_ns(struct sc_mount_ns *group, const char *snap_name) {
+int sc_join_preserved_per_user_ns(struct sc_mount_ns *group, const char *__null_terminated snap_name) {
     uid_t uid = getuid();
     char mnt_fname[PATH_MAX] = {0};
     sc_must_snprintf(mnt_fname, sizeof mnt_fname, "%s.%d.mnt", group->name, (int)uid);
@@ -878,7 +886,7 @@ void sc_wait_for_helper(struct sc_mount_ns *group) {
 }
 
 void sc_store_ns_info(const sc_invocation *inv) {
-    FILE *stream SC_CLEANUP(sc_cleanup_file) = NULL;
+    FILE *__unsafe_indexable stream SC_CLEANUP(sc_cleanup_file) = NULL;
     char info_path[PATH_MAX] = {0};
     sc_must_snprintf(info_path, sizeof info_path, "/run/snapd/ns/snap.%s.info", inv->snap_instance);
     int fd = -1;
@@ -904,7 +912,7 @@ void sc_store_ns_info(const sc_invocation *inv) {
     debug("saved mount namespace meta-data to %s", info_path);
 }
 
-bool sc_is_mount_ns_in_use(const char *snap_instance) {
+bool sc_is_mount_ns_in_use(const char *__null_terminated snap_instance) {
     // perform an indirect check of whether the mount namespace is occupied,
     // with cgroups v1, each snap process is attached to a group under the
     // freezer controller, however with cgroups v2, we must check for any groups
