@@ -20,6 +20,7 @@
 
 #include <sys/types.h>
 #include "../libsnap-confine-private/apparmor-support.h"
+#include "../libsnap-confine-private/bounds-safety.h"
 #include "snap-confine-invocation.h"
 
 /* Base location where extra libraries might be made available to the snap.
@@ -62,7 +63,7 @@ void sc_ensure_shared_snap_mount(void);
  * - reconfigure all existing mounts to slave mode
  * - perform all user mounts
  */
-void sc_setup_user_mounts(struct sc_apparmor *apparmor, int snap_update_ns_fd, const char *snap_name);
+void sc_setup_user_mounts(struct sc_apparmor *apparmor, int snap_update_ns_fd, const char *__null_terminated snap_name);
 
 /**
  * Ensure that SNAP_MOUNT_DIR and /var/snap are mount points.
@@ -78,5 +79,6 @@ void sc_ensure_snap_dir_shared_mounts(void);
  *
  * Create bind mounts from instance specific locations to non-instance ones.
  */
-void sc_setup_parallel_instance_classic_mounts(const char *snap_name, const char *snap_instance_name);
+void sc_setup_parallel_instance_classic_mounts(const char *__null_terminated snap_name,
+                                               const char *__null_terminated snap_instance_name);
 #endif

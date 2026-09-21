@@ -74,8 +74,9 @@ static const char *egl_vendor_globs[] = {
 
 static const size_t egl_vendor_globs_len = SC_ARRAY_SIZE(egl_vendor_globs);
 
-static const char *nvidia_driver_version_file(void) {
-    const char *path = getenv("SNAPD_TESTING_NVIDIA_DRIVER_VERSION_FILE");
+static const char *__null_terminated nvidia_driver_version_file(void) {
+    const char *__null_terminated path =
+        __unsafe_forge_null_terminated(const char *, getenv("SNAPD_TESTING_NVIDIA_DRIVER_VERSION_FILE"));
     if (path != NULL) {
         return path;
     }
@@ -204,17 +205,20 @@ static const size_t glvnd_globs_len = SC_ARRAY_SIZE(glvnd_globs);
 //
 // The glob list passed to us is produced with paths relative to source dir,
 // to simplify the various tie-in points with this function.
-static void sc_populate_libgl_with_hostfs_symlinks(const char *libgl_dir, const char *source_dir,
-                                                   const char *glob_list[], size_t glob_list_len) {
+static void sc_populate_libgl_with_hostfs_symlinks(const char *__null_terminated libgl_dir,
+                                                   const char *__null_terminated source_dir,
+                                                   const char *__null_terminated *__counted_by(glob_list_len) glob_list,
+                                                   size_t glob_list_len) {
     size_t source_dir_len = strlen(source_dir);
     glob_t glob_res SC_CLEANUP(globfree) = {.gl_pathv = NULL};
     // Find all the entries matching the list of globs
     for (size_t i = 0; i < glob_list_len; ++i) {
-        const char *glob_pattern = glob_list[i];
+        const char *__null_terminated glob_pattern = glob_list[i];
         char glob_pattern_full[512] = {0};
         sc_must_snprintf(glob_pattern_full, sizeof glob_pattern_full, "%s/%s", source_dir, glob_pattern);
 
-        int err = glob(glob_pattern_full, i ? GLOB_APPEND : 0, NULL, &glob_res);
+        int err = glob(__unsafe_forge_null_terminated(const char *, &glob_pattern_full[0]), i ? GLOB_APPEND : 0, NULL,
+                       &glob_res);
         // Not all of the files have to be there (they differ depending on the
         // driver version used). Ignore all errors that are not GLOB_NOMATCH.
         if (err != 0 && err != GLOB_NOMATCH) {
@@ -226,12 +230,14 @@ static void sc_populate_libgl_with_hostfs_symlinks(const char *libgl_dir, const 
         char symlink_name[512] = {0};
         char symlink_target[512] = {0};
         char prefix_dir[512] = {0};
-        const char *pathname = glob_res.gl_pathv[i];
-        char *pathname_copy1 SC_CLEANUP(sc_cleanup_string) = sc_strdup(pathname);
-        char *pathname_copy2 SC_CLEANUP(sc_cleanup_string) = sc_strdup(pathname);
+        const char *__null_terminated pathname = __unsafe_forge_null_terminated(const char *, glob_res.gl_pathv[i]);
+        char *__unsafe_indexable pathname_copy1 SC_CLEANUP(sc_cleanup_string) =
+            __unsafe_forge_null_terminated(char *, sc_strdup(pathname));
+        char *__unsafe_indexable pathname_copy2 SC_CLEANUP(sc_cleanup_string) =
+            __unsafe_forge_null_terminated(char *, sc_strdup(pathname));
         // POSIX dirname() and basename() may modify their input arguments
-        char *filename = basename(pathname_copy1);
-        char *directory_name = dirname(pathname_copy2);
+        char *__null_terminated filename = __unsafe_forge_null_terminated(char *, basename(pathname_copy1));
+        char *__null_terminated directory_name = __unsafe_forge_null_terminated(char *, dirname(pathname_copy2));
         sc_must_snprintf(prefix_dir, sizeof prefix_dir, "%s", libgl_dir);
 
         if (strlen(directory_name) > source_dir_len) {
@@ -239,8 +245,9 @@ static void sc_populate_libgl_with_hostfs_symlinks(const char *libgl_dir, const 
             // actual file is not placed directly under source_dir but under one or
             // more directories below source_dir. Make sure to recreate the whole
             // prefix
-            sc_must_snprintf(prefix_dir, sizeof prefix_dir, "%s%s", libgl_dir, &directory_name[source_dir_len]);
-            if (sc_nonfatal_mkpath(prefix_dir, 0755, 0, 0) != 0) {
+            sc_must_snprintf(prefix_dir, sizeof prefix_dir, "%s%s", libgl_dir,
+                             &__null_terminated_to_indexable(directory_name)[source_dir_len]);
+            if (sc_nonfatal_mkpath(__unsafe_forge_null_terminated(const char *, &prefix_dir[0]), 0755, 0, 0) != 0) {
                 die("failed to create prefix path: %s", prefix_dir);
             }
         }
@@ -292,7 +299,7 @@ static void sc_populate_libgl_with_hostfs_symlinks(const char *libgl_dir, const 
     }
 }
 
-static void sc_mkdir_and_mount_tpmfs(const char *dir) {
+static void sc_mkdir_and_mount_tpmfs(const char *__null_terminated dir) {
     if (sc_ensure_mkdir(dir, 0755, 0, 0) != 0) {
         die("cannot create tmpfs target %s", dir);
     }
@@ -301,17 +308,20 @@ static void sc_mkdir_and_mount_tpmfs(const char *dir) {
     sc_do_mount("none", dir, "tmpfs", MS_NODEV | MS_NOEXEC, NULL);
 }
 
-static void sc_remount_ro(const char *mount_point) {
+static void sc_remount_ro(const char *__null_terminated mount_point) {
     debug("remounting as read-only %s", mount_point);
     sc_do_mount(NULL, mount_point, NULL, MS_REMOUNT | MS_BIND | MS_RDONLY, NULL);
 }
 
-static void sc_mkdir_and_mount_and_glob_files(const char *rootfs_dir, const char *source_dir[], size_t source_dir_len,
-                                              const char *tgt_dir, const char *glob_list[], size_t glob_list_len) {
+static void sc_mkdir_and_mount_and_glob_files(const char *__null_terminated rootfs_dir,
+                                              const char *__null_terminated *__counted_by(source_dir_len) source_dir,
+                                              size_t source_dir_len, const char *__null_terminated tgt_dir,
+                                              const char *__null_terminated *__counted_by(glob_list_len) glob_list,
+                                              size_t glob_list_len) {
     // Bind mount a tmpfs on $rootfs_dir/$tgt_dir (i.e. /var/lib/snapd/lib/gl)
     char buf[512] = {0};
     sc_must_snprintf(buf, sizeof(buf), "%s%s", rootfs_dir, tgt_dir);
-    const char *libgl_dir = buf;
+    const char *__null_terminated libgl_dir = __unsafe_forge_null_terminated(const char *, &buf[0]);
 
     sc_mkdir_and_mount_tpmfs(libgl_dir);
 
@@ -343,7 +353,9 @@ static void sc_mkdir_and_mount_and_glob_files(const char *rootfs_dir, const char
 //
 // In non GLVND cases we just copy across the exposed libGLs and NVIDIA
 // libraries from wherever we find, and clobbering is also harmless.
-static void sc_mount_nvidia_driver_biarch(const char *rootfs_dir, const char **globs, size_t globs_len) {
+static void sc_mount_nvidia_driver_biarch(const char *__null_terminated rootfs_dir,
+                                          const char *__null_terminated *__counted_by(globs_len) globs,
+                                          size_t globs_len) {
     static const char *native_sources[] = {
         NATIVE_LIBDIR,
         NATIVE_LIBDIR "/nvidia*",
@@ -409,7 +421,8 @@ static void sc_probe_nvidia_driver(sc_nv_version *version) {
     }
 }
 
-static void sc_mkdir_and_mount_and_bind(const char *rootfs_dir, const char *src_dir, const char *tgt_dir) {
+static void sc_mkdir_and_mount_and_bind(const char *__null_terminated rootfs_dir, const char *__null_terminated src_dir,
+                                        const char *__null_terminated tgt_dir) {
     sc_nv_version version;
 
     // Probe sysfs to get the version of the driver that is currently inserted.
@@ -442,7 +455,7 @@ static void sc_mkdir_and_mount_and_bind(const char *rootfs_dir, const char *src_
     sc_do_mount(src, dst, NULL, MS_BIND, NULL);
 }
 
-static int sc_mount_nvidia_is_driver_in_dir(const char *dir) {
+static int sc_mount_nvidia_is_driver_in_dir(const char *__null_terminated dir) {
     char driver_path[512] = {0};
 
     sc_nv_version version;
@@ -469,7 +482,9 @@ static int sc_mount_nvidia_is_driver_in_dir(const char *dir) {
     return 0;
 }
 
-static void sc_mount_nvidia_driver_multiarch(const char *rootfs_dir, const char **globs, size_t globs_len) {
+static void sc_mount_nvidia_driver_multiarch(const char *__null_terminated rootfs_dir,
+                                             const char *__null_terminated *__counted_by(globs_len) globs,
+                                             size_t globs_len) {
     const char *native_libdir = NATIVE_LIBDIR "/" HOST_ARCH_TRIPLET;
     const char *lib32_libdir = NATIVE_LIBDIR "/" HOST_ARCH32_TRIPLET;
 
@@ -501,7 +516,7 @@ static void sc_mount_nvidia_driver_multiarch(const char *rootfs_dir, const char 
     }
 }
 
-static int sc_mount_exported_paths(const char *rootfs_dir) {
+static int sc_mount_exported_paths(const char *__null_terminated rootfs_dir) {
     // We are interested only in exports from GPU related interfaces to the
     // system, so we check the interface name in the files.
     // TODO we need to think what would happen if at some point these
@@ -600,7 +615,7 @@ static int sc_mount_exported_paths(const char *rootfs_dir) {
 }
 
 // TODO move to utils.c and add some unit tests
-static void sc_copy_file(const char *src, const char *dest) {
+static void sc_copy_file(const char *__null_terminated src, const char *__null_terminated dest) {
     int fd_in SC_CLEANUP(sc_cleanup_close) = -1;
     int fd_out SC_CLEANUP(sc_cleanup_close) = -1;
     if ((fd_in = open(src, O_RDONLY)) == -1) {
@@ -625,8 +640,8 @@ static void sc_copy_file(const char *src, const char *dest) {
 }
 
 // Copy files matching path_glob to the target directory.
-static void sc_copy_glob_files(const char *rootfs_dir, const char *mnt_dir, const char *path_glob,
-                               const char *target_dir) {
+static void sc_copy_glob_files(const char *__null_terminated rootfs_dir, const char *__null_terminated mnt_dir,
+                               const char *__null_terminated path_glob, const char *__null_terminated target_dir) {
     char glob_pattern[PATH_MAX] = {0};
     sc_must_snprintf(glob_pattern, sizeof glob_pattern, "%s%s", rootfs_dir, path_glob);
     debug("copying files defined by glob %s", glob_pattern);
@@ -672,7 +687,7 @@ static void sc_copy_glob_files(const char *rootfs_dir, const char *mnt_dir, cons
 
 #endif  // ifdef NVIDIA_MULTIARCH
 
-static void sc_mount_vulkan(const char *rootfs_dir) {
+static void sc_mount_vulkan(const char *__null_terminated rootfs_dir) {
     const char *vulkan_sources[] = {
         SC_VULKAN_SOURCE_DIR,
     };
@@ -682,7 +697,7 @@ static void sc_mount_vulkan(const char *rootfs_dir) {
                                       vulkan_globs_len);
 }
 
-static void sc_mount_egl(const char *rootfs_dir) {
+static void sc_mount_egl(const char *__null_terminated rootfs_dir) {
     const char *egl_vendor_sources[] = {SC_EGL_VENDOR_SOURCE_DIR};
     const size_t egl_vendor_sources_len = SC_ARRAY_SIZE(egl_vendor_sources);
 
@@ -690,7 +705,7 @@ static void sc_mount_egl(const char *rootfs_dir) {
                                       egl_vendor_globs, egl_vendor_globs_len);
 }
 
-void sc_mount_nvidia_driver(const char *rootfs_dir, const char *base_snap_name) {
+void sc_mount_nvidia_driver(const char *__null_terminated rootfs_dir, const char *__null_terminated base_snap_name) {
     /* If NVIDIA module isn't loaded, don't attempt to mount the drivers */
     if (access(nvidia_driver_version_file(), F_OK) != 0) {
         return;

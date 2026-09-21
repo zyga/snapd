@@ -18,6 +18,8 @@
 #ifndef SNAP_CONFINE_MOUNT_SUPPORT_NVIDIA_H
 #define SNAP_CONFINE_MOUNT_SUPPORT_NVIDIA_H
 
+#include "../libsnap-confine-private/bounds-safety.h"
+
 /**
  * Make the Nvidia driver from the classic distribution available in the snap
  * execution environment.
@@ -43,6 +45,6 @@
  * /usr/lib directory on the classic filesystem. After the pivot_root() call
  * those symlinks rely on the /var/lib/snapd/hostfs directory as a "gateway".
  **/
-void sc_mount_nvidia_driver(const char *rootfs_dir, const char *base_snap_name);
+void sc_mount_nvidia_driver(const char *__null_terminated rootfs_dir, const char *__null_terminated base_snap_name);
 
 #endif

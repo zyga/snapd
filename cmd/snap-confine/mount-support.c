@@ -58,7 +58,7 @@ static void sc_detach_views_of_writable(sc_distro distro, bool normal_mode);
 
 // TODO: simplify this, after all it is just a tmpfs
 // TODO: fold this into bootstrap
-static void setup_private_tmp(const char *snap_instance) {
+static void setup_private_tmp(const char *__null_terminated snap_instance) {
     // Create a 0700 base directory. This is the "base" directory that is
     // protected from other users. This directory name is NOT randomly
     // generated. This has several properties:
@@ -104,7 +104,8 @@ static void setup_private_tmp(const char *snap_instance) {
     }
     // Create /tmp/snap-private-tmp/snap.$SNAP_INSTANCE_NAME/ 0700 root:root.
     sc_must_snprintf(base, sizeof(base), "snap.%s", snap_instance);
-    if (sc_ensure_mkdirat(private_tmp_root_fd, base, 0700, 0, 0) != 0) {
+    if (sc_ensure_mkdirat(private_tmp_root_fd, __unsafe_forge_null_terminated(const char *, &base[0]), 0700, 0, 0) !=
+        0) {
         die("cannot create base directory: %s", base);
     }
 
@@ -138,7 +139,7 @@ static void setup_private_tmp(const char *snap_instance) {
     // /tmp/snap-private-tmp/snap.$SNAP_INSTANCE/tmp but doing it this way
     // helps avoid any potential race
     sc_must_snprintf(tmp_dir, sizeof(tmp_dir), "/proc/self/fd/%d", tmp_dir_fd);
-    sc_do_mount(tmp_dir, "/tmp", NULL, MS_BIND, NULL);
+    sc_do_mount(__unsafe_forge_null_terminated(const char *, &tmp_dir[0]), "/tmp", NULL, MS_BIND, NULL);
     sc_do_mount("none", "/tmp", NULL, MS_PRIVATE, NULL);
 }
 
@@ -172,36 +173,37 @@ static void setup_private_pts(void) {
 }
 
 struct sc_mount {
-    const char *path;
+    const char *__null_terminated path;
     bool is_bidirectional;
     // Alternate path defines the rbind mount "alternative" of path.
     // It exists so that we can make /media on systems that use /run/media.
-    const char *altpath;
+    const char *__null_terminated altpath;
     // Optional mount points are not processed unless the source and
     // destination both exist.
     bool is_optional;
 };
 
 struct sc_mount_config {
-    const char *rootfs_dir;
+    const char *__null_terminated rootfs_dir;
     // The struct is terminated with an entry with NULL path.
-    const struct sc_mount *mounts;
+    const struct sc_mount *__counted_by_or_null(0) mounts;
     // Same as the structure above, but this is malloc-allocated.
-    struct sc_mount *dynamic_mounts;
+    struct sc_mount *__counted_by_or_null(0) dynamic_mounts;
     sc_distro distro;
     bool normal_mode;
-    const char *base_snap_name;
-    const char *snap_instance;
+    const char *__null_terminated base_snap_name;
+    const char *__null_terminated snap_instance;
 };
 
 /**
  * Ensures all required mount points have been created
  */
-static void sc_create_mount_points(const char *scratch_dir, const struct sc_mount *mounts) {
+static void sc_create_mount_points(const char *__null_terminated scratch_dir,
+                                   const struct sc_mount *__counted_by_or_null(0) mounts) {
     char dst[PATH_MAX] = {0};
     for (const struct sc_mount *mnt = mounts; mnt && mnt->path != NULL; mnt++) {
         sc_must_snprintf(dst, sizeof(dst), "%s/%s", scratch_dir, mnt->path);
-        if (sc_nonfatal_mkpath(dst, 0755, 0, 0) < 0) {
+        if (sc_nonfatal_mkpath(__unsafe_forge_null_terminated(const char *, &dst[0]), 0755, 0, 0) < 0) {
             die("cannot create mount point %s", dst);
         }
     }
@@ -219,7 +221,8 @@ static void sc_create_mount_points(const char *scratch_dir, const struct sc_moun
  * - All the target directories must exist
  * - All the source directories must exist, unless the mount is bi-directional
  */
-static void sc_do_mounts(const char *scratch_dir, const struct sc_mount *mounts) {
+static void sc_do_mounts(const char *__null_terminated scratch_dir,
+                         const struct sc_mount *__counted_by_or_null(0) mounts) {
     char dst[PATH_MAX] = {0};
     // Bind mount certain directories from the host filesystem to the scratch
     // directory. By default mount events will propagate in both into and out
@@ -234,19 +237,20 @@ static void sc_do_mounts(const char *scratch_dir, const struct sc_mount *mounts)
         }
         sc_must_snprintf(dst, sizeof dst, "%s/%s", scratch_dir, mnt->path);
         if (mnt->is_optional) {
-            bool ok = sc_do_optional_mount(mnt->path, dst, NULL, MS_REC | MS_BIND, NULL);
+            bool ok = sc_do_optional_mount(mnt->path, __unsafe_forge_null_terminated(const char *, &dst[0]), NULL,
+                                           MS_REC | MS_BIND, NULL);
             if (!ok) {
                 // If we cannot mount it, just continue.
                 continue;
             }
         } else {
-            sc_do_mount(mnt->path, dst, NULL, MS_REC | MS_BIND, NULL);
+            sc_do_mount(mnt->path, __unsafe_forge_null_terminated(const char *, &dst[0]), NULL, MS_REC | MS_BIND, NULL);
         }
         if (!mnt->is_bidirectional) {
             // Mount events will only propagate inwards to the namespace. This
             // way the running application cannot alter any global state apart
             // from that of its own snap.
-            sc_do_mount("none", dst, NULL, MS_REC | MS_SLAVE, NULL);
+            sc_do_mount("none", __unsafe_forge_null_terminated(const char *, &dst[0]), NULL, MS_REC | MS_SLAVE, NULL);
         }
         if (mnt->altpath == NULL) {
             continue;
@@ -261,9 +265,9 @@ static void sc_do_mounts(const char *scratch_dir, const struct sc_mount *mounts)
         if ((stat_buf.st_mode & S_IFMT) == S_IFLNK) {
             die("cannot bind mount alternate path over a symlink: %s", dst);
         }
-        sc_do_mount(mnt->path, dst, NULL, MS_REC | MS_BIND, NULL);
+        sc_do_mount(mnt->path, __unsafe_forge_null_terminated(const char *, &dst[0]), NULL, MS_REC | MS_BIND, NULL);
         if (!mnt->is_bidirectional) {
-            sc_do_mount("none", dst, NULL, MS_REC | MS_SLAVE, NULL);
+            sc_do_mount("none", __unsafe_forge_null_terminated(const char *, &dst[0]), NULL, MS_REC | MS_SLAVE, NULL);
         }
     }
 }
@@ -275,8 +279,8 @@ static void sc_do_mounts(const char *scratch_dir, const struct sc_mount *mounts)
  * tmpfs), so that snap-update-ns will know about it and won't try to unmount
  * it.
  */
-static void sc_initialize_ns_fstab(const char *snap_instance_name) {
-    FILE *stream SC_CLEANUP(sc_cleanup_file) = NULL;
+static void sc_initialize_ns_fstab(const char *__null_terminated snap_instance_name) {
+    FILE *__unsafe_indexable stream SC_CLEANUP(sc_cleanup_file) = NULL;
     char info_path[PATH_MAX] = {0};
     sc_must_snprintf(info_path, sizeof info_path, "/run/snapd/ns/snap.%s.fstab", snap_instance_name);
     int fd = -1;
@@ -318,8 +322,9 @@ static void sc_initialize_ns_fstab(const char *snap_instance_name) {
  * later directly from the "/" directory of the system, so this function will
  * not touch them.
  */
-static void sc_replicate_base_rootfs(const char *scratch_dir, const char *rootfs_dir,
-                                     const struct sc_mount *root_mounts) {
+static void sc_replicate_base_rootfs(const char *__null_terminated scratch_dir,
+                                     const char *__null_terminated rootfs_dir,
+                                     const struct sc_mount *__counted_by(0) root_mounts) {
     // First of all, fix the root filesystem:
     // - remove write permissions for group and others
     // - set the owner to root:root
@@ -338,7 +343,7 @@ static void sc_replicate_base_rootfs(const char *scratch_dir, const char *rootfs
         die("cannot open directory \"%s\"", rootfs_dir);
     }
     // rootfs_fd is now managed by fdopendir() and should not be used after
-    DIR *rootfs SC_CLEANUP(sc_cleanup_closedir) = fdopendir(rootfs_fd);
+    DIR *__unsafe_indexable rootfs SC_CLEANUP(sc_cleanup_closedir) = fdopendir(rootfs_fd);
     if (rootfs == NULL) {
         die("cannot open directory \"%s\" from file descriptor", rootfs_dir);
     }
@@ -354,10 +359,11 @@ static void sc_replicate_base_rootfs(const char *scratch_dir, const char *rootfs
 
     while (true) {
         errno = 0;
-        struct dirent *ent = readdir(rootfs);
+        struct dirent *__unsafe_indexable ent = readdir(rootfs);
         if (ent == NULL) break;
 
-        if (sc_streq(ent->d_name, ".") || sc_streq(ent->d_name, "..")) {
+        if (sc_streq(__unsafe_forge_null_terminated(const char *, ent->d_name), ".") ||
+            sc_streq(__unsafe_forge_null_terminated(const char *, ent->d_name), "..")) {
             continue;
         }
 
@@ -375,7 +381,8 @@ static void sc_replicate_base_rootfs(const char *scratch_dir, const char *rootfs
             // as it will be created and mounted in
             // sc_bootstrap_mount_namespace() later.
             bool skip_dir = false;
-            const char *path_in_rootfs = full_path + scratch_dir_length;
+            const char *__null_terminated path_in_rootfs =
+                __unsafe_forge_null_terminated(const char *, full_path + scratch_dir_length);
             for (const struct sc_mount *mnt = root_mounts; mnt->path != NULL; mnt++) {
                 if (sc_streq(path_in_rootfs, mnt->path) || sc_streq(path_in_rootfs, mnt->altpath)) {
                     skip_dir = true;
@@ -392,7 +399,8 @@ static void sc_replicate_base_rootfs(const char *scratch_dir, const char *rootfs
 
             char src_path[PATH_MAX];
             sc_must_snprintf(src_path, sizeof(src_path), "%s/%s", rootfs_dir, ent->d_name);
-            sc_do_mount(src_path, full_path, NULL, MS_REC | MS_BIND, NULL);
+            sc_do_mount(__unsafe_forge_null_terminated(const char *, &src_path[0]),
+                        __unsafe_forge_null_terminated(const char *, &full_path[0]), NULL, MS_REC | MS_BIND, NULL);
         } else if (ent->d_type == DT_LNK) {
             char link_target[PATH_MAX + 1];
             ssize_t len = readlinkat(rootfs_fd, ent->d_name, link_target, sizeof(link_target) - 1);
@@ -426,7 +434,8 @@ static void sc_replicate_base_rootfs(const char *scratch_dir, const char *rootfs
             close(fd);
             char src_path[PATH_MAX];
             sc_must_snprintf(src_path, sizeof(src_path), "%s/%s", rootfs_dir, ent->d_name);
-            sc_do_mount(src_path, full_path, NULL, MS_BIND, NULL);
+            sc_do_mount(__unsafe_forge_null_terminated(const char *, &src_path[0]),
+                        __unsafe_forge_null_terminated(const char *, &full_path[0]), NULL, MS_BIND, NULL);
         } else {
             die("unexpected directory entry \"%s\" of type %i encountered in \"%s\"", ent->d_name, ent->d_type,
                 rootfs_dir);
@@ -489,20 +498,22 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config) {
     // Bind mount the temporary scratch directory for root filesystem over
     // itself so that it is a mount point. This is done so that it can become
     // unbindable as explained below.
-    sc_do_mount(scratch_dir, scratch_dir, NULL, MS_BIND, NULL);
+    sc_do_mount(__unsafe_forge_null_terminated(const char *, &scratch_dir[0]),
+                __unsafe_forge_null_terminated(const char *, &scratch_dir[0]), NULL, MS_BIND, NULL);
     // Make the scratch directory unbindable.
     //
     // This is necessary as otherwise a mount loop can occur and the kernel
     // would crash. The term unbindable simply states that it cannot be bind
     // mounted anywhere. When we construct recursive bind mounts below this
     // guarantees that this directory will not be replicated anywhere.
-    sc_do_mount("none", scratch_dir, NULL, MS_UNBINDABLE, NULL);
+    sc_do_mount("none", __unsafe_forge_null_terminated(const char *, &scratch_dir[0]), NULL, MS_UNBINDABLE, NULL);
     if (config->normal_mode) {
         sc_initialize_ns_fstab(config->snap_instance);
         // Create a tmpfs on scratch_dir; we'll them mount all the root
         // directories of the base snap onto it.
-        sc_do_mount("none", scratch_dir, "tmpfs", 0, "uid=0,gid=0");
-        sc_replicate_base_rootfs(scratch_dir, config->rootfs_dir, config->mounts);
+        sc_do_mount("none", __unsafe_forge_null_terminated(const char *, &scratch_dir[0]), "tmpfs", 0, "uid=0,gid=0");
+        sc_replicate_base_rootfs(__unsafe_forge_null_terminated(const char *, &scratch_dir[0]), config->rootfs_dir,
+                                 config->mounts);
     } else {
         // Recursively bind mount desired root filesystem directory over the
         // scratch directory. This puts the initial content into the scratch
@@ -511,20 +522,21 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config) {
         //
         // The mount is recursive because we need to accurately replicate the
         // state of the root filesystem into the scratch directory.
-        sc_do_mount(config->rootfs_dir, scratch_dir, NULL, MS_REC | MS_BIND, NULL);
+        sc_do_mount(config->rootfs_dir, __unsafe_forge_null_terminated(const char *, &scratch_dir[0]), NULL,
+                    MS_REC | MS_BIND, NULL);
     }
     // Make the scratch directory recursively slave. Nothing done there will be
     // shared with the initial mount namespace. This effectively detaches us,
     // in one way, from the original namespace and coupled with pivot_root
     // below serves as the foundation of the mount sandbox.
-    sc_do_mount("none", scratch_dir, NULL, MS_REC | MS_SLAVE, NULL);
-    sc_do_mounts(scratch_dir, config->mounts);
+    sc_do_mount("none", __unsafe_forge_null_terminated(const char *, &scratch_dir[0]), NULL, MS_REC | MS_SLAVE, NULL);
+    sc_do_mounts(__unsafe_forge_null_terminated(const char *, &scratch_dir[0]), config->mounts);
 
     // Dynamic mounts handle things like user-specified home directories. These
     // can change between runs, so they are stored separately. As we don't know
     // these in advance, make sure paths also exist in the scratch dir.
-    sc_create_mount_points(scratch_dir, config->dynamic_mounts);
-    sc_do_mounts(scratch_dir, config->dynamic_mounts);
+    sc_create_mount_points(__unsafe_forge_null_terminated(const char *, &scratch_dir[0]), config->dynamic_mounts);
+    sc_do_mounts(__unsafe_forge_null_terminated(const char *, &scratch_dir[0]), config->dynamic_mounts);
 
     if (config->normal_mode) {
         // Since we mounted /etc from the host filesystem to the scratch
@@ -570,7 +582,7 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config) {
         }
 
         for (const char **paths = paths_from_base; *paths != NULL; paths++) {
-            const char *path = *paths;
+            const char *__null_terminated path = *paths;
 
             // Special case for ubuntu/debian based
             // classic distros that use base snaps:
@@ -616,8 +628,9 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config) {
             }
             // both source and destination exist where both are either files
             // or both are directories
-            sc_do_mount(src, dst, NULL, MS_BIND, NULL);
-            sc_do_mount("none", dst, NULL, MS_SLAVE, NULL);
+            sc_do_mount(__unsafe_forge_null_terminated(const char *, &src[0]),
+                        __unsafe_forge_null_terminated(const char *, &dst[0]), NULL, MS_BIND, NULL);
+            sc_do_mount("none", __unsafe_forge_null_terminated(const char *, &dst[0]), NULL, MS_SLAVE, NULL);
         }
     }
     // The "core" base snap is special as it contains snapd and friends.
@@ -640,7 +653,7 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config) {
         // bind mount the current $ROOT/usr/lib/snapd path,
         // where $ROOT is either "/" or the "/snap/{core,snapd}/current"
         // that we are re-execing from
-        char *src = NULL;
+        char *__null_terminated src = NULL;
         char self[PATH_MAX + 1] = {0};
         ssize_t nread;
         nread = readlink("/proc/self/exe", self, sizeof self - 1);
@@ -656,7 +669,7 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config) {
         if (strstr(self, "/snap-confine") == NULL) {
             die("cannot use result from readlink: %s", self);
         }
-        src = dirname(self);
+        src = __unsafe_forge_null_terminated(char *, dirname(self));
         // dirname(path) might return '.' depending on path.
         // /proc/self/exe should always point
         // to an absolute path, but let's guarantee that.
@@ -664,8 +677,8 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config) {
             die("cannot use the result of dirname(): %s", src);
         }
 
-        sc_do_mount(src, dst, NULL, MS_BIND | MS_RDONLY, NULL);
-        sc_do_mount("none", dst, NULL, MS_SLAVE, NULL);
+        sc_do_mount(src, __unsafe_forge_null_terminated(const char *, &dst[0]), NULL, MS_BIND | MS_RDONLY, NULL);
+        sc_do_mount("none", __unsafe_forge_null_terminated(const char *, &dst[0]), NULL, MS_SLAVE, NULL);
     }
     // Bind mount the directory where all snaps are mounted. The location of
     // the this directory on the host filesystem may not match the location in
@@ -676,8 +689,9 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config) {
     // already contains the correct view of the mounted snaps.
     if (config->normal_mode) {
         sc_must_snprintf(dst, sizeof dst, "%s/snap", scratch_dir);
-        sc_do_mount(sc_snap_mount_dir(NULL), dst, NULL, MS_BIND | MS_REC, NULL);
-        sc_do_mount("none", dst, NULL, MS_REC | MS_SLAVE, NULL);
+        sc_do_mount(sc_snap_mount_dir(NULL), __unsafe_forge_null_terminated(const char *, &dst[0]), NULL,
+                    MS_BIND | MS_REC, NULL);
+        sc_do_mount("none", __unsafe_forge_null_terminated(const char *, &dst[0]), NULL, MS_REC | MS_SLAVE, NULL);
     }
     // Ensure that hostfs exists and is group-owned by root. We may have (now
     // or earlier) created the directory as the user who first ran a snap on a
@@ -713,14 +727,15 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config) {
     // has a number of undocumented requirements and one of them is that the
     // "put_old" directory (the second argument) cannot be shared in any way.
     sc_must_snprintf(dst, sizeof dst, "%s/%s", scratch_dir, SC_HOSTFS_DIR);
-    sc_do_mount(dst, dst, NULL, MS_BIND, NULL);
-    sc_do_mount("none", dst, NULL, MS_PRIVATE, NULL);
+    sc_do_mount(__unsafe_forge_null_terminated(const char *, &dst[0]),
+                __unsafe_forge_null_terminated(const char *, &dst[0]), NULL, MS_BIND, NULL);
+    sc_do_mount("none", __unsafe_forge_null_terminated(const char *, &dst[0]), NULL, MS_PRIVATE, NULL);
     // On classic mount the nvidia driver. Ideally this would be done in an
     // uniform way after pivot_root but this is good enough and requires less
     // code changes the nvidia code assumes it has access to the existing
     // pre-pivot filesystem.
     if (config->distro == SC_DISTRO_CLASSIC) {
-        sc_mount_nvidia_driver(scratch_dir, config->base_snap_name);
+        sc_mount_nvidia_driver(__unsafe_forge_null_terminated(const char *, &scratch_dir[0]), config->base_snap_name);
     }
     // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     //                    pivot_root
@@ -753,7 +768,7 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config) {
     // This way we can remove the temporary directory we created and "clean up"
     // after ourselves nicely.
     sc_must_snprintf(dst, sizeof dst, "%s/%s", SC_HOSTFS_DIR, scratch_dir);
-    sc_do_umount(dst, UMOUNT_NOFOLLOW);
+    sc_do_umount(__unsafe_forge_null_terminated(const char *, &dst[0]), UMOUNT_NOFOLLOW);
     // Remove the scratch directory. Note that we are using the path that is
     // based on the old root filesystem as after pivot_root we cannot guarantee
     // what is present at the same location normally. (It is probably an empty
@@ -770,15 +785,15 @@ static void sc_bootstrap_mount_namespace(const struct sc_mount_config *config) {
     // mount table and software inspecting the mount table may become confused
     // (eg, docker and LP:# 162601).
     sc_must_snprintf(src, sizeof src, "%s/sys", SC_HOSTFS_DIR);
-    sc_do_umount(src, UMOUNT_NOFOLLOW | MNT_DETACH);
+    sc_do_umount(__unsafe_forge_null_terminated(const char *, &src[0]), UMOUNT_NOFOLLOW | MNT_DETACH);
     // Detach the redundant hostfs version of /dev since it shows up in the
     // mount table and software inspecting the mount table may become confused.
     sc_must_snprintf(src, sizeof src, "%s/dev", SC_HOSTFS_DIR);
-    sc_do_umount(src, UMOUNT_NOFOLLOW | MNT_DETACH);
+    sc_do_umount(__unsafe_forge_null_terminated(const char *, &src[0]), UMOUNT_NOFOLLOW | MNT_DETACH);
     // Detach the redundant hostfs version of /proc since it shows up in the
     // mount table and software inspecting the mount table may become confused.
     sc_must_snprintf(src, sizeof src, "%s/proc", SC_HOSTFS_DIR);
-    sc_do_umount(src, UMOUNT_NOFOLLOW | MNT_DETACH);
+    sc_do_umount(__unsafe_forge_null_terminated(const char *, &src[0]), UMOUNT_NOFOLLOW | MNT_DETACH);
     // Detach both views of /writable: the one from hostfs and the one directly
     // visible in /writable. Interfaces don't grant access to this directory
     // and it has a large duplicated view of many mount points.  Note that this
@@ -792,8 +807,8 @@ static void sc_detach_views_of_writable(sc_distro distro, bool normal_mode) {
     // prevent otherwise occurring event propagation from self-conflicting and
     // returning EBUSY. A similar approach is used by snap-update-ns and is
     // documented in umount(2).
-    const char *writable_dir = "/writable";
-    const char *hostfs_writable_dir = "/var/lib/snapd/hostfs/writable";
+    const char *__null_terminated writable_dir = "/writable";
+    const char *__null_terminated hostfs_writable_dir = "/var/lib/snapd/hostfs/writable";
 
     // Writable only exists on ubuntu-core.
     if (distro == SC_DISTRO_CLASSIC) {
@@ -822,7 +837,8 @@ static void sc_detach_views_of_writable(sc_distro distro, bool normal_mode) {
  * @fulllen: full original path length.
  * Returns a pointer to the next path segment, or NULL if done.
  */
-static char *__attribute__((used)) get_nextpath(char *path, size_t *offsetp, size_t fulllen) {
+static char *__counted_by(fulllen) __attribute__((used))
+get_nextpath(char *__counted_by(fulllen) path, size_t *offsetp, size_t fulllen) {
     size_t offset = *offsetp;
 
     if (offset >= fulllen) return NULL;
@@ -837,7 +853,7 @@ static char *__attribute__((used)) get_nextpath(char *path, size_t *offsetp, siz
 /**
  * Check that @subdir is a subdir of @dir.
  **/
-static bool __attribute__((used)) is_subdir(const char *subdir, const char *dir) {
+static bool __attribute__((used)) is_subdir(const char *__null_terminated subdir, const char *__null_terminated dir) {
     size_t dirlen = strlen(dir);
     size_t subdirlen = strlen(subdir);
 
@@ -848,18 +864,18 @@ static bool __attribute__((used)) is_subdir(const char *subdir, const char *dir)
     // @dir can look like "path/" (that is, end with the directory separator).
     // When that is the case then given the test above we can be sure @subdir
     // is a real subdirectory.
-    if (dirlen > 0 && dir[dirlen - 1] == '/') return true;
+    if (dirlen > 0 && __null_terminated_to_indexable(dir)[dirlen - 1] == '/') return true;
     // @subdir can look like "path/stuff" and when the directory separator
     // is exactly at the spot where @dir ends (that is, it was not caught
     // by the test above) then @subdir is a real subdirectory.
-    if (subdir[dirlen] == '/' && dirlen > 0) return true;
+    if (__null_terminated_to_indexable(subdir)[dirlen] == '/' && dirlen > 0) return true;
     // If both @dir and @subdir have identical length then given that the
     // prefix check above @subdir is a real subdirectory.
     if (subdirlen == dirlen) return true;
     return false;
 }
 
-static struct sc_mount *sc_homedir_mounts(const struct sc_invocation *inv) {
+static struct sc_mount *__counted_by_or_null(0) sc_homedir_mounts(const struct sc_invocation *inv) {
     if (inv->num_homedirs == 0) {
         return NULL;
     }
@@ -870,15 +886,15 @@ static struct sc_mount *sc_homedir_mounts(const struct sc_invocation *inv) {
     }
     // Copy inv->homedirs to the mount structures
     for (int i = 0; i < inv->num_homedirs; i++) {
-        debug("Adding homedir: %s", inv->homedirs[i]);
-        mounts[i].path = sc_strdup(inv->homedirs[i]);
+        debug("Adding homedir: %s", __unsafe_forge_null_terminated(const char *, inv->homedirs[i]));
+        mounts[i].path = sc_strdup(__unsafe_forge_null_terminated(const char *, inv->homedirs[i]));
         // Note that we are not setting bidirectional flag, so anything mounted
         // here will not propagate to the host.
     }
     return mounts;
 }
 
-static void sc_free_dynamic_mounts(struct sc_mount *mounts) {
+static void sc_free_dynamic_mounts(struct sc_mount *__counted_by_or_null(0) mounts) {
     // This is in line with normal free semantics.
     if (mounts == NULL) {
         return;
@@ -975,20 +991,20 @@ void sc_populate_mount_ns(struct sc_apparmor *apparmor, int snap_update_ns_fd, c
     sc_call_snap_update_ns(snap_update_ns_fd, inv->snap_instance, apparmor);
 }
 
-static bool is_mounted_with_shared_option(const char *dir) __attribute__((nonnull(1)));
+static bool is_mounted_with_shared_option(const char *__null_terminated dir) __attribute__((nonnull(1)));
 
-static bool is_mounted_with_shared_option(const char *dir) {
-    sc_mountinfo *sm SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
+static bool is_mounted_with_shared_option(const char *__null_terminated dir) {
+    sc_mountinfo *__unsafe_indexable sm SC_CLEANUP(sc_cleanup_mountinfo) = NULL;
     sm = sc_parse_mountinfo(NULL);
     if (sm == NULL) {
         die("cannot parse /proc/self/mountinfo");
     }
-    sc_mountinfo_entry *entry = sc_first_mountinfo_entry(sm);
+    sc_mountinfo_entry *entry = sc_first_mountinfo_entry(__unsafe_forge_single(sc_mountinfo *, sm));
     while (entry != NULL) {
-        const char *mount_dir = entry->mount_dir;
+        const char *__null_terminated mount_dir = entry->mount_dir;
         if (sc_streq(mount_dir, dir)) {
-            const char *optional_fields = entry->optional_fields;
-            if (strstr(optional_fields, "shared:") != NULL) {
+            const char *__null_terminated optional_fields = entry->optional_fields;
+            if (strstr(__unsafe_null_terminated_to_indexable(optional_fields), "shared:") != NULL) {
                 return true;
             }
         }
@@ -1009,7 +1025,8 @@ void sc_ensure_shared_snap_mount(void) {
     }
 }
 
-void sc_setup_user_mounts(struct sc_apparmor *apparmor, int snap_update_ns_fd, const char *snap_name) {
+void sc_setup_user_mounts(struct sc_apparmor *apparmor, int snap_update_ns_fd,
+                          const char *__null_terminated snap_name) {
     debug("%s: %s", __FUNCTION__, snap_name);
 
     char profile_path[PATH_MAX];
@@ -1031,7 +1048,7 @@ void sc_setup_user_mounts(struct sc_apparmor *apparmor, int snap_update_ns_fd, c
 void sc_ensure_snap_dir_shared_mounts(void) {
     const char *dirs[] = {sc_snap_mount_dir(NULL), "/var/snap", NULL};
     for (int i = 0; dirs[i] != NULL; i++) {
-        const char *dir = dirs[i];
+        const char *__null_terminated dir = __unsafe_forge_null_terminated(const char *, dirs[i]);
         if (!is_mounted_with_shared_option(dir)) {
             /* Since this directory isn't yet shared (but it should be),
              * recursively bind mount it, then recursively share it so that
@@ -1049,23 +1066,26 @@ void sc_ensure_snap_dir_shared_mounts(void) {
     }
 }
 
-void sc_setup_parallel_instance_classic_mounts(const char *snap_name, const char *snap_instance_name) {
+void sc_setup_parallel_instance_classic_mounts(const char *__null_terminated snap_name,
+                                               const char *__null_terminated snap_instance_name) {
     char src[PATH_MAX] = {0};
     char dst[PATH_MAX] = {0};
 
     const char *dirs[] = {sc_snap_mount_dir(NULL), "/var/snap", NULL};
     for (int i = 0; dirs[i] != NULL; i++) {
-        const char *dir = dirs[i];
+        const char *__null_terminated dir = __unsafe_forge_null_terminated(const char *, dirs[i]);
         sc_do_mount("none", dir, NULL, MS_REC | MS_SLAVE, NULL);
     }
 
     /* Mount SNAP_MOUNT_DIR/<snap>_<key> on SNAP_MOUNT_DIR/<snap> */
     sc_must_snprintf(src, sizeof src, "%s/%s", sc_snap_mount_dir(NULL), snap_instance_name);
     sc_must_snprintf(dst, sizeof dst, "%s/%s", sc_snap_mount_dir(NULL), snap_name);
-    sc_do_mount(src, dst, "none", MS_BIND | MS_REC, NULL);
+    sc_do_mount(__unsafe_forge_null_terminated(const char *, &src[0]),
+                __unsafe_forge_null_terminated(const char *, &dst[0]), "none", MS_BIND | MS_REC, NULL);
 
     /* Mount /var/snap/<snap>_<key> on /var/snap/<snap> */
     sc_must_snprintf(src, sizeof src, "/var/snap/%s", snap_instance_name);
     sc_must_snprintf(dst, sizeof dst, "/var/snap/%s", snap_name);
-    sc_do_mount(src, dst, "none", MS_BIND | MS_REC, NULL);
+    sc_do_mount(__unsafe_forge_null_terminated(const char *, &src[0]),
+                __unsafe_forge_null_terminated(const char *, &dst[0]), "none", MS_BIND | MS_REC, NULL);
 }
