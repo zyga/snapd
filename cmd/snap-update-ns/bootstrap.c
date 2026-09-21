@@ -49,10 +49,10 @@
 // bootstrap_errno contains a copy of errno if a system call fails.
 int bootstrap_errno = 0;
 // bootstrap_msg contains a static string if something fails.
-const char *bootstrap_msg = NULL;
+const char *__null_terminated bootstrap_msg = NULL;
 
 // setns_into_snap switches mount namespace into that of a given snap.
-static int setns_into_snap(const char *snap_name) {
+static int setns_into_snap(const char *__null_terminated snap_name) {
     // Construct the name of the .mnt file to open.
     char buf[PATH_MAX] = {
         0,
@@ -127,7 +127,7 @@ static int verify_caps(void) {
 
     struct {
         int cap;
-        const char *err;
+        const char *__null_terminated err;
     } expected_caps[] = {{
                              .cap = CAP_SYS_ADMIN,
                              .err = "CAP_SYS_ADMIN capability not in effective set",
@@ -153,7 +153,7 @@ static int verify_caps(void) {
 }
 
 // TODO: reuse the code from snap-confine, if possible.
-static int skip_lowercase_letters(const char **p) {
+static int skip_lowercase_letters(const char *__bidi_indexable *__single p) {
     int skipped = 0;
     const char *c;
     for (c = *p; *c >= 'a' && *c <= 'z'; ++c) {
@@ -164,7 +164,7 @@ static int skip_lowercase_letters(const char **p) {
 }
 
 // TODO: reuse the code from snap-confine, if possible.
-static int skip_digits(const char **p) {
+static int skip_digits(const char *__bidi_indexable *__single p) {
     int skipped = 0;
     const char *c;
     for (c = *p; *c >= '0' && *c <= '9'; ++c) {
@@ -175,7 +175,7 @@ static int skip_digits(const char **p) {
 }
 
 // TODO: reuse the code from snap-confine, if possible.
-static int skip_one_char(const char **p, char c) {
+static int skip_one_char(const char *__bidi_indexable *__single p, char c) {
     if (**p == c) {
         *p += 1;
         return 1;
@@ -184,7 +184,7 @@ static int skip_one_char(const char **p, char c) {
 }
 
 // validate_snap_name performs full validation of the given name.
-static int validate_snap_name(const char *snap_name) {
+static int validate_snap_name(const char *__null_terminated snap_name) {
     // NOTE: This function should be synchronized with the two other
     // implementations: sc_snap_name_validate and snap.ValidateName.
 
@@ -200,7 +200,7 @@ static int validate_snap_name(const char *snap_name) {
     // The only motivation for not using regular expressions is so that we
     // don't run untrusted input against a potentially complex regular
     // expression engine.
-    const char *p = snap_name;
+    const char *p = __null_terminated_to_indexable(snap_name);
     if (skip_one_char(&p, '-')) {
         bootstrap_msg = "snap name cannot start with a dash";
         return -1;
@@ -249,7 +249,7 @@ static int validate_snap_name(const char *snap_name) {
     return 0;
 }
 
-static int instance_key_validate(const char *instance_key) {
+static int instance_key_validate(const char *__null_terminated instance_key) {
     // NOTE: see snap.ValidateInstanceName for reference of a valid instance key
     // format
 
@@ -265,9 +265,10 @@ static int instance_key_validate(const char *instance_key) {
     // The only motivation for not using regular expressions is so that we don't
     // run untrusted input against a potentially complex regular expression
     // engine.
+    const char *ik = __null_terminated_to_indexable(instance_key);
     int i = 0;
-    for (i = 0; instance_key[i] != '\0'; i++) {
-        char c = instance_key[i];
+    for (i = 0; ik[i] != '\0'; i++) {
+        char c = ik[i];
         /* NOTE: We are reimplementing islower() and isdigit()
          * here. For context see
          * https://github.com/golang/go/issues/29689 */
@@ -289,7 +290,7 @@ static int instance_key_validate(const char *instance_key) {
 }
 
 // validate_instance_name performs full validation of the given snap instance name.
-int validate_instance_name(const char *instance_name) {
+int validate_instance_name(const char *__null_terminated instance_name) {
     // NOTE: This function should be synchronized with the two other
     // implementations: sc_instance_name_validate and snap.ValidateInstanceName.
 
@@ -302,10 +303,10 @@ int validate_instance_name(const char *instance_name) {
     char s[53] = {0};
     strncpy(s, instance_name, sizeof(s) - 1);
 
-    char *t = s;
-    const char *snap_name = strsep(&t, "_");
-    const char *instance_key = strsep(&t, "_");
-    const char *third_separator = strsep(&t, "_");
+    char *__unsafe_indexable t = s;
+    const char *__null_terminated snap_name = __unsafe_forge_null_terminated(const char *, strsep(&t, "_"));
+    const char *__null_terminated instance_key = __unsafe_forge_null_terminated(const char *, strsep(&t, "_"));
+    const char *__null_terminated third_separator = __unsafe_forge_null_terminated(const char *, strsep(&t, "_"));
     if (third_separator != NULL) {
         bootstrap_msg = "snap instance name can contain only one underscore";
         return -1;
@@ -324,16 +325,17 @@ int validate_instance_name(const char *instance_name) {
 }
 
 // parse the -u argument, returns -1 on failure or 0 on success.
-static int parse_arg_u(int argc, char *const *argv, int *optind, unsigned long *uid_out) {
+static int parse_arg_u(int argc, char *__null_terminated const *__counted_by(argc) argv, int *optind,
+                       unsigned long *uid_out) {
     if (*optind + 1 == argc || argv[*optind + 1] == NULL) {
         bootstrap_msg = "-u requires an argument";
         bootstrap_errno = 0;
         return -1;
     }
-    const char *uid_text = argv[*optind + 1];
+    const char *__null_terminated uid_text = argv[*optind + 1];
     errno = 0;
-    char *uid_text_end = NULL;
-    unsigned long parsed_uid = strtoul(uid_text, &uid_text_end, 10);
+    char *__unsafe_indexable uid_text_end = NULL;
+    unsigned long parsed_uid = strtoul(uid_text, (char **__unsafe_indexable) & uid_text_end, 10);
     int saved_errno = errno;
     char c = *uid_text;
     if (
@@ -367,8 +369,9 @@ static int parse_arg_u(int argc, char *const *argv, int *optind, unsigned long *
 
 // process_arguments parses given a command line
 // argc and argv are defined as for the main() function
-void process_arguments(int argc, char *const *argv, const char **snap_name_out, bool *should_setns_out,
-                       bool *process_user_fstab, unsigned long *uid_out) {
+void process_arguments(int argc, char *__null_terminated const *__counted_by(argc) argv,
+                       const char *__null_terminated *snap_name_out, bool *should_setns_out, bool *process_user_fstab,
+                       unsigned long *uid_out) {
     // Find the name of the called program. If it is ending with ".test" then do nothing.
     // NOTE: This lets us use cgo/go to write tests without running the bulk
     // of the code automatically.
@@ -378,8 +381,8 @@ void process_arguments(int argc, char *const *argv, const char **snap_name_out, 
         bootstrap_msg = "argv0 is corrupted";
         return;
     }
-    const char *argv0 = argv[0];
-    const char *argv0_suffix_maybe = strstr(argv0, ".test");
+    const char *argv0 = __null_terminated_to_indexable(argv[0]);
+    const char *__unsafe_indexable argv0_suffix_maybe = strstr(argv0, ".test");
     if (argv0_suffix_maybe != NULL && argv0_suffix_maybe[strlen(".test")] == '\0') {
         bootstrap_errno = 0;
         bootstrap_msg = "bootstrap is not enabled while testing";
@@ -388,13 +391,13 @@ void process_arguments(int argc, char *const *argv, const char **snap_name_out, 
 
     bool should_setns = true;
     bool user_fstab = false;
-    const char *snap_name = NULL;
+    const char *__null_terminated snap_name = NULL;
 
     // Sanity check the command line arguments.  The go parts will
     // scan this too.
     int i;
     for (i = 1; i < argc; i++) {
-        const char *arg = argv[i];
+        const char *__null_terminated arg = argv[i];
         if (arg[0] == '-') {
             /* We have an option */
             if (!strcmp(arg, "--from-snap-confine")) {
@@ -463,11 +466,12 @@ void process_arguments(int argc, char *const *argv, const char **snap_name_out, 
 
 // bootstrap prepares snap-update-ns to work in the namespace of the snap given
 // on command line.
-void bootstrap(int argc, char **argv, char **envp) {
+void bootstrap(int argc, char *__null_terminated *__counted_by(argc) argv,
+               char *__null_terminated *__null_terminated envp) {
     // We may have been started via snap-confine with capabilities carried over
     // across exec. In order to prevent environment-based attacks we start by
     // erasing all environment variables.
-    char *snapd_debug = getenv("SNAPD_DEBUG");
+    char *__null_terminated snapd_debug = __unsafe_forge_null_terminated(char *, getenv("SNAPD_DEBUG"));
     if (clearenv() != 0) {
         bootstrap_errno = 0;
         bootstrap_msg = "bootstrap could not clear the environment";
@@ -484,7 +488,7 @@ void bootstrap(int argc, char **argv, char **envp) {
     // Analyze the read process cmdline to find the snap name and decide if we
     // should use setns to jump into the mount namespace of a particular snap.
     // This is spread out for easier testability.
-    const char *snap_name = NULL;
+    const char *__null_terminated snap_name = NULL;
     bool should_setns = false;
     bool process_user_fstab = false;
     unsigned long uid = 0;

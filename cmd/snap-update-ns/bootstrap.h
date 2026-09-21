@@ -23,12 +23,16 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-extern int bootstrap_errno;
-extern const char *bootstrap_msg;
+#include "../libsnap-confine-private/bounds-safety.h"
 
-void bootstrap(int argc, char **argv, char **envp);
-void process_arguments(int argc, char *const *argv, const char **snap_name_out, bool *should_setns_out,
-                       bool *process_user_fstab, unsigned long *uid_out);
-int validate_instance_name(const char *instance_name);
+extern int bootstrap_errno;
+extern const char *__null_terminated bootstrap_msg;
+
+void bootstrap(int argc, char *__null_terminated *__counted_by(argc) argv,
+               char *__null_terminated *__null_terminated envp);
+void process_arguments(int argc, char *__null_terminated const *__counted_by(argc) argv,
+                       const char *__null_terminated *snap_name_out, bool *should_setns_out, bool *process_user_fstab,
+                       unsigned long *uid_out);
+int validate_instance_name(const char *__null_terminated instance_name);
 
 #endif
