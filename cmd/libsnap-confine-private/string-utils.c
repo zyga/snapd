@@ -24,7 +24,7 @@
 
 #include "utils.h"
 
-bool sc_streq(const char *a, const char *b) {
+bool sc_streq(const char *__null_terminated a, const char *__null_terminated b) {
     if (!a || !b) {
         return false;
     }
@@ -32,7 +32,7 @@ bool sc_streq(const char *a, const char *b) {
     return strcmp(a, b) == 0;
 }
 
-bool sc_endswith(const char *str, const char *suffix) {
+bool sc_endswith(const char *__null_terminated str, const char *__null_terminated suffix) {
     if (!str || !suffix) {
         return false;
     }
@@ -44,10 +44,10 @@ bool sc_endswith(const char *str, const char *suffix) {
         return false;
     }
 
-    return strncmp(str - xlen + slen, suffix, xlen) == 0;
+    return strncmp(__null_terminated_to_indexable(str) - xlen + slen, suffix, xlen) == 0;
 }
 
-bool sc_startswith(const char *str, const char *prefix) {
+bool sc_startswith(const char *__null_terminated str, const char *__null_terminated prefix) {
     if (!str || !prefix) {
         return false;
     }
@@ -56,7 +56,7 @@ bool sc_startswith(const char *str, const char *prefix) {
     return strncmp(str, prefix, xlen) == 0;
 }
 
-char *sc_strdup(const char *str) {
+char *__null_terminated sc_strdup(const char *__null_terminated str) {
     // Set errno in case we die.
     errno = 0;
     size_t len;
@@ -69,11 +69,15 @@ char *sc_strdup(const char *str) {
     if (copy == NULL) {
         die("cannot allocate string copy (len: %zd)", len);
     }
-    memcpy(copy, str, len + 1);
-    return copy;
+    /* We copy len+1 bytes to include the terminating NUL.  The checked
+     * __null_terminated_to_indexable() conversion yields a bound that excludes
+     * the terminator, so copying len+1 bytes through it would trap.  We know
+     * str is NUL-terminated, so use the unchecked conversion here. */
+    memcpy(copy, __unsafe_null_terminated_to_indexable(str), len + 1);
+    return __unsafe_forge_null_terminated(char *, copy);
 }
 
-int sc_must_snprintf(char *str, size_t size, const char *format, ...) {
+int sc_must_snprintf(char *__counted_by(size) str, size_t size, const char *__null_terminated format, ...) {
     // Set errno in case we die.
     errno = 0;
     int n;
@@ -88,7 +92,7 @@ int sc_must_snprintf(char *str, size_t size, const char *format, ...) {
     return n;
 }
 
-size_t sc_string_append(char *dst, size_t dst_size, const char *str) {
+size_t sc_string_append(char *__counted_by(dst_size) dst, size_t dst_size, const char *__null_terminated str) {
     // Set errno in case we die.
     errno = 0;
     if (dst == NULL) {
@@ -108,14 +112,14 @@ size_t sc_string_append(char *dst, size_t dst_size, const char *str) {
         die("cannot append string: str is too long or unterminated");
     }
     // Append the string
-    memcpy(dst + dst_len, str, str_len);
+    memcpy(dst + dst_len, __null_terminated_to_indexable(str), str_len);
     // Ensure we are terminated
     dst[dst_len + str_len] = '\0';
     // return the new size
     return strlen(dst);
 }
 
-size_t sc_string_append_char(char *dst, size_t dst_size, char c) {
+size_t sc_string_append_char(char *__counted_by(dst_size) dst, size_t dst_size, char c) {
     // Set errno in case we die.
     errno = 0;
     if (dst == NULL) {
@@ -139,7 +143,7 @@ size_t sc_string_append_char(char *dst, size_t dst_size, char c) {
     return dst_len + 1;
 }
 
-size_t sc_string_append_char_pair(char *dst, size_t dst_size, char c1, char c2) {
+size_t sc_string_append_char_pair(char *__counted_by(dst_size) dst, size_t dst_size, char c1, char c2) {
     // Set errno in case we die.
     errno = 0;
     if (dst == NULL) {
@@ -164,7 +168,7 @@ size_t sc_string_append_char_pair(char *dst, size_t dst_size, char c1, char c2) 
     return dst_len + 2;
 }
 
-void sc_string_init(char *buf, size_t buf_size) {
+void sc_string_init(char *__counted_by(buf_size) buf, size_t buf_size) {
     errno = 0;
     if (buf == NULL) {
         die("cannot initialize string, buffer is NULL");
@@ -175,7 +179,7 @@ void sc_string_init(char *buf, size_t buf_size) {
     buf[0] = '\0';
 }
 
-void sc_string_quote(char *buf, size_t buf_size, const char *str) {
+void sc_string_quote(char *__counted_by(buf_size) buf, size_t buf_size, const char *__null_terminated str) {
     // Set errno in case we die.
     errno = 0;
     if (str == NULL) {
@@ -256,8 +260,9 @@ void sc_string_quote(char *buf, size_t buf_size, const char *str) {
     sc_string_append_char(buf, buf_size, '"');
 }
 
-void sc_string_split(const char *string, char delimiter, char *prefix_buf, size_t prefix_size, char *suffix_buf,
-                     size_t suffix_size) {
+void sc_string_split(const char *__null_terminated string, char delimiter,
+                     char *__counted_by_or_null(prefix_size) prefix_buf, size_t prefix_size,
+                     char *__counted_by_or_null(suffix_size) suffix_buf, size_t suffix_size) {
     if (string == NULL) {
         die("internal error: cannot split string when it is unset");
     }
@@ -265,8 +270,9 @@ void sc_string_split(const char *string, char delimiter, char *prefix_buf, size_
         die("internal error: cannot split string when both prefix and suffix are unset");
     }
 
-    const char *pos = strchr(string, delimiter);
-    const char *suffix_start = "";
+    const char *__null_terminated pos =
+        __unsafe_forge_null_terminated(const char *, strchr(__null_terminated_to_indexable(string), delimiter));
+    const char *__null_terminated suffix_start = "";
     size_t prefix_len = 0;
     size_t suffix_len = 0;
     if (pos == NULL) {
@@ -282,7 +288,7 @@ void sc_string_split(const char *string, char delimiter, char *prefix_buf, size_
             die("prefix buffer too small");
         }
 
-        memcpy(prefix_buf, string, prefix_len);
+        memcpy(prefix_buf, __null_terminated_to_indexable(string), prefix_len);
         prefix_buf[prefix_len] = '\0';
     }
 
@@ -290,17 +296,18 @@ void sc_string_split(const char *string, char delimiter, char *prefix_buf, size_
         if (suffix_len >= suffix_size) {
             die("suffix buffer too small");
         }
-        memcpy(suffix_buf, suffix_start, suffix_len);
+        memcpy(suffix_buf, __null_terminated_to_indexable(suffix_start), suffix_len);
         suffix_buf[suffix_len] = '\0';
     }
 }
 
-char *sc_str_chomp(char *string) {
+char *__null_terminated sc_str_chomp(char *__null_terminated string) {
     size_t len = strlen(string);
     size_t pos = len;
-    for (; pos > 0 && string[pos - 1] == '\n'; --pos);
+    char *__bidi_indexable indexed = __null_terminated_to_indexable(string);
+    for (; pos > 0 && indexed[pos - 1] == '\n'; --pos);
     if (pos < len) {
-        string[pos] = '\0';
+        indexed[pos] = '\0';
     }
 
     return string;

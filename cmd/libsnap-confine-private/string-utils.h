@@ -21,32 +21,35 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "bounds-safety.h"
+
 /**
  * Check if two strings are equal.
  **/
-bool sc_streq(const char *a, const char *b);
+bool sc_streq(const char *__null_terminated a, const char *__null_terminated b);
 
 /**
  * Check if a string has a given suffix.
  **/
-bool sc_endswith(const char *str, const char *suffix);
+bool sc_endswith(const char *__null_terminated str, const char *__null_terminated suffix);
 
 /**
  * Check if a string has a given prefix.
  **/
-bool sc_startswith(const char *str, const char *prefix);
+bool sc_startswith(const char *__null_terminated str, const char *__null_terminated prefix);
 
 /**
  * Allocate and return a copy of a string.
  **/
-char *sc_strdup(const char *str);
+char *__null_terminated sc_strdup(const char *__null_terminated str);
 
 /**
  * Safer version of snprintf.
  *
  * This version dies on any error condition.
  **/
-__attribute__((format(printf, 3, 4))) int sc_must_snprintf(char *str, size_t size, const char *format, ...);
+__attribute__((format(printf, 3, 4))) int sc_must_snprintf(char *__counted_by(size) str, size_t size,
+                                                           const char *__null_terminated format, ...);
 
 /**
  * Append a string to a buffer containing a string.
@@ -57,7 +60,7 @@ __attribute__((format(printf, 3, 4))) int sc_must_snprintf(char *str, size_t siz
  *
  * The buffers cannot overlap.
  **/
-size_t sc_string_append(char *dst, size_t dst_size, const char *str);
+size_t sc_string_append(char *__counted_by(dst_size) dst, size_t dst_size, const char *__null_terminated str);
 
 /**
  * Append a single character to a buffer containing a string.
@@ -70,7 +73,7 @@ size_t sc_string_append(char *dst, size_t dst_size, const char *str);
  *
  * The return value is the new length of the string.
  **/
-size_t sc_string_append_char(char *dst, size_t dst_size, char c);
+size_t sc_string_append_char(char *__counted_by(dst_size) dst, size_t dst_size, char c);
 
 /**
  * Append a pair of characters to a buffer containing a string.
@@ -83,14 +86,14 @@ size_t sc_string_append_char(char *dst, size_t dst_size, char c);
  *
  * The return value is the new length of the string.
  **/
-size_t sc_string_append_char_pair(char *dst, size_t dst_size, char c1, char c2);
+size_t sc_string_append_char_pair(char *__counted_by(dst_size) dst, size_t dst_size, char c1, char c2);
 
 /**
  * Initialize a string (make it empty).
  *
  * Initialize a string as empty, ensuring buf is non-NULL buf_size is > 0.
  **/
-void sc_string_init(char *buf, size_t buf_size);
+void sc_string_init(char *__counted_by(buf_size) buf, size_t buf_size);
 
 /**
  * Quote a string so it is safe for printing.
@@ -110,7 +113,7 @@ void sc_string_init(char *buf, size_t buf_size);
  * double-quote characters (one front, one rear) and the final string
  * terminator character.
  **/
-void sc_string_quote(char *buf, size_t buf_size, const char *str);
+void sc_string_quote(char *__counted_by(buf_size) buf, size_t buf_size, const char *__null_terminated str);
 
 /**
  * Split a string into two parts on the first occurrence of a delimiter.
@@ -119,12 +122,13 @@ void sc_string_quote(char *buf, size_t buf_size, const char *str);
  * string, and the size of suffix must be large enough to hold the suffix part
  * of the string.
  **/
-void sc_string_split(const char *string, char delimiter, char *prefix_buf, size_t prefix_size, char *suffix_buf,
-                     size_t suffix_size);
+void sc_string_split(const char *__null_terminated string, char delimiter,
+                     char *__counted_by_or_null(prefix_size) prefix_buf, size_t prefix_size,
+                     char *__counted_by_or_null(suffix_size) suffix_buf, size_t suffix_size);
 
 /**
  * Removes line ends at the end of the string.
  **/
-char *sc_str_chomp(char *string);
+char *__null_terminated sc_str_chomp(char *__null_terminated string);
 
 #endif
